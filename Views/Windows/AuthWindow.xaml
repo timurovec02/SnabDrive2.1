@@ -1,0 +1,17 @@
+﻿<Window x:Class="SnabDrive2._0.Views.Windows.AuthWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:SnabDrive2._0"
+        mc:Ignorable="d"
+        Title="Авторизация" Height="300" Width="500" ResizeMode="NoResize">
+    <Grid>
+        <Label Content="СнабДрайв" VerticalAlignment="Top" HorizontalAlignment="Center"/>
+        <StackPanel VerticalAlignment="Center">
+            <TextBox x:Name="TxbLogin" Style="{DynamicResource txb}" Height="40" Width="300"/>
+            <PasswordBox x:Name="PsbPassword1" Style="{DynamicResource psb}" Height="40" Width="300"/>
+            <Button x:Name="BtnEnter" Content="Войти" Click="BtnEnter_Click" Style="{DynamicResource btnEnter}" Height="40" Width="150" FontSize="19" IsDefault="True"/>
+        </StackPanel>
+    </Grid>
+</Window>

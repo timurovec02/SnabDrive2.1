@@ -1,0 +1,183 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:local1="clr-namespace:SnabDrive2._0.Converters">
+    <local1:DateOneDayAwayConverter  x:Key="DateOneDayAwayConverter" />
+    <local1:CellColorConverter x:Key="CellColorConverter"/>
+    <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+
+    <!-- Стиль для ячейки с поддержкой цвета -->
+    <Style x:Key="ColoredCellStyle" TargetType="DataGridCell">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="Black"/>
+        <Style.Triggers>
+            <Trigger Property="IsSelected" Value="True">
+                <Setter Property="Background" Value="LightBlue"/>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+    
+    <Style TargetType="TabControl" x:Key="TabItm">
+        <Setter Property="FontSize" Value="20"/>
+
+        <Style.Triggers>
+            <Trigger  Property="IsSelected" Value="True">
+                <Setter Property="FontWeight" Value="Bold"/>
+            </Trigger>
+        </Style.Triggers>
+
+    </Style>
+
+    <!--DataGrid СТИЛИ-->
+    <Style TargetType="DataGrid" x:Key="qwerty">
+        <Setter Property="ColumnHeaderStyle" Value="{DynamicResource qwe}"/>
+
+        <Setter Property="FontSize" Value="16"/>
+    </Style>
+
+    <Style TargetType="DataGridCell">
+        <Style.Setters>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="DataGridCell">
+                        <Border Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            Padding="{TemplateBinding Padding}">
+                            <ContentPresenter VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style.Setters>
+    </Style>
+
+    <!-- Стиль для TextBlock внутри DataGrid -->
+    <Style TargetType="TextBlock" x:Key="WrappingTextBlock">
+        <Setter Property="TextWrapping" Value="Wrap"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+
+    <Style TargetType="DataGridColumnHeader" x:Key="qwe">
+        <Setter Property="ContentTemplate">
+            <Setter.Value>
+                <DataTemplate>
+                    <TextBlock TextWrapping="Wrap" 
+                           Text="{Binding}" 
+                           TextAlignment="Center"
+                           Margin="0"/>
+                </DataTemplate>
+            </Setter.Value>
+        </Setter>
+        <Setter Property="FontSize" Value="17"/>
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        <Setter Property="Background" Value="LightGray"/>
+        <Setter Property="FontWeight" Value="DemiBold"/>
+
+        <Setter Property="BorderBrush" Value="Gray"/>
+        <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+
+    <Style x:Key="ComboBoxCellStyleWithColor" TargetType="DataGridCell">
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding TypeOfPurchase.ColorCode}" Value="Green">
+                <Setter Property="VerticalContentAlignment" Value="Center"/>
+                <Setter Property="Background" Value="#D0F0C0"/>
+                <Setter Property="Foreground" Value="DarkGreen"/>
+                <Setter Property="FontWeight" Value="DemiBold"/>
+            </DataTrigger>
+            <DataTrigger Binding="{Binding TypeOfPurchase.ColorCode}" Value="Yellow">
+                <Setter Property="VerticalContentAlignment" Value="Center"/>
+                <Setter Property="Background" Value="Yellow"/>
+                <Setter Property="Foreground" Value="Blue"/>
+                <Setter Property="FontWeight" Value="DemiBold"/>
+            </DataTrigger>
+            <DataTrigger Binding="{Binding TypeOfPurchase.ColorCode}" Value="Blue">
+                <Setter Property="VerticalContentAlignment" Value="Center"/>
+                <Setter Property="Background" Value="Blue"/>
+                <Setter Property="Foreground" Value="White"/>
+                <Setter Property="FontWeight" Value="DemiBold"/>
+            </DataTrigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="HighlightedRowStyle" TargetType="DataGridRow">
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding BiddingDate, Converter={StaticResource DateOneDayAwayConverter}}" Value="True">
+                <Setter Property="Background" Value="LightCoral"/>
+                <Setter Property="Foreground" Value="DarkRed"/>
+                <Setter Property="ToolTip" Value="Меньше 1 дня до торгов"/>
+            </DataTrigger>
+            <DataTrigger Binding="{Binding IsFinished}" Value="True">
+                <Setter Property="Background" Value="LightGreen"/>
+                <Setter Property="Foreground" Value="DarkRed"/>
+                <Setter Property="ToolTip" Value="Оплата проведена"/>
+            </DataTrigger>
+        </Style.Triggers>
+    </Style>
+    <Style TargetType="CheckBox" x:Key="CircleCheckbox">
+        <Setter Property="Cursor" Value="Hand"></Setter>
+        <Setter Property="Content" Value=""></Setter>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type CheckBox}">
+                    <Grid>
+                        <Ellipse x:Name="outerEllipse">
+                            <Ellipse.Fill>
+                                <RadialGradientBrush>
+                                    <GradientStop Offset="0" Color="Red"/>
+                                    <GradientStop Offset="0.88" Color="LightCoral"/>
+                                    <GradientStop Offset="1" Color="DarkRed"/>
+                                </RadialGradientBrush>
+                            </Ellipse.Fill>
+                        </Ellipse>
+                        <Ellipse Margin="10" x:Name="highlightCircle" >
+                            <Ellipse.Fill >
+                                <LinearGradientBrush >
+                                    <GradientStop Offset="0" Color="Green"/>
+                                    <GradientStop Offset="0.5" Color="LightGreen"/>
+                                    <GradientStop Offset="1" Color="DarkGreen"/>
+                                </LinearGradientBrush>
+                            </Ellipse.Fill>
+                        </Ellipse>
+                        <ContentPresenter x:Name="content" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="highlightCircle" Property="Fill">
+                                <Setter.Value>
+                                    <LinearGradientBrush StartPoint="0.3,0" EndPoint="0.7,1">
+                                        <GradientStop Offset="0" Color="Green"/>
+                                        <GradientStop Offset="0.5" Color="LightGreen"/>
+                                        <GradientStop Offset="1" Color="DarkGreen"/>
+                                    </LinearGradientBrush>
+                                </Setter.Value>
+                            </Setter>
+                            <Setter TargetName="outerEllipse" Property="Fill">
+                                <Setter.Value>
+                                    <RadialGradientBrush>
+                                        <GradientStop Offset="0" Color="Green"/>
+                                        <GradientStop Offset="0.88" Color="LightGreen"/>
+                                        <GradientStop Offset="1" Color="DarkGreen"/>
+                                    </RadialGradientBrush>
+                                </Setter.Value>
+                            </Setter>
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="False">
+                            <Setter TargetName="highlightCircle" Property="Fill">
+                                <Setter.Value>
+                                    <LinearGradientBrush StartPoint="0.3,0" EndPoint="0.7,1">
+                                        <GradientStop Offset="0" Color="Red"/>
+                                        <GradientStop Offset="0.5" Color="LightCoral"/>
+                                        <GradientStop Offset="1" Color="DarkRed"/>
+                                    </LinearGradientBrush>
+                                </Setter.Value>
+                            </Setter>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+</ResourceDictionary>

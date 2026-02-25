@@ -1,0 +1,648 @@
+﻿<Page x:Class="SnabDrive2._0.Views.Pages.RegeditPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+      xmlns:local="clr-namespace:SnabDrive2._0.Views.Pages"
+      mc:Ignorable="d" 
+      d:DesignHeight="450" d:DesignWidth="800"
+      Title="RegeditPage">
+    <Page.Resources>
+        <ResourceDictionary Source="/Styles/DGridStyles.xaml"></ResourceDictionary>
+        
+    </Page.Resources>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="50"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <Grid x:Name="UserInfo"
+              Height="170"
+              Width="110"
+              Background="White"
+              Grid.Row="1"
+              VerticalAlignment="Top"
+              HorizontalAlignment="Right"
+              Panel.ZIndex="1"
+              >
+            <StackPanel>
+                <StackPanel Orientation="Horizontal">
+                    <Label Content="Имя:" />
+                    <Label x:Name="qwe"/>
+                </StackPanel>
+                <Label x:Name="Admin"/>
+                <Button x:Name="SettingsBtn"
+                Content="Управление"
+                Visibility="Visible"
+                Click="SettingsBtn_Click"
+                Style="{DynamicResource btnAdd}"/>
+            </StackPanel>
+
+        </Grid>
+        <!-- Верхняя панель с кнопками -->
+        <StackPanel Grid.Row="0" 
+                    Orientation="Horizontal" 
+                    VerticalAlignment="Top" 
+                    Panel.ZIndex="1" 
+                    Margin="5,5,70,0">
+            
+            <Button x:Name="AddItemButton" 
+                    Content="Добавить" 
+                    Click="AddItem_Click" 
+                    VerticalAlignment="Top" 
+                    IsEnabled="True" 
+                    Style="{DynamicResource btnAdd}"/>
+            
+            <Button x:Name="DeleteButton" 
+                    Content="Удалить" 
+                    Click="DeleteItem_Click" 
+                    VerticalAlignment="Top" 
+                    Style="{DynamicResource btnDel}"/>
+            
+            <Button x:Name="ArchBtn" 
+                    Content="Архивировать" 
+                    Click="ArchiveButton_Click" 
+                    VerticalAlignment="Top" 
+                    Style="{DynamicResource btnArch}"/>
+            
+            <Button x:Name="UnArchBtn" 
+                    Content="Разархивировать" 
+                    Click="UnarchiveButton_Click"
+                    VerticalAlignment="Top"
+                    Style="{DynamicResource btnArch}"/>
+            
+            <Button x:Name="RefreshButton" 
+                    Content="Обновить"
+                    Click="RefreshButton_Click"
+                    VerticalAlignment="Top"
+                    Style="{DynamicResource btnEnter}"/>
+            <!-- Выбор цвета -->
+            <ComboBox x:Name="ColorComboBox" Width="100" Margin="10,0,0,0" SelectedIndex="0">
+                <ComboBoxItem Tag="#FFFF0000" Content="Красный" Background="#FFFF0000"/>
+                <ComboBoxItem Tag="#FF00FF00" Content="Зелёный" Background="#FF00FF00"/>
+                <ComboBoxItem Tag="#FF0000FF" Content="Синий" Background="#FF0000FF"/>
+                <ComboBoxItem Tag="#FFFFFF00" Content="Жёлтый" Background="#FFFFFF00"/>
+                <ComboBoxItem Tag="#FFFFA500" Content="Оранжевый" Background="#FFFFA500"/>
+                <ComboBoxItem Tag="#FF800080" Content="Фиолетовый" Background="#FF800080"/>
+            </ComboBox>
+
+            <Button x:Name="ApplyColorButton" Content="Применить цвет" Margin="5,0,0,0" 
+        Click="ApplyColorButton_Click" Style="{DynamicResource btnEnter}"/>
+
+            <Button x:Name="ClearColorButton" Content="Сбросить цвет" Margin="5,0,0,0" 
+        Click="ClearColorButton_Click" Style="{DynamicResource btnDel}"/>
+
+            <!-- Панель поиска -->
+            <Border BorderBrush="Gray" BorderThickness="1" CornerRadius="3" Margin="10,0,0,0" Background="White">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBox x:Name="SearchTxb" 
+                         Grid.Column="0"
+                         TextChanged="SearchTxb_TextChanged"
+                         Style="{StaticResource SearchTextBoxStyle}"
+                         ToolTip="Введите текст для поиска"/>
+
+                    <Button x:Name="SearchBtn" 
+                        Grid.Column="1" 
+                        Click="SearchBtn_Click"
+                        Content="🔍"
+                        Width="25"
+                        ToolTip="Найти"/>
+
+                    <Button x:Name="ClearSearchBtn" 
+                        Grid.Column="2" 
+                        Click="ClearSearch_Click"
+                        Content="✖"
+                        Width="25"
+                        ToolTip="Очистить поиск"/>
+                </Grid>
+            </Border>
+
+            <!-- Индикатор результатов поиска -->
+            <TextBlock x:Name="SearchHintText" 
+                   VerticalAlignment="Center" 
+                   Margin="10,0,0,0"
+                   Foreground="Gray"
+                   Visibility="Collapsed"/>
+        </StackPanel>
+        <Button x:Name="InfoBtn"
+            Grid.Row="0" 
+            HorizontalAlignment="Right" 
+            VerticalAlignment="Center"
+            Click="InfoBtn_Click"
+            Style="{DynamicResource InfoBtn}"/>
+        <!-- Табы для переключения между данными и архивом -->
+        <TabControl x:Name="MainTabControl"
+                Grid.Row="1" 
+                VerticalAlignment="Stretch" 
+                Style="{DynamicResource TabItm}"
+                SelectionChanged="MainTabControl_SelectionChanged">
+
+            <!-- Вкладка "Основные данные" -->
+            <TabItem  Header="Основные данные"  x:Name="MainRegedit">
+                <Grid>
+                    <DataGrid Grid.Row="1" 
+                              x:Name="DGBase"
+                              SelectedItem="{Binding SelectedArchiveRegedit}"
+                              SelectedCellsChanged="DataGrid_SelectedCellsChanged"
+                              RowStyle="{StaticResource HighlightedRowStyle}"   
+                              AutoGenerateColumns="False" 
+                              RowEditEnding="ProductDataGrid_RowEditEnding" 
+                              CanUserAddRows="False" 
+                              FrozenColumnCount="4" 
+                              Style="{DynamicResource qwerty}">
+
+                        <DataGrid.Columns>
+
+                            <DataGridTemplateColumn Header="Ссылка">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock>
+                    <Hyperlink NavigateUri="{Binding NameLink}" 
+                               RequestNavigate="Hyperlink_RequestNavigate">
+                        <TextBlock Text="Ссылка"/> <!-- Текст ссылки -->
+                    </Hyperlink>
+                </TextBlock>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="Ссылка" 
+                                                Width="100"
+                                                CanUserResize="False"
+                                                Binding="{Binding NameLink, UpdateSourceTrigger=PropertyChanged}">
+                                <!--<DataGridTextColumn.ElementStyle>
+            <StaticResource ResourceKey="WrappingTextBlock"/>
+            
+        </DataGridTextColumn.ElementStyle>-->
+                            </DataGridTextColumn>
+                            <DataGridTextColumn x:Name="CustomerName" 
+                                                Header="Заказчик" 
+                                                Width="auto" 
+                                                Binding="{Binding Customer, UpdateSourceTrigger=PropertyChanged}">
+                                <DataGridTextColumn.ElementStyle>
+                                    <StaticResource ResourceKey="WrappingTextBlock"/>
+                                </DataGridTextColumn.ElementStyle>
+                                <DataGridTextColumn.CellStyle>
+                                    <Style BasedOn="{StaticResource ColoredCellStyle}" TargetType="DataGridCell">
+                                        <Setter Property="Background" Value="{Binding Converter={StaticResource CellColorConverter}, ConverterParameter='Customer'}"/>
+                                    </Style>
+                                </DataGridTextColumn.CellStyle>
+                            </DataGridTextColumn>
+                            
+                            
+                            <DataGridComboBoxColumn x:Name="TypeOfPCombo" 
+                                                    Header="Тип закупки" 
+                                                    Width="auto" 
+                                                    SelectedItemBinding ="{Binding TypeOfPurchase, UpdateSourceTrigger=PropertyChanged}" SelectedValuePath="Id" DisplayMemberPath="NameOfPurchase">
+                                <DataGridComboBoxColumn.CellStyle>
+                                    <StaticResource ResourceKey="ComboBoxCellStyleWithColor"/>
+                                </DataGridComboBoxColumn.CellStyle>
+                            </DataGridComboBoxColumn>
+                            
+                            
+                            <DataGridTextColumn Header="Место поставки товара" 
+                                                MinWidth="140" 
+                                                Width="140" 
+                                                Binding="{Binding PlaceOfDelivery, UpdateSourceTrigger=PropertyChanged}">
+                                <DataGridTextColumn.ElementStyle>
+                                    <StaticResource ResourceKey="WrappingTextBlock"/>
+                                </DataGridTextColumn.ElementStyle>
+                                <DataGridTextColumn.CellStyle>
+                                    <Style BasedOn="{StaticResource ColoredCellStyle}" TargetType="DataGridCell">
+                                        <Setter Property="Background" Value="{Binding Converter={StaticResource CellColorConverter}, ConverterParameter='PlaceOfDelivery'}"/>
+                                    </Style>
+                                </DataGridTextColumn.CellStyle>
+                            </DataGridTextColumn>
+                            
+                            
+                            <DataGridTextColumn Header="Номер резерва" 
+                                                MinWidth="130" 
+                                                Width="auto" 
+                                                Binding="{Binding ReserveNumber, UpdateSourceTrigger=PropertyChanged}">
+                                <DataGridTextColumn.ElementStyle>
+                                    <StaticResource ResourceKey="WrappingTextBlock"/>
+                                </DataGridTextColumn.ElementStyle>
+                                <DataGridTextColumn.CellStyle>
+                                    <Style BasedOn="{StaticResource ColoredCellStyle}" TargetType="DataGridCell">
+                                        <Setter Property="Background" Value="{Binding Converter={StaticResource CellColorConverter}, ConverterParameter='ReserveNumber'}"/>
+                                    </Style>
+                                </DataGridTextColumn.CellStyle>
+                            </DataGridTextColumn>
+                            
+                            
+                            <DataGridTextColumn Header="Нац режим" 
+                                                MinWidth="100"
+                                                Binding="{Binding NationalMode, UpdateSourceTrigger=PropertyChanged}">
+                                <DataGridTextColumn.ElementStyle>
+                                    <StaticResource ResourceKey="WrappingTextBlock"/>
+                                </DataGridTextColumn.ElementStyle>
+                                <DataGridTextColumn.CellStyle>
+                                    <Style BasedOn="{StaticResource ColoredCellStyle}" TargetType="DataGridCell">
+                                        <Setter Property="Background" Value="{Binding Converter={StaticResource CellColorConverter}, ConverterParameter='NationalMode'}"/>
+                                    </Style>
+                                </DataGridTextColumn.CellStyle>
+                            </DataGridTextColumn>
+                            
+
+                            <DataGridTemplateColumn Header="Дата торгов">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding BiddingDate, UpdateSourceTrigger=PropertyChanged}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                                <DataGridTemplateColumn.CellEditingTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal">
+                                            <DatePicker SelectedDate="{Binding Path=BiddingDate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                                                        Width="100" />
+
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellEditingTemplate>
+                                <DataGridTemplateColumn.CellStyle>
+                                    <Style BasedOn="{StaticResource ColoredCellStyle}" TargetType="DataGridCell">
+                                        <Setter Property="Background" Value="{Binding Converter={StaticResource CellColorConverter}, ConverterParameter='BiddingDate'}"/>
+                                    </Style>
+                                </DataGridTemplateColumn.CellStyle>
+                            </DataGridTemplateColumn>
+
+                            
+                            <DataGridTemplateColumn Header="Дата передачи на размещение" 
+                                                    MinWidth="110" 
+                                                    Width="110">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding DateOfTransferForPlacement, StringFormat='dd.MM.yyyy', UpdateSourceTrigger=PropertyChanged}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                                <DataGridTemplateColumn.CellEditingTemplate>
+                                    <DataTemplate>
+                                        <DatePicker SelectedDate="{Binding DateOfTransferForPlacement, UpdateSourceTrigger=PropertyChanged}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellEditingTemplate>
+                                <DataGridTemplateColumn.CellStyle>
+                                    <Style BasedOn="{StaticResource ColoredCellStyle}" TargetType="DataGridCell">
+                                        <Setter Property="Background" Value="{Binding Converter={StaticResource CellColorConverter}, ConverterParameter='DateOfTransferForPlacement'}"/>
+                                    </Style>
+                                </DataGridTemplateColumn.CellStyle>
+                            </DataGridTemplateColumn>
+
+                            
+                            <DataGridTemplateColumn Header="Дата размещения на площадке" 
+                                                    MinWidth="120" 
+                                                    Width="120">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding DateOfPlacement, StringFormat='dd.MM.yyyy', UpdateSourceTrigger=PropertyChanged}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                                <DataGridTemplateColumn.CellEditingTemplate>
+                                    <DataTemplate>
+                                        <DatePicker SelectedDate="{Binding DateOfPlacement, UpdateSourceTrigger=PropertyChanged}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellEditingTemplate>
+                                <DataGridTemplateColumn.CellStyle>
+                                    <Style BasedOn="{StaticResource ColoredCellStyle}" TargetType="DataGridCell">
+                                        <Setter Property="Background" Value="{Binding Converter={StaticResource CellColorConverter}, ConverterParameter='DateOfPlacement'}"/>
+                                    </Style>
+                                </DataGridTemplateColumn.CellStyle>
+                            </DataGridTemplateColumn>
+
+                            
+                            <DataGridTemplateColumn Header="Дата подведения итогов" 
+                                                    MinWidth="100" 
+                                                    Width="100">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding DateResults, StringFormat='dd.MM.yyyy', UpdateSourceTrigger=PropertyChanged}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                                <DataGridTemplateColumn.CellEditingTemplate>
+                                    <DataTemplate>
+                                        <DatePicker SelectedDate="{Binding DateResults, StringFormat='dd.MM.yyyy', UpdateSourceTrigger=PropertyChanged }"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellEditingTemplate>
+                                <DataGridTemplateColumn.CellStyle>
+                                    <Style BasedOn="{StaticResource ColoredCellStyle}" TargetType="DataGridCell">
+                                        <Setter Property="Background" Value="{Binding Converter={StaticResource CellColorConverter}, ConverterParameter='DateResults'}"/>
+                                    </Style>
+                                </DataGridTemplateColumn.CellStyle>
+                            </DataGridTemplateColumn>
+
+                            
+                            <DataGridTemplateColumn Header="Дата заключения контракта" 
+                                                    MinWidth="105" 
+                                                    Width="105">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding DateOfConclusionOfTheContract, StringFormat='dd.MM.yyyy', UpdateSourceTrigger=PropertyChanged}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                                <DataGridTemplateColumn.CellEditingTemplate>
+                                    <DataTemplate>
+                                        <DatePicker SelectedDate="{Binding DateOfConclusionOfTheContract, UpdateSourceTrigger=PropertyChanged}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellEditingTemplate>
+                                <DataGridTemplateColumn.CellStyle>
+                                    <Style BasedOn="{StaticResource ColoredCellStyle}" TargetType="DataGridCell">
+                                        <Setter Property="Background" Value="{Binding Converter={StaticResource CellColorConverter}, ConverterParameter='DateOfConclusionOfTheContract'}"/>
+                                    </Style>
+                                </DataGridTemplateColumn.CellStyle>
+                            </DataGridTemplateColumn>
+
+                            
+                            <DataGridTextColumn Header="НМЦК"
+                                                MinWidth="50"
+                                                Width="auto" 
+                                                Binding="{Binding NMCK, UpdateSourceTrigger=PropertyChanged}">
+                                <DataGridTextColumn.ElementStyle>
+                                    <StaticResource ResourceKey="WrappingTextBlock"/>
+                                </DataGridTextColumn.ElementStyle>
+                                <DataGridTextColumn.CellStyle>
+                                    <Style BasedOn="{StaticResource ColoredCellStyle}" TargetType="DataGridCell">
+                                        <Setter Property="Background" Value="{Binding Converter={StaticResource CellColorConverter}, ConverterParameter='NMCK'}"/>
+                                    </Style>
+                                </DataGridTextColumn.CellStyle>
+                            </DataGridTextColumn>
+                            
+                            
+                            <DataGridTextColumn Header="Наша минимальная сумма" 
+                                                Width="auto" 
+                                                MinWidth="50"
+                                                Binding="{Binding MinPrice, UpdateSourceTrigger=PropertyChanged}">
+                                <DataGridTextColumn.ElementStyle>
+                                    <StaticResource ResourceKey="WrappingTextBlock"/>
+                                </DataGridTextColumn.ElementStyle>
+                                <DataGridTextColumn.CellStyle>
+                                    <Style BasedOn="{StaticResource ColoredCellStyle}" TargetType="DataGridCell">
+                                        <Setter Property="Background" Value="{Binding Converter={StaticResource CellColorConverter}, ConverterParameter='MinPrice'}"/>
+                                    </Style>
+                                </DataGridTextColumn.CellStyle>
+                            </DataGridTextColumn>
+                            
+                            
+                            <DataGridTextColumn Header="Итоговая сумма" 
+                                                Width="auto" 
+                                                MinWidth="50"
+                                                Binding="{Binding ResultPrice, UpdateSourceTrigger=PropertyChanged}">
+                                <DataGridTextColumn.ElementStyle>
+                                    <StaticResource ResourceKey="WrappingTextBlock"/>
+                                </DataGridTextColumn.ElementStyle>
+                                <DataGridTextColumn.CellStyle>
+                                    <Style BasedOn="{StaticResource ColoredCellStyle}" TargetType="DataGridCell">
+                                        <Setter Property="Background" Value="{Binding Converter={StaticResource CellColorConverter}, ConverterParameter='ResultPrice'}"/>
+                                    </Style>
+                                </DataGridTextColumn.CellStyle>
+                            </DataGridTextColumn>
+                            
+                            
+                            <DataGridTextColumn Header="Победитель" 
+                                                Width="auto" 
+                                                MinWidth="50"
+                                                Binding="{Binding Winner, UpdateSourceTrigger=PropertyChanged}">
+                                <DataGridTextColumn.ElementStyle>
+                                    <StaticResource ResourceKey="WrappingTextBlock"/>
+                                </DataGridTextColumn.ElementStyle>
+                                <DataGridTextColumn.CellStyle>
+                                    <Style BasedOn="{StaticResource ColoredCellStyle}" TargetType="DataGridCell">
+                                        <Setter Property="Background" Value="{Binding Converter={StaticResource CellColorConverter}, ConverterParameter='Winner'}"/>
+                                    </Style>
+                                </DataGridTextColumn.CellStyle>
+                            </DataGridTextColumn>
+
+                            
+                            <DataGridTextColumn Header="Срок поставки" 
+                                                Width="auto" 
+                                                MinWidth="50"
+                                                Binding="{Binding DeliveryTime, UpdateSourceTrigger=PropertyChanged}">
+                                <DataGridTextColumn.ElementStyle>
+                                    <StaticResource ResourceKey="WrappingTextBlock"/>
+                                </DataGridTextColumn.ElementStyle>
+                                <DataGridTextColumn.CellStyle>
+                                    <Style BasedOn="{StaticResource ColoredCellStyle}" TargetType="DataGridCell">
+                                        <Setter Property="Background" Value="{Binding Converter={StaticResource CellColorConverter}, ConverterParameter='DeliveryTime'}"/>
+                                    </Style>
+                                </DataGridTextColumn.CellStyle>
+                            </DataGridTextColumn>
+                            
+                            
+                            <DataGridTextColumn Header="Примечания" 
+                                                Width="auto" 
+                                                MinWidth="50"
+                                                Binding="{Binding Description, UpdateSourceTrigger=PropertyChanged}">
+                                <DataGridTextColumn.ElementStyle>
+                                    <StaticResource ResourceKey="WrappingTextBlock"/>
+                                </DataGridTextColumn.ElementStyle>
+                                <DataGridTextColumn.CellStyle>
+                                    <Style BasedOn="{StaticResource ColoredCellStyle}" TargetType="DataGridCell">
+                                        <Setter Property="Background" Value="{Binding Converter={StaticResource CellColorConverter}, ConverterParameter='Description'}"/>
+                                    </Style>
+                                </DataGridTextColumn.CellStyle>
+                            </DataGridTextColumn>
+                            
+                            
+                            <DataGridTextColumn Header="Доп записка" 
+                                                Width="auto" 
+                                                MinWidth="50"
+                                                Binding="{Binding Note, UpdateSourceTrigger=PropertyChanged}">
+                                <DataGridTextColumn.ElementStyle>
+                                    <StaticResource ResourceKey="WrappingTextBlock"/>
+                                </DataGridTextColumn.ElementStyle>
+                                <DataGridTextColumn.CellStyle>
+                                    <Style BasedOn="{StaticResource ColoredCellStyle}" TargetType="DataGridCell">
+                                        <Setter Property="Background" Value="{Binding Converter={StaticResource CellColorConverter}, ConverterParameter='Note'}"/>
+                                    </Style>
+                                </DataGridTextColumn.CellStyle>
+                            </DataGridTextColumn>
+                            
+                            
+                            <DataGridComboBoxColumn x:Name="B2BCombo" 
+                                                    Header="Статус резерва B2B" 
+                                                    Width="auto" 
+                                                    MinWidth="50"
+                                                    SelectedItemBinding ="{Binding B2BStatus, UpdateSourceTrigger=PropertyChanged}" 
+                                                    SelectedValuePath="Id" 
+                                                    DisplayMemberPath="NameB2B">
+                            </DataGridComboBoxColumn>
+
+                            
+                            <DataGridComboBoxColumn x:Name="ExecutionCombo" 
+                                                    Header="Статус исполнения контракта" 
+                                                    Width="auto" 
+                                                    MinWidth="50"
+                                                    SelectedItemBinding ="{Binding ExecutionStatus, UpdateSourceTrigger=PropertyChanged}" 
+                                                    SelectedValuePath="Id" 
+                                                    DisplayMemberPath="NameExecution" >
+                            </DataGridComboBoxColumn>
+
+                            
+                            <DataGridCheckBoxColumn x:Name="IsFinished" 
+                                                    Header="Оплачен" 
+                                                    MinWidth="30"
+                                                    Binding="{Binding IsFinished, UpdateSourceTrigger=PropertyChanged}">
+                                <DataGridCheckBoxColumn.ElementStyle>
+                                    <StaticResource ResourceKey="CircleCheckbox"/>
+                                </DataGridCheckBoxColumn.ElementStyle>
+                            </DataGridCheckBoxColumn>
+                            
+                            
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </TabItem>
+
+            <!-- Вкладка "Архив" -->
+            <TabItem Header="Архив" x:Name="ArchRegedit">
+                <DataGrid ItemsSource="{Binding ArchiveRegedit}" Grid.Row="1"  HorizontalAlignment="Stretch" x:Name="ArchiveDGBase"  AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True" Style="{DynamicResource qwerty}">
+
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Наименование закупки" Width="auto" Binding="{Binding NameLink}">
+                            <DataGridTextColumn.ElementStyle>
+                                <StaticResource ResourceKey="WrappingTextBlock"/>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
+                        <DataGridTextColumn x:Name="CustomerNameA" Header="Заказчик" Width="auto" Binding="{Binding Customer}">
+                            <DataGridTextColumn.ElementStyle>
+                                <StaticResource ResourceKey="WrappingTextBlock"/>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
+                        <DataGridTextColumn Header="Место поставки товара" Width="auto" Binding="{Binding PlaceOfDelivery}">
+                            <DataGridTextColumn.ElementStyle>
+                                <StaticResource ResourceKey="WrappingTextBlock"/>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
+                        <DataGridTextColumn Header="Номер резерва" Width="auto" Binding="{Binding ReserveNumber}">
+                            <DataGridTextColumn.ElementStyle>
+                                <StaticResource ResourceKey="WrappingTextBlock"/>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
+                        <DataGridTextColumn Header="Нац режим" Width="auto" Binding="{Binding NationalMode}">
+                            <DataGridTextColumn.ElementStyle>
+                                <StaticResource ResourceKey="WrappingTextBlock"/>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
+
+                        <DataGridTemplateColumn Header="Дата торгов">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding BiddingDate}"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+
+                        </DataGridTemplateColumn>
+
+                        <DataGridTemplateColumn Header="Дата передачи на размещение">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding DateOfTransferForPlacement, StringFormat='dd.MM.yyyy'}"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+
+                        </DataGridTemplateColumn>
+
+                        <DataGridTemplateColumn Header="Дата размещения на площадке">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding DateOfPlacement, StringFormat='dd.MM.yyyy'}"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+
+                        </DataGridTemplateColumn>
+
+                        <DataGridTemplateColumn Header="Дата подведения итогов">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding DateResults, StringFormat='dd.MM.yyyy'}"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+
+                        </DataGridTemplateColumn>
+
+                        <DataGridTemplateColumn Header="Дата заключения контракта">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding DateOfConclusionOfTheContract, StringFormat='dd.MM.yyyy'}"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+
+
+                        </DataGridTemplateColumn>
+
+                        <DataGridTextColumn Header="НМЦК" Width="auto" Binding="{Binding NMCK}">
+                            <DataGridTextColumn.ElementStyle>
+                                <StaticResource ResourceKey="WrappingTextBlock"/>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
+                        <DataGridTextColumn Header="Наша минимальная сумма" Width="auto" Binding="{Binding MinPrice}">
+                            <DataGridTextColumn.ElementStyle>
+                                <StaticResource ResourceKey="WrappingTextBlock"/>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
+                        <DataGridTextColumn Header="Итоговая сумма" Width="auto" Binding="{Binding ResultPrice}">
+                            <DataGridTextColumn.ElementStyle>
+                                <StaticResource ResourceKey="WrappingTextBlock"/>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
+                        <DataGridTextColumn Header="Победитель" Width="auto" Binding="{Binding Winner}">
+                            <DataGridTextColumn.ElementStyle>
+                                <StaticResource ResourceKey="WrappingTextBlock"/>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
+
+                        <DataGridTextColumn Header="Срок поставки" Width="auto" Binding="{Binding DeliveryTime}">
+                            <DataGridTextColumn.ElementStyle>
+                                <StaticResource ResourceKey="WrappingTextBlock"/>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
+                        <DataGridTextColumn Header="Примечания" Width="auto" Binding="{Binding Description}">
+                            <DataGridTextColumn.ElementStyle>
+                                <StaticResource ResourceKey="WrappingTextBlock"/>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
+                        <DataGridTextColumn Header="Доп записка" Width="auto" Binding="{Binding Note}">
+                            <DataGridTextColumn.ElementStyle>
+                                <StaticResource ResourceKey="WrappingTextBlock"/>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
+                        <DataGridComboBoxColumn x:Name="B2BComboA" Header="Статус резерва B2B" Width="auto" SelectedItemBinding ="{Binding B2BStatus}" SelectedValuePath="Id" DisplayMemberPath="NameB2B">
+
+                        </DataGridComboBoxColumn>
+                        <DataGridComboBoxColumn x:Name="TypeOfPComboA" Header="Тип закупки" Width="auto" SelectedItemBinding ="{Binding TypeOfPurchase}" SelectedValuePath="Id" DisplayMemberPath="NameOfPurchase">
+
+                        </DataGridComboBoxColumn>
+                        <DataGridComboBoxColumn x:Name="ExecutionComboA" Header="Статус исполнения контракта" Width="auto" SelectedItemBinding ="{Binding ExecutionStatus}" SelectedValuePath="Id" DisplayMemberPath="NameExecution">
+
+                        </DataGridComboBoxColumn>
+
+                        <DataGridTemplateColumn Header="Дата архивации">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding ArchivateDate, StringFormat='dd.MM.yyyy'}"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                    </DataGrid.Columns>
+                </DataGrid>
+
+            </TabItem>
+        </TabControl>
+
+        <!-- Индикатор загрузки (можно добавить) -->
+        <Grid x:Name="LoadingIndicator" 
+          Background="#80FFFFFF" 
+          Visibility="Collapsed"
+          Panel.ZIndex="2">
+            <TextBlock Text="Загрузка..." 
+                   HorizontalAlignment="Center" 
+                   VerticalAlignment="Center"
+                   FontSize="16"
+                   FontWeight="Bold"/>
+        </Grid>
+    </Grid>
+</Page>

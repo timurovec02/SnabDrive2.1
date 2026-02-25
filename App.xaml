@@ -1,0 +1,155 @@
+﻿<Application x:Class="SnabDrive2._0.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:SnabDrive2._0" 
+             StartupUri="Views/Windows/AuthWindow.xaml">
+             
+    <Application.Resources>
+        
+        <ControlTemplate TargetType="Button" x:Key="btnCRUDTemplate">
+            <Border Height="{Binding Height}" 
+            Width="{Binding Width}" 
+            CornerRadius="5" 
+            Background="{TemplateBinding Background }"
+            BorderThickness="3">
+                <ContentPresenter Content="{Binding Path=Content, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Button}}}"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Center" 
+              Margin="4"            
+              />
+            </Border>
+            <!--<ControlTemplate.Triggers x:Uid="qwe">
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="BorderBrush" Value="Black"/>
+                </Trigger>
+            </ControlTemplate.Triggers>-->
+        </ControlTemplate>
+
+        <Style x:Key="InfoBtn" TargetType="Button">
+            <Setter Property="Foreground" Value="Red"/>
+            <Setter Property="FontSize" Value="20"/>
+            <Setter Property="Margin" Value="0 0 10 0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate>
+                        <Border Width="35"
+                                Height="35"
+                                Background="Aqua" 
+                                CornerRadius="18">
+                            <ContentPresenter Content="🤠" 
+                                              VerticalAlignment="Center" 
+                                              HorizontalAlignment="Center"
+                                              >
+                            </ContentPresenter>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="SearchTextBoxStyle" TargetType="TextBox">
+            <Setter Property="Padding" Value="5"/>
+            <Setter Property="Height" Value="25"/>
+            <Setter Property="Width" Value="200"/>
+        </Style>
+
+        <Style TargetType="TextBox" x:Key="txb">
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox" >
+                        <Border Height="{Binding Height}" 
+                                Width="{Binding Width}" 
+                                CornerRadius="5" 
+                                BorderBrush="Black" 
+                                BorderThickness="1"
+                                Margin="5">
+                            <ScrollViewer Margin="0"
+                                          x:Name="PART_ContentHost" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        
+        
+        <Style TargetType="PasswordBox" x:Key="psb">
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="PasswordBox" >
+                        <Border Height="{Binding Height}" 
+                                Width="{Binding Width}" 
+                                CornerRadius="5" 
+                                BorderBrush="Black" 
+                                BorderThickness="1"
+                                Margin="5">
+                            <ScrollViewer Margin="0"
+                                          x:Name="PART_ContentHost" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="Button" x:Key="btnEnter">
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button" >
+                        <Border Height="{Binding Height}" 
+                                Width="{Binding Width}" 
+                                CornerRadius="5" 
+                                BorderBrush="Blue"
+                                BorderThickness="1"
+                                Background="Blue"
+                                Margin="5">
+                            <ContentPresenter Content="{Binding Path=Content, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Button}}}"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="Button" x:Key="btnAdd">
+            <Setter Property="Template" Value="{DynamicResource btnCRUDTemplate }"/>
+            <Setter Property="Background" Value="Green"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontSize" Value="15"/>
+        </Style>
+
+        <Style TargetType="Button" x:Key="btnDel">
+            <Setter Property="Template" Value="{DynamicResource btnCRUDTemplate }"/>
+            <Setter Property="Background" Value="Red"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontSize" Value="15"/>
+        </Style>
+
+        <Style TargetType="Button" x:Key="btnArch">
+            <Setter Property="Template" Value="{DynamicResource btnCRUDTemplate }"/>
+            <Setter Property="Background" Value="Blue"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontSize" Value="15"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="BorderBrush" Value="Aqua"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        
+        <Style TargetType="Button" x:Key="btnToArch">
+            <Setter Property="Template" Value="{DynamicResource btnCRUDTemplate}"/>
+            <Setter Property="Background" Value="Blue"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontSize" Value="15"/>
+            
+        </Style>
+
+    </Application.Resources>
+</Application>

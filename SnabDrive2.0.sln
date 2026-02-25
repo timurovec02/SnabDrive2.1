@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36717.8 d17.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SnabDrive2.0", "SnabDrive2.0.csproj", "{1BAFDDA7-AA91-479C-B14C-73D8206D8B19}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{1BAFDDA7-AA91-479C-B14C-73D8206D8B19}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1BAFDDA7-AA91-479C-B14C-73D8206D8B19}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1BAFDDA7-AA91-479C-B14C-73D8206D8B19}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1BAFDDA7-AA91-479C-B14C-73D8206D8B19}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {CC3AEA15-E8B0-41F9-8F08-A20B6A0D61A2}
+	EndGlobalSection
+EndGlobal
