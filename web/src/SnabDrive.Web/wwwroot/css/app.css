@@ -1006,3 +1006,28 @@ a:hover {
         display: none;
     }
 }
+
+/* --- матрица прав на колонки (страница «Пользователи») --- */
+.column-matrix {
+    max-height: 50vh;
+    overflow-y: auto;
+    display: block;
+}
+
+.column-matrix td:nth-child(2),
+.column-matrix td:nth-child(3),
+.column-matrix th:nth-child(2),
+.column-matrix th:nth-child(3) {
+    text-align: center;
+}
+
+.column-matrix tr.is-muted {
+    opacity: 0.55;
+}
+
+.input:disabled,
+input:disabled {
+    background-color: var(--surface-2, #f0f0f0);
+    color: var(--text-muted, #8a8a8a);
+    cursor: not-allowed;
+}

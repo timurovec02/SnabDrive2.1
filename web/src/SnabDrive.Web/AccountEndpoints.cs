@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Identity;
 using SnabDrive.Web.Data;
 using SnabDrive.Web.Data.Entities;
+using SnabDrive.Web.Domain;
 using SnabDrive.Web.Services;
 
 namespace SnabDrive.Web;

@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using SnabDrive.Web.Domain;
+using SnabDrive.Web.Services;
 
 namespace SnabDrive.Web.Api;
 
@@ -11,6 +12,14 @@ public static class ActorExtensions
         var userId = principal.FindFirstValue(ClaimTypes.NameIdentifier) ?? "-";
         var userName = principal.Identity?.Name ?? "неизвестный";
         return new ChangeActor(userId, userName);
+    }
+
+    /// <summary>Актор вместе с его правами на колонки реестра.</summary>
+    public static async Task<ChangeActor> ToActorAsync(
+        this ClaimsPrincipal principal, IColumnAccessService columnAccess, CancellationToken cancellationToken = default)
+    {
+        var actor = principal.ToActor();
+        return actor with { Access = await columnAccess.GetAsync(actor.UserId, cancellationToken) };
     }
 }
 

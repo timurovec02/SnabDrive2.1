@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+using SnabDrive.Web.Domain;
 
 namespace SnabDrive.Web.Data;
 
@@ -17,6 +18,9 @@ public class ApplicationUser : IdentityUser
 
     /// <summary>Учётная запись заблокирована администратором (без удаления).</summary>
     public bool IsBlocked { get; set; }
+
+    /// <summary>Все колонки либо только разрешённые в UserColumnPermission.</summary>
+    public ColumnAccessMode ColumnAccessMode { get; set; } = ColumnAccessMode.AllColumns;
 
     public string DisplayNameOrDefault => string.IsNullOrWhiteSpace(DisplayName) ? (UserName ?? string.Empty) : DisplayName;
 }

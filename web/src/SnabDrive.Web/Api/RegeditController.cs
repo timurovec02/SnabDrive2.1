@@ -15,11 +15,13 @@ public class RegeditController : ControllerBase
 {
     private readonly IRegistryService _registry;
     private readonly IDictionaryService _dictionaries;
+    private readonly IColumnAccessService _columnAccess;
 
-    public RegeditController(IRegistryService registry, IDictionaryService dictionaries)
+    public RegeditController(IRegistryService registry, IDictionaryService dictionaries, IColumnAccessService columnAccess)
     {
         _registry = registry;
         _dictionaries = dictionaries;
+        _columnAccess = columnAccess;
     }
 
     /// <summary>Список записей с поиском, сортировкой, фильтрами и пагинацией.</summary>
@@ -28,7 +30,8 @@ public class RegeditController : ControllerBase
     public async Task<ActionResult<PagedResult<RegistryRowDto>>> Get(
         [FromQuery] RegistryQueryRequest request, CancellationToken cancellationToken)
     {
-        var result = await _registry.QueryAsync(request.ToQuery(), cancellationToken);
+        var access = await _columnAccess.GetAsync(CurrentUserId, cancellationToken);
+        var result = await _registry.QueryAsync(request.ToQuery(), access, cancellationToken);
         return Ok(result);
     }
 
@@ -39,7 +42,8 @@ public class RegeditController : ControllerBase
         [FromQuery] RegistryQueryRequest request, CancellationToken cancellationToken)
     {
         var query = request.ToQuery() with { Page = 1, PageSize = RegistryQuery.MaxPageSize };
-        var page = await _registry.QueryAsync(query, cancellationToken);
+        var access = await _columnAccess.GetAsync(CurrentUserId, cancellationToken);
+        var page = await _registry.QueryAsync(query, access, cancellationToken);
 
         var csv = CsvExporter.Export(page.Items, RegistryColumns.DefaultVisible.ToList());
         var bytes = System.Text.Encoding.UTF8.GetBytes(csv);
@@ -53,7 +57,7 @@ public class RegeditController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<RegistryRowDto>> GetById(int id, CancellationToken cancellationToken)
     {
-        var row = await _registry.GetByIdAsync(id, cancellationToken);
+        var row = await _registry.GetByIdAsync(id, await _columnAccess.GetAsync(CurrentUserId, cancellationToken), cancellationToken);
         return row is null ? NotFound() : Ok(row);
     }
 
@@ -63,7 +67,7 @@ public class RegeditController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<RegeditUpsertRequest>> GetEditModel(int id, CancellationToken cancellationToken)
     {
-        var model = await _registry.GetEditModelAsync(id, cancellationToken);
+        var model = await _registry.GetEditModelAsync(id, await _columnAccess.GetAsync(CurrentUserId, cancellationToken), cancellationToken);
         return model is null ? NotFound() : Ok(model);
     }
 
@@ -75,7 +79,7 @@ public class RegeditController : ControllerBase
     public async Task<ActionResult<RegistryRowDto>> Create(
         [FromBody] RegeditUpsertRequest request, CancellationToken cancellationToken)
     {
-        var result = await _registry.CreateAsync(request, User.ToActor(), cancellationToken);
+        var result = await _registry.CreateAsync(request, await User.ToActorAsync(_columnAccess, cancellationToken), cancellationToken);
         return ToActionResult(result, StatusCodes.Status201Created);
     }
 
@@ -88,7 +92,7 @@ public class RegeditController : ControllerBase
     public async Task<ActionResult<RegistryRowDto>> Update(
         int id, [FromBody] RegeditUpsertRequest request, CancellationToken cancellationToken)
     {
-        var result = await _registry.UpdateAsync(id, request, User.ToActor(), cancellationToken);
+        var result = await _registry.UpdateAsync(id, request, await User.ToActorAsync(_columnAccess, cancellationToken), cancellationToken);
         return ToActionResult(result, StatusCodes.Status200OK);
     }
 
@@ -99,7 +103,7 @@ public class RegeditController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
     {
-        var result = await _registry.DeleteAsync(id, User.ToActor(), cancellationToken);
+        var result = await _registry.DeleteAsync(id, await User.ToActorAsync(_columnAccess, cancellationToken), cancellationToken);
         return result.Success ? NoContent() : BadRequest(new { error = result.Error });
     }
 
@@ -110,7 +114,7 @@ public class RegeditController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Archive(int id, CancellationToken cancellationToken)
     {
-        var result = await _registry.ArchiveAsync(id, User.ToActor(), cancellationToken);
+        var result = await _registry.ArchiveAsync(id, await User.ToActorAsync(_columnAccess, cancellationToken), cancellationToken);
         return result.Success ? NoContent() : BadRequest(new { error = result.Error });
     }
 
@@ -123,7 +127,7 @@ public class RegeditController : ControllerBase
         int id, [FromBody] CellColorRequest request, CancellationToken cancellationToken)
     {
         var result = await _registry.SetCellColorAsync(id, request.ColumnName, request.ColorCode,
-            User.ToActor(), cancellationToken);
+            await User.ToActorAsync(_columnAccess, cancellationToken), cancellationToken);
 
         return result.Success ? NoContent() : BadRequest(new { error = result.Error });
     }
@@ -139,6 +143,8 @@ public class RegeditController : ControllerBase
             executionStatuses = await _dictionaries.GetExecutionStatusesAsync(cancellationToken)
         });
     }
+
+    private string CurrentUserId => User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "-";
 
     private ActionResult<RegistryRowDto> ToActionResult(Result<RegistryRowDto> result, int successStatus)
     {

@@ -13,17 +13,22 @@ namespace SnabDrive.Web.Api;
 public class ArchiveController : ControllerBase
 {
     private readonly IRegistryService _registry;
+    private readonly IColumnAccessService _columnAccess;
 
-    public ArchiveController(IRegistryService registry)
+    public ArchiveController(IRegistryService registry, IColumnAccessService columnAccess)
     {
         _registry = registry;
+        _columnAccess = columnAccess;
     }
 
     [HttpGet]
     public async Task<ActionResult<PagedResult<RegistryRowDto>>> Get(
         [FromQuery] RegistryQueryRequest request, CancellationToken cancellationToken)
     {
-        return Ok(await _registry.QueryArchiveAsync(request.ToQuery(), cancellationToken));
+        var access = await _columnAccess.GetAsync(
+            User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "-", cancellationToken);
+
+        return Ok(await _registry.QueryArchiveAsync(request.ToQuery(), access, cancellationToken));
     }
 
     [HttpPost("{archiveId:int}/restore")]
@@ -31,7 +36,7 @@ public class ArchiveController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Restore(int archiveId, CancellationToken cancellationToken)
     {
-        var result = await _registry.RestoreAsync(archiveId, User.ToActor(), cancellationToken);
+        var result = await _registry.RestoreAsync(archiveId, await User.ToActorAsync(_columnAccess, cancellationToken), cancellationToken);
         return result.Success ? NoContent() : BadRequest(new { error = result.Error });
     }
 
@@ -41,7 +46,7 @@ public class ArchiveController : ControllerBase
     public async Task<IActionResult> Update(
         int archiveId, [FromBody] RegeditUpsertRequest request, CancellationToken cancellationToken)
     {
-        var result = await _registry.UpdateArchiveAsync(archiveId, request, User.ToActor(), cancellationToken);
+        var result = await _registry.UpdateArchiveAsync(archiveId, request, await User.ToActorAsync(_columnAccess, cancellationToken), cancellationToken);
         return result.Success ? NoContent() : BadRequest(new { error = result.Error, fieldErrors = result.FieldErrors });
     }
 
@@ -50,7 +55,7 @@ public class ArchiveController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Delete(int archiveId, CancellationToken cancellationToken)
     {
-        var result = await _registry.DeleteArchiveAsync(archiveId, User.ToActor(), cancellationToken);
+        var result = await _registry.DeleteArchiveAsync(archiveId, await User.ToActorAsync(_columnAccess, cancellationToken), cancellationToken);
         return result.Success ? NoContent() : BadRequest(new { error = result.Error });
     }
 }

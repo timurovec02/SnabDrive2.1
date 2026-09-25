@@ -8,6 +8,7 @@
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IToastService Toasts
 @inject IRegistryEventBus EventBus
+@inject IColumnAccessService ColumnAccess
 @implements IDisposable
 
 <PageTitle>Пользователи — SnabDrive</PageTitle>
@@ -62,6 +63,7 @@
                         <td>@(user.LastLoginUtc?.ToLocalTime().ToString("dd.MM.yyyy HH:mm") ?? "—")</td>
                         <td class="row-actions">
                             <button type="button" class="btn btn--small" @onclick="() => StartEdit(user)">Изменить</button>
+                            <button type="button" class="btn btn--small" @onclick="() => OpenColumns(user)">Колонки</button>
                             <button type="button" class="btn btn--small btn--danger" @onclick="() => AskDelete(user)">Удалить</button>
                         </td>
                     </tr>
@@ -115,6 +117,66 @@
             <div class="modal__footer">
                 <button type="button" class="btn btn--primary" @onclick="SaveAsync" disabled="@_busy">Сохранить</button>
                 <button type="button" class="btn" @onclick="CloseForm">Отмена</button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_showColumns && _columnsUser is not null)
+{
+    <div class="modal-backdrop">
+        <div class="modal" @onclick:stopPropagation="true">
+            <div class="modal__header">
+                <h2>Доступ к колонкам: @_columnsUser.UserName</h2>
+                <button type="button" class="modal__close" @onclick="CloseColumns">×</button>
+            </div>
+            <div class="modal__body">
+                <div class="form-field form-field--checkbox" style="margin-bottom:12px">
+                    <label class="checkbox-label">
+                        <input type="radio" name="colmode" checked="@(_columnMode == ColumnAccessMode.AllColumns)"
+                               @onchange="() => _columnMode = ColumnAccessMode.AllColumns" />
+                        Все колонки
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="radio" name="colmode" checked="@(_columnMode == ColumnAccessMode.CustomColumns)"
+                               @onchange="() => _columnMode = ColumnAccessMode.CustomColumns" />
+                        Только выбранные
+                    </label>
+                </div>
+
+                <p class="page__hint">
+                    «Просмотр» — значение видно в таблице и в форме. «Правка» — поле можно изменить.
+                    Без права просмотра значение не уходит в браузер вовсе.
+                </p>
+
+                <table class="data-table data-table--compact column-matrix">
+                    <thead>
+                        <tr>
+                            <th>Колонка</th>
+                            <th style="width:90px">Просмотр</th>
+                            <th style="width:90px">Правка</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in _columnRows)
+                        {
+                            <tr class="@(_columnMode == ColumnAccessMode.AllColumns ? "is-muted" : null)">
+                                <td>@row.Title</td>
+                                <td><input type="checkbox" @bind="row.View" disabled="@(_columnMode == ColumnAccessMode.AllColumns)" /></td>
+                                <td><input type="checkbox" @bind="row.Edit" disabled="@(_columnMode == ColumnAccessMode.AllColumns || !row.View)" /></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+
+                @if (!string.IsNullOrEmpty(_columnError))
+                {
+                    <div class="form-error">@_columnError</div>
+                }
+            </div>
+            <div class="modal__footer">
+                <button type="button" class="btn btn--primary" @onclick="SaveColumnsAsync" disabled="@_busy">Сохранить</button>
+                <button type="button" class="btn" @onclick="CloseColumns">Отмена</button>
             </div>
         </div>
     </div>
@@ -343,6 +405,88 @@
         Toasts.Show("Изменения сохранены", ToastKind.Success);
         CloseForm();
         await LoadAsync();
+    }
+
+    // -------------------------------------------------- права на колонки
+
+    private sealed class ColumnPermRow
+    {
+        public string Key { get; set; } = string.Empty;
+        public string Title { get; set; } = string.Empty;
+        public bool View { get; set; }
+        public bool Edit { get; set; }
+    }
+
+    private bool _showColumns;
+    private UserRow? _columnsUser;
+    private ColumnAccessMode _columnMode = ColumnAccessMode.AllColumns;
+    private List<ColumnPermRow> _columnRows = new();
+    private string? _columnError;
+
+    private async Task OpenColumns(UserRow user)
+    {
+        _columnsUser = user;
+        _columnMode = await ColumnAccess.GetModeAsync(user.Id);
+
+        var permissions = (await ColumnAccess.GetPermissionsAsync(user.Id))
+            .ToDictionary(p => p.Key, StringComparer.OrdinalIgnoreCase);
+
+        _columnRows = RegistryColumns.All.Select(c => new ColumnPermRow
+        {
+            Key = c.Key,
+            Title = c.Title,
+            View = permissions.TryGetValue(c.Key, out var p) ? p.CanView : true,
+            Edit = permissions.TryGetValue(c.Key, out var p) ? p.CanEdit : true
+        }).ToList();
+
+        _columnError = null;
+        _showColumns = true;
+    }
+
+    private void CloseColumns()
+    {
+        _showColumns = false;
+        _columnsUser = null;
+        _columnError = null;
+    }
+
+    private async Task SaveColumnsAsync()
+    {
+        if (_columnsUser is null)
+        {
+            return;
+        }
+
+        _busy = true;
+        _columnError = null;
+
+        try
+        {
+            var permissions = _columnRows
+                .Select(r => new ColumnPermission(r.Key, r.View, r.View && r.Edit))
+                .ToList();
+
+            var state = await AuthStateProvider.GetAuthenticationStateAsync();
+            var result = await ColumnAccess.SetAsync(_columnsUser.Id, _columnMode, permissions, state.User.ToActor());
+
+            if (result.Success)
+            {
+                Toasts.Show("Права на колонки сохранены", ToastKind.Success);
+                CloseColumns();
+            }
+            else
+            {
+                _columnError = result.Error;
+            }
+        }
+        catch (Exception ex)
+        {
+            _columnError = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
     }
 
     private void AskDelete(UserRow user)

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SnabDrive.Web.Data;
 using SnabDrive.Web.Data.Entities;
+using SnabDrive.Web.Domain;
 using SnabDrive.Web.Services;
 
 namespace SnabDrive.Web.Api;
@@ -15,6 +16,7 @@ namespace SnabDrive.Web.Api;
 [Produces("application/json")]
 public class UsersController : ControllerBase
 {
+    private readonly IColumnAccessService _columnAccess;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IAuditService _audit;
     private readonly IRegistryNotifier _notifier;
@@ -24,12 +26,49 @@ public class UsersController : ControllerBase
         UserManager<ApplicationUser> userManager,
         IAuditService audit,
         IRegistryNotifier notifier,
-        IPresenceService presence)
+        IPresenceService presence,
+        IColumnAccessService columnAccess)
     {
         _userManager = userManager;
         _audit = audit;
         _notifier = notifier;
         _presence = presence;
+        _columnAccess = columnAccess;
+    }
+
+    // ------------------------------------------------------------ доступ к колонкам
+
+    public sealed record ColumnPermissionDto(string Key, bool CanView, bool CanEdit);
+
+    public sealed record ColumnAccessDto(ColumnAccessMode Mode, IReadOnlyList<ColumnPermissionDto> Permissions);
+
+    public sealed record UpsertColumnAccessRequest(ColumnAccessMode Mode, IReadOnlyList<ColumnPermissionDto> Permissions);
+
+    /// <summary>Текущие права пользователя на колонки реестра.</summary>
+    [HttpGet("{id}/columns")]
+    public async Task<ActionResult<ColumnAccessDto>> GetColumns(string id, CancellationToken cancellationToken)
+    {
+        var permissions = await _columnAccess.GetPermissionsAsync(id, cancellationToken);
+        var mode = await _columnAccess.GetModeAsync(id, cancellationToken);
+
+        return Ok(new ColumnAccessDto(
+            mode,
+            permissions.Select(p => new ColumnPermissionDto(p.Key, p.CanView, p.CanEdit)).ToList()));
+    }
+
+    /// <summary>Полностью перезаписывает права пользователя на колонки.</summary>
+    [HttpPut("{id}/columns")]
+    public async Task<IActionResult> SetColumns(
+        string id, [FromBody] UpsertColumnAccessRequest request, CancellationToken cancellationToken)
+    {
+        var permissions = request.Permissions
+            .Select(p => new ColumnPermission(p.Key, p.CanView, p.CanEdit))
+            .ToList();
+
+        var result = await _columnAccess.SetAsync(
+            id, request.Mode, permissions, await User.ToActorAsync(_columnAccess, cancellationToken), cancellationToken);
+
+        return result.Success ? NoContent() : BadRequest(new { error = result.Error });
     }
 
     public sealed record UserRow(

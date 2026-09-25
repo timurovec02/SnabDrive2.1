@@ -44,12 +44,12 @@ public static class RegistryColumns
         new("ResultPrice", "Итоговая сумма", ColumnKind.Money, "140px"),
         new("Winner", "Победитель", ColumnKind.Text, "180px"),
         new("DeliveryTime", "Срок поставки", ColumnKind.Text, "120px"),
-        new("Description", "Примечания", ColumnKind.Text, "180px", VisibleByDefault: false),
-        new("Note", "Доп записка", ColumnKind.Text, "180px", VisibleByDefault: false),
+        new("Description", "Примечания", ColumnKind.Text, "180px"),
+        new("Note", "Доп записка", ColumnKind.Text, "180px"),
         new("B2BStatusId", "Статус резерва B2B", ColumnKind.Dictionary, "170px"),
         new("ExecutionStatusId", "Статус исполнения контракта", ColumnKind.Dictionary, "180px"),
         new("IsFinished", "Оплачен", ColumnKind.Bool, "90px"),
-        new("ArchivateDate", "Дата архивации", ColumnKind.Date, "140px", VisibleByDefault: false)
+        new("ArchivateDate", "Дата архивации", ColumnKind.Date, "140px")
     };
 
     public static IEnumerable<RegistryColumn> DefaultVisible => All.Where(c => c.VisibleByDefault);

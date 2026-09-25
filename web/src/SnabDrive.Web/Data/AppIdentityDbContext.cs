@@ -17,6 +17,8 @@ public class AppIdentityDbContext : IdentityDbContext<ApplicationUser>
 
     public DbSet<AuditLogEntry> AuditLog => Set<AuditLogEntry>();
 
+    public DbSet<UserColumnPermission> UserColumnPermissions => Set<UserColumnPermission>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -24,6 +26,24 @@ public class AppIdentityDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<ApplicationUser>(entity =>
         {
             entity.Property(x => x.DisplayName).HasMaxLength(200);
+            entity.Property(x => x.ColumnAccessMode).HasColumnName("ColumnAccessMode");
+        });
+
+        builder.Entity<UserColumnPermission>(entity =>
+        {
+            entity.ToTable("UserColumnPermission");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.UserId).HasColumnName("UserId").HasMaxLength(450).IsRequired();
+            entity.Property(x => x.ColumnKey).HasColumnName("ColumnKey").HasMaxLength(100).IsRequired();
+            entity.Property(x => x.CanView).HasColumnName("CanView");
+            entity.Property(x => x.CanEdit).HasColumnName("CanEdit");
+
+            entity.HasOne(x => x.User)
+                  .WithMany()
+                  .HasForeignKey(x => x.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(x => new { x.UserId, x.ColumnKey }).IsUnique();
         });
 
         builder.Entity<AuditLogEntry>(entity =>

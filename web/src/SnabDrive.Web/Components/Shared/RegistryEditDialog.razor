@@ -1,5 +1,3 @@
-@using System.Globalization
-
 <div class="modal-backdrop" @onclick="Close">
     <div class="modal" @onclick:stopPropagation="true">
         <div class="modal__header">
@@ -15,22 +13,29 @@
                 <div class="form-error">@GlobalError</div>
             }
 
+            @if (!Access.Unrestricted)
+            {
+                <div class="form-notice">
+                    Серым отмечены поля, которые вам недоступны для изменения — они сохранятся без изменений.
+                </div>
+            }
+
             <div class="form-grid">
                 <div class="form-field form-field--wide">
-                    <label>Ссылка / наименование закупки *</label>
-                    <InputText @bind-Value="Model.NameLink" class="input" />
+                    <label>Ссылка / наименование закупки @(Access.CanEdit("NameLink") ? "*" : "")</label>
+                    <InputText @bind-Value="Model.NameLink" class="input" disabled="@ReadOnly("NameLink")" />
                     <ValidationMessage For="() => Model.NameLink" />
                 </div>
 
                 <div class="form-field">
-                    <label>Заказчик *</label>
-                    <InputText @bind-Value="Model.Customer" class="input" />
+                    <label>Заказчик @(Access.CanEdit("Customer") ? "*" : "")</label>
+                    <InputText @bind-Value="Model.Customer" class="input" disabled="@ReadOnly("Customer")" />
                     <ValidationMessage For="() => Model.Customer" />
                 </div>
 
                 <div class="form-field">
                     <label>Тип закупки</label>
-                    <InputSelect @bind-Value="Model.TypeOfPurchaseId" class="input">
+                    <InputSelect @bind-Value="Model.TypeOfPurchaseId" class="input" disabled="@ReadOnly("TypeOfPurchaseId")">
                         <option value="">— не выбран —</option>
                         @foreach (var item in TypesOfPurchase)
                         {
@@ -41,78 +46,78 @@
 
                 <div class="form-field">
                     <label>Место поставки товара</label>
-                    <InputText @bind-Value="Model.PlaceOfDelivery" class="input" />
+                    <InputText @bind-Value="Model.PlaceOfDelivery" class="input" disabled="@ReadOnly("PlaceOfDelivery")" />
                 </div>
 
                 <div class="form-field">
                     <label>Номер резерва</label>
-                    <InputText @bind-Value="Model.ReserveNumber" class="input" />
+                    <InputText @bind-Value="Model.ReserveNumber" class="input" disabled="@ReadOnly("ReserveNumber")" />
                 </div>
 
                 <div class="form-field">
                     <label>Нац режим</label>
-                    <InputText @bind-Value="Model.NationalMode" class="input" />
+                    <InputText @bind-Value="Model.NationalMode" class="input" disabled="@ReadOnly("NationalMode")" />
                 </div>
 
                 <div class="form-field">
                     <label>Срок поставки</label>
-                    <InputText @bind-Value="Model.DeliveryTime" class="input" />
+                    <InputText @bind-Value="Model.DeliveryTime" class="input" disabled="@ReadOnly("DeliveryTime")" />
                 </div>
 
                 <div class="form-field">
                     <label>Дата торгов</label>
-                    <InputDate @bind-Value="Model.BiddingDate" class="input" />
+                    <InputDate @bind-Value="Model.BiddingDate" class="input" disabled="@ReadOnly("BiddingDate")" />
                 </div>
 
                 <div class="form-field">
                     <label>Дата передачи на размещение</label>
-                    <InputDate @bind-Value="Model.DateOfTransferForPlacement" class="input" />
+                    <InputDate @bind-Value="Model.DateOfTransferForPlacement" class="input" disabled="@ReadOnly("DateOfTransferForPlacement")" />
                 </div>
 
                 <div class="form-field">
                     <label>Дата размещения на площадке</label>
-                    <InputDate @bind-Value="Model.DateOfPlacement" class="input" />
+                    <InputDate @bind-Value="Model.DateOfPlacement" class="input" disabled="@ReadOnly("DateOfPlacement")" />
                 </div>
 
                 <div class="form-field">
                     <label>Дата подведения итогов</label>
-                    <InputDate @bind-Value="Model.DateResults" class="input" />
+                    <InputDate @bind-Value="Model.DateResults" class="input" disabled="@ReadOnly("DateResults")" />
                     <ValidationMessage For="() => Model.DateResults" />
                 </div>
 
                 <div class="form-field">
                     <label>Дата заключения контракта</label>
-                    <InputDate @bind-Value="Model.DateOfConclusionOfTheContract" class="input" />
+                    <InputDate @bind-Value="Model.DateOfConclusionOfTheContract" class="input" disabled="@ReadOnly("DateOfConclusionOfTheContract")" />
                     <ValidationMessage For="() => Model.DateOfConclusionOfTheContract" />
                 </div>
 
                 <div class="form-field">
                     <label>НМЦК</label>
-                    <InputNumber @bind-Value="Model.NMCK" class="input" />
+                    <InputNumber @bind-Value="Model.NMCK" class="input" disabled="@ReadOnly("NMCK")" />
                     <ValidationMessage For="() => Model.NMCK" />
                 </div>
 
                 <div class="form-field">
                     <label>Наша минимальная сумма</label>
-                    <InputNumber @bind-Value="Model.MinPrice" class="input" />
+                    <InputNumber @bind-Value="Model.MinPrice" class="input" disabled="@ReadOnly("MinPrice")" />
                     <ValidationMessage For="() => Model.MinPrice" />
                 </div>
 
                 <div class="form-field">
                     <label>Итоговая сумма</label>
-                    <InputNumber @bind-Value="Model.ResultPrice" class="input" />
+                    <InputNumber @bind-Value="Model.ResultPrice" class="input" disabled="@ReadOnly("ResultPrice")" />
                     <ValidationMessage For="() => Model.ResultPrice" />
                 </div>
 
                 <div class="form-field">
                     <label>Победитель</label>
-                    <InputText @bind-Value="Model.Winner" class="input" />
+                    <InputText @bind-Value="Model.Winner" class="input" disabled="@ReadOnly("Winner")" />
                     <ValidationMessage For="() => Model.Winner" />
                 </div>
 
                 <div class="form-field">
                     <label>Статус резерва B2B</label>
-                    <InputSelect @bind-Value="Model.B2BStatusId" class="input">
+                    <InputSelect @bind-Value="Model.B2BStatusId" class="input" disabled="@ReadOnly("B2BStatusId")">
                         <option value="">— не выбран —</option>
                         @foreach (var item in B2BStatuses)
                         {
@@ -123,7 +128,7 @@
 
                 <div class="form-field">
                     <label>Статус исполнения контракта</label>
-                    <InputSelect @bind-Value="Model.ExecutionStatusId" class="input">
+                    <InputSelect @bind-Value="Model.ExecutionStatusId" class="input" disabled="@ReadOnly("ExecutionStatusId")">
                         <option value="">— не выбран —</option>
                         @foreach (var item in ExecutionStatuses)
                         {
@@ -136,7 +141,7 @@
                 {
                     <div class="form-field form-field--checkbox">
                         <label class="checkbox-label">
-                            <InputCheckbox @bind-Value="Model.IsFinished" />
+                            <InputCheckbox @bind-Value="Model.IsFinished" disabled="@ReadOnly("IsFinished")" />
                             Оплачен
                         </label>
                     </div>
@@ -144,12 +149,12 @@
 
                 <div class="form-field form-field--wide">
                     <label>Примечания</label>
-                    <InputTextArea @bind-Value="Model.Description" class="input" rows="3" />
+                    <InputTextArea @bind-Value="Model.Description" class="input" rows="3" disabled="@ReadOnly("Description")" />
                 </div>
 
                 <div class="form-field form-field--wide">
                     <label>Доп записка</label>
-                    <InputTextArea @bind-Value="Model.Note" class="input" rows="3" />
+                    <InputTextArea @bind-Value="Model.Note" class="input" rows="3" disabled="@ReadOnly("Note")" />
                 </div>
             </div>
 
@@ -169,11 +174,18 @@
     [Parameter] public string? GlobalError { get; set; }
     [Parameter] public bool IsBusy { get; set; }
     [Parameter] public bool IsArchive { get; set; }
+
+    /// <summary>Права текущего пользователя на колонки. Закрытые поля становятся только для чтения.</summary>
+    [Parameter] public ColumnAccessMap Access { get; set; } = ColumnAccessMap.Full;
+
     [Parameter] public IReadOnlyList<DictionaryItemDto> TypesOfPurchase { get; set; } = Array.Empty<DictionaryItemDto>();
     [Parameter] public IReadOnlyList<DictionaryItemDto> B2BStatuses { get; set; } = Array.Empty<DictionaryItemDto>();
     [Parameter] public IReadOnlyList<DictionaryItemDto> ExecutionStatuses { get; set; } = Array.Empty<DictionaryItemDto>();
     [Parameter] public EventCallback OnSave { get; set; }
     [Parameter] public EventCallback OnClose { get; set; }
+
+    /// <summary>Blazor не рендерит атрибут, если значение null — поле останется активным.</summary>
+    private string? ReadOnly(string columnKey) => Access.CanEdit(columnKey) ? null : "disabled";
 
     private Task SubmitAsync() => OnSave.InvokeAsync();
 

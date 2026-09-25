@@ -2,6 +2,7 @@
 @attribute [Authorize(Policy = AppPolicies.ManageArchive)]
 @implements IDisposable
 @inject IRegistryService RegistryService
+@inject IColumnAccessService ColumnAccess
 @inject IDictionaryService Dictionaries
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IRegistryEventBus EventBus
@@ -64,6 +65,7 @@
                         TypesOfPurchase="@_typesOfPurchase"
                         B2BStatuses="@_b2bStatuses"
                         ExecutionStatuses="@_executionStatuses"
+                        Access="@_access"
                         OnSave="SaveAsync"
                         OnClose="CloseEditor" />
 }
@@ -78,15 +80,13 @@
 }
 
 @code {
+    private ColumnAccessMap _access = ColumnAccessMap.Full;
     private RegistryQuery _query = new() { SortBy = "ArchivateDate", SortDescending = true };
     private Dictionary<string, string> _filters = new(StringComparer.OrdinalIgnoreCase);
     private PagedResult<RegistryRowDto> _data = PagedResult<RegistryRowDto>.Empty(1, 50);
     private IReadOnlyDictionary<string, string> _colors = new Dictionary<string, string>();
 
-    private List<RegistryColumn> _columns = RegistryColumns.All
-        .Where(c => c.Key != "IsFinished")
-        .Select(c => c with { VisibleByDefault = true })
-        .ToList();
+    private List<RegistryColumn> _columns = new();
 
     private List<DictionaryItemDto> _typesOfPurchase = new();
     private List<DictionaryItemDto> _b2bStatuses = new();
@@ -106,9 +106,16 @@
     protected override async Task OnInitializedAsync()
     {
         var state = await AuthStateProvider.GetAuthenticationStateAsync();
-        _actor = state.User.ToActor();
+
+        var userId = state.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "-";
+        _access = await ColumnAccess.GetAsync(userId);
+        _actor = state.User.ToActor() with { Access = _access };
 
         EventBus.Changed += OnRegistryChanged;
+
+        _columns = RegistryColumns.All
+            .Where(c => c.Key != "IsFinished" && _access.CanView(c.Key))
+            .ToList();
 
         _typesOfPurchase = (await Dictionaries.GetTypesOfPurchaseAsync()).ToList();
         _b2bStatuses = (await Dictionaries.GetB2BStatusesAsync()).ToList();
@@ -126,7 +133,7 @@
         _loading = true;
         try
         {
-            _data = await RegistryService.QueryArchiveAsync(_query);
+            _data = await RegistryService.QueryArchiveAsync(_query, _access);
             _colors = await RegistryService.GetCellColorsAsync(_data.Items.Select(r => r.ColorOwnerId));
         }
         catch (Exception ex)

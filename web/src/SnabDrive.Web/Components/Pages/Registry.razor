@@ -2,6 +2,7 @@
 @attribute [Authorize]
 @implements IDisposable
 @inject IRegistryService RegistryService
+@inject IColumnAccessService ColumnAccess
 @inject IDictionaryService Dictionaries
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IRegistryEventBus EventBus
@@ -45,7 +46,7 @@
                 @if (_columnsOpen)
                 {
                     <div class="columns-picker__panel">
-                        @foreach (var column in RegistryColumns.All)
+                        @foreach (var column in RegistryColumns.All.Where(c => _access.CanView(c.Key)))
                         {
                             <label class="checkbox-label">
                                 <input type="checkbox" checked="@_visible.Contains(column.Key)"
@@ -127,6 +128,7 @@
                         TypesOfPurchase="@_typesOfPurchase"
                         B2BStatuses="@_b2bStatuses"
                         ExecutionStatuses="@_executionStatuses"
+                        Access="@_access"
                         OnSave="SaveAsync"
                         OnClose="CloseEditor" />
 }
@@ -146,6 +148,7 @@
         "#ffeb3b", "#ffcdd2", "#c8e6c9", "#bbdefb", "#ffe0b2", "#e1bee7", "#b2dfdb", "#d7ccc8"
     };
 
+    private ColumnAccessMap _access = ColumnAccessMap.Full;
     private RegistryQuery _query = new();
     private Dictionary<string, string> _filters = new(StringComparer.OrdinalIgnoreCase);
     private PagedResult<RegistryRowDto> _data = PagedResult<RegistryRowDto>.Empty(1, 50);
@@ -205,7 +208,10 @@
 
         var state = await AuthStateProvider.GetAuthenticationStateAsync();
         _isAdmin = state.User.IsInRole(AppRoles.Admin);
-        _actor = state.User.ToActor();
+
+        var userId = state.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "-";
+        _access = await ColumnAccess.GetAsync(userId);
+        _actor = state.User.ToActor() with { Access = _access };
 
         EventBus.Changed += OnRegistryChanged;
         _realtimeOn = true;
@@ -219,7 +225,9 @@
 
     private void RebuildVisibleColumns()
     {
-        _visibleColumns = RegistryColumns.All.Where(c => _visible.Contains(c.Key)).ToList();
+        _visibleColumns = RegistryColumns.All
+            .Where(c => _visible.Contains(c.Key) && _access.CanView(c.Key))
+            .ToList();
     }
 
     private async Task ReloadAsync()
@@ -227,7 +235,7 @@
         _loading = true;
         try
         {
-            _data = await RegistryService.QueryAsync(_query);
+            _data = await RegistryService.QueryAsync(_query, _access);
 
             var ids = _data.Items.Select(r => r.ColorOwnerId).ToList();
             _colors = await RegistryService.GetCellColorsAsync(ids);
@@ -415,7 +423,7 @@
             return;
         }
 
-        var model = await RegistryService.GetEditModelAsync(_selected.Id);
+        var model = await RegistryService.GetEditModelAsync(_selected.Id, _access);
         if (model is null)
         {
             Toasts.Show("Запись не найдена — возможно, её уже удалили.", ToastKind.Warning);

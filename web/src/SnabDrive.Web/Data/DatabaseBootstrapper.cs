@@ -31,7 +31,7 @@ public static class AppPolicies
 
 /// <summary>
 /// Подготовка базы при старте приложения:
-/// — веб-таблицы (Identity + AuditLog) создаются миграцией или EnsureCreated;
+/// — веб-таблицы (Identity + AuditLog + UserColumnPermission) создаются EF-миграцией;
 /// — существующие таблицы реестра НЕ изменяются (для SQLite-dev создаются с нуля);
 /// — создаются роли Admin/Operator и учётка администратора;
 /// — опционально импортируются пользователи из старой таблицы [User].
@@ -58,9 +58,18 @@ public static class DatabaseBootstrapper
                 logger.LogInformation("Применяю миграции веб-схемы");
                 await context.Database.MigrateAsync();
             }
+            else if (options.IsSqlServer)
+            {
+                // Продовая база создаётся ТОЛЬКО миграцией — вручную таблицы не создаём.
+                logger.LogError(
+                    "В сборке нет миграций веб-схемы. Выполните: " +
+                    "cd web/src/SnabDrive.Web && " +
+                    "dotnet ef migrations add InitialWebSchema --context AppIdentityDbContext && " +
+                    "dotnet ef database update --context AppIdentityDbContext");
+            }
             else
             {
-                // Миграций в репозитории нет: создаём только те таблицы, которых ещё нет.
+                // Dev-SQLite: миграции ещё не сгенерированы, создаём недостающие таблицы модели.
                 // EnsureCreated здесь не подходит — он ничего не делает, если в базе уже есть
                 // хоть одна таблица (а таблицы реестра там уже есть).
                 await EnsureModelTablesAsync(context, "AspNetUsers", logger, "веб-схемы (Identity + AuditLog)");

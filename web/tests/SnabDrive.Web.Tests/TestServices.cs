@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -85,6 +86,7 @@ public sealed class TestServices : IDisposable
     public IAuditService Audit { get; }
     public IRegistryService Registry { get; }
     public IDictionaryService Dictionaries { get; }
+    public IColumnAccessService ColumnAccess { get; }
 
     public static readonly ChangeActor Actor = new("user-1", "ivanov");
 
@@ -101,7 +103,72 @@ public sealed class TestServices : IDisposable
             NullLogger<RegistryService>.Instance);
 
         Dictionaries = new DictionaryService(Db.RegistryFactory, Audit, Notifier);
+
+        ColumnAccess = new ColumnAccessService(Db.IdentityFactory, Audit, Notifier);
     }
+
+    /// <summary>Создаёт пользователя напрямую в базе Identity (без UserManager).</summary>
+    public async Task<string> AddUserAsync(
+        string login = "ivanov",
+        ColumnAccessMode mode = ColumnAccessMode.AllColumns,
+        bool isAdmin = false)
+    {
+        await using var context = Db.IdentityFactory.CreateDbContext();
+
+        var id = Guid.NewGuid().ToString("N");
+
+        context.Users.Add(new ApplicationUser
+        {
+            Id = id,
+            UserName = login,
+            NormalizedUserName = login.ToUpperInvariant(),
+            EmailConfirmed = true,
+            DisplayName = login,
+            ColumnAccessMode = mode
+        });
+
+        if (isAdmin)
+        {
+            var role = await context.Roles.FirstOrDefaultAsync(r => r.Name == AppRoles.Admin);
+            if (role is null)
+            {
+                role = new IdentityRole(AppRoles.Admin)
+                {
+                    Id = "role-admin",
+                    Name = AppRoles.Admin,
+                    NormalizedName = AppRoles.Admin.ToUpperInvariant()
+                };
+                context.Roles.Add(role);
+            }
+
+            context.UserRoles.Add(new IdentityUserRole<string> { UserId = id, RoleId = role.Id });
+        }
+
+        await context.SaveChangesAsync();
+        return id;
+    }
+
+    /// <summary>Задаёт пользователю права на колонки в обход сервиса.</summary>
+    public async Task SetColumnPermissionsAsync(string userId, params ColumnPermission[] permissions)
+    {
+        await using var context = Db.IdentityFactory.CreateDbContext();
+
+        foreach (var permission in permissions)
+        {
+            context.UserColumnPermissions.Add(new UserColumnPermission
+            {
+                UserId = userId,
+                ColumnKey = permission.Key,
+                CanView = permission.CanView,
+                CanEdit = permission.CanEdit
+            });
+        }
+
+        await context.SaveChangesAsync();
+    }
+
+    public ChangeActor RestrictedActor(string userId = "user-2", string login = "petrov") =>
+        new(userId, login) { Access = new ColumnAccessMap { Unrestricted = false } };
 
     /// <summary>Заполняет справочники и возвращает их Id.</summary>
     public async Task<(int Purchase, int B2B, int Execution)> SeedDictionariesAsync()

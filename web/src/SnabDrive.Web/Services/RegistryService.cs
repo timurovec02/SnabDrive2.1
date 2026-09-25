@@ -10,13 +10,13 @@ namespace SnabDrive.Web.Services;
 
 public interface IRegistryService
 {
-    Task<PagedResult<RegistryRowDto>> QueryAsync(RegistryQuery query, CancellationToken cancellationToken = default);
+    Task<PagedResult<RegistryRowDto>> QueryAsync(RegistryQuery query, ColumnAccessMap? access = null, CancellationToken cancellationToken = default);
 
-    Task<PagedResult<RegistryRowDto>> QueryArchiveAsync(RegistryQuery query, CancellationToken cancellationToken = default);
+    Task<PagedResult<RegistryRowDto>> QueryArchiveAsync(RegistryQuery query, ColumnAccessMap? access = null, CancellationToken cancellationToken = default);
 
-    Task<RegistryRowDto?> GetByIdAsync(int id, CancellationToken cancellationToken = default);
+    Task<RegistryRowDto?> GetByIdAsync(int id, ColumnAccessMap? access = null, CancellationToken cancellationToken = default);
 
-    Task<RegeditUpsertRequest?> GetEditModelAsync(int id, CancellationToken cancellationToken = default);
+    Task<RegeditUpsertRequest?> GetEditModelAsync(int id, ColumnAccessMap? access = null, CancellationToken cancellationToken = default);
 
     Task<Result<RegistryRowDto>> CreateAsync(RegeditUpsertRequest request, ChangeActor actor, CancellationToken cancellationToken = default);
 
@@ -69,9 +69,10 @@ public sealed class RegistryService : IRegistryService
 
     // ------------------------------------------------------------------ выборка
 
-    public async Task<PagedResult<RegistryRowDto>> QueryAsync(RegistryQuery query, CancellationToken cancellationToken = default)
+    public async Task<PagedResult<RegistryRowDto>> QueryAsync(RegistryQuery query, ColumnAccessMap? access = null, CancellationToken cancellationToken = default)
     {
         var normalized = query.Normalize();
+        var map = access ?? ColumnAccessMap.Full;
 
         await using var context = await _factory.CreateDbContextAsync(cancellationToken);
 
@@ -117,6 +118,11 @@ public sealed class RegistryService : IRegistryService
             })
             .ToListAsync(cancellationToken);
 
+        foreach (var item in items)
+        {
+            MaskRow(item, map);
+        }
+
         return new PagedResult<RegistryRowDto>
         {
             Items = items,
@@ -126,9 +132,10 @@ public sealed class RegistryService : IRegistryService
         };
     }
 
-    public async Task<PagedResult<RegistryRowDto>> QueryArchiveAsync(RegistryQuery query, CancellationToken cancellationToken = default)
+    public async Task<PagedResult<RegistryRowDto>> QueryArchiveAsync(RegistryQuery query, ColumnAccessMap? access = null, CancellationToken cancellationToken = default)
     {
         var normalized = query.Normalize();
+        var map = access ?? ColumnAccessMap.Full;
 
         await using var context = await _factory.CreateDbContextAsync(cancellationToken);
 
@@ -174,6 +181,11 @@ public sealed class RegistryService : IRegistryService
             })
             .ToListAsync(cancellationToken);
 
+        foreach (var item in items)
+        {
+            MaskRow(item, map);
+        }
+
         return new PagedResult<RegistryRowDto>
         {
             Items = items,
@@ -183,14 +195,29 @@ public sealed class RegistryService : IRegistryService
         };
     }
 
-    public Task<RegistryRowDto?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
-        => LoadRowAsync(id, cancellationToken);
+    public async Task<RegistryRowDto?> GetByIdAsync(int id, ColumnAccessMap? access = null, CancellationToken cancellationToken = default)
+    {
+        var row = await LoadRowAsync(id, cancellationToken);
+        if (row is not null)
+        {
+            MaskRow(row, access ?? ColumnAccessMap.Full);
+        }
 
-    public async Task<RegeditUpsertRequest?> GetEditModelAsync(int id, CancellationToken cancellationToken = default)
+        return row;
+    }
+
+    public async Task<RegeditUpsertRequest?> GetEditModelAsync(int id, ColumnAccessMap? access = null, CancellationToken cancellationToken = default)
     {
         await using var context = await _factory.CreateDbContextAsync(cancellationToken);
         var entity = await context.Regedit.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
-        return entity is null ? null : ToRequest(entity);
+        if (entity is null)
+        {
+            return null;
+        }
+
+        var request = ToRequest(entity);
+        MaskRequest(request, access ?? ColumnAccessMap.Full);
+        return request;
     }
 
     public async Task<int> CountAsync(CancellationToken cancellationToken = default)
@@ -249,7 +276,15 @@ public sealed class RegistryService : IRegistryService
 
     public async Task<Result<RegistryRowDto>> CreateAsync(RegeditUpsertRequest request, ChangeActor actor, CancellationToken cancellationToken = default)
     {
-        var errors = RegistryValidator.Validate(request);
+        // При создании нельзя «подставить» значение из базы, как при редактировании, —
+        // обязательные поля без права на правку остались бы пустыми.
+        if (!actor.Access.CanEdit("NameLink") || !actor.Access.CanEdit("Customer"))
+        {
+            return Result<RegistryRowDto>.Fail(
+                "Для создания записи нужны права на редактирование полей «Ссылка / наименование закупки» и «Заказчик»");
+        }
+
+        var errors = RegistryValidator.Validate(request, actor.Access);
         if (errors.Count > 0)
         {
             return Result<RegistryRowDto>.Invalid(errors);
@@ -264,7 +299,7 @@ public sealed class RegistryService : IRegistryService
         }
 
         var entity = new Regedit();
-        Apply(entity, request);
+        Apply(entity, request, actor.Access);
 
         context.Regedit.Add(entity);
         await context.SaveChangesAsync(cancellationToken);
@@ -283,7 +318,7 @@ public sealed class RegistryService : IRegistryService
 
     public async Task<Result<RegistryRowDto>> UpdateAsync(int id, RegeditUpsertRequest request, ChangeActor actor, CancellationToken cancellationToken = default)
     {
-        var errors = RegistryValidator.Validate(request);
+        var errors = RegistryValidator.Validate(request, actor.Access);
         if (errors.Count > 0)
         {
             return Result<RegistryRowDto>.Invalid(errors);
@@ -304,7 +339,7 @@ public sealed class RegistryService : IRegistryService
         }
 
         var before = ToRequest(entity);
-        Apply(entity, request);
+        Apply(entity, request, actor.Access);
         await context.SaveChangesAsync(cancellationToken);
 
         var row = await LoadRowAsync(id, cancellationToken) ?? new RegistryRowDto { Id = id };
@@ -449,7 +484,7 @@ public sealed class RegistryService : IRegistryService
 
     public async Task<Result> UpdateArchiveAsync(int archiveId, RegeditUpsertRequest request, ChangeActor actor, CancellationToken cancellationToken = default)
     {
-        var errors = RegistryValidator.Validate(request);
+        var errors = RegistryValidator.Validate(request, actor.Access);
         if (errors.Count > 0)
         {
             return Result.Invalid(errors);
@@ -606,6 +641,91 @@ public sealed class RegistryService : IRegistryService
 
     // ------------------------------------------------------------------ helpers
 
+    // ------------------------------------------------------------------ права на колонки
+
+    /// <summary>
+    /// Обнуляет значения колонок, которые пользователю смотреть нельзя.
+    /// Делается на сервере, а не только в UI, — иначе значения уехали бы в браузер в разметке.
+    /// </summary>
+    internal static void MaskRow(RegistryRowDto row, ColumnAccessMap access)
+    {
+        if (access.Unrestricted)
+        {
+            return;
+        }
+
+        if (!access.CanView("NameLink")) row.NameLink = string.Empty;
+        if (!access.CanView("Customer")) row.Customer = string.Empty;
+        if (!access.CanView("TypeOfPurchaseId"))
+        {
+            row.TypeOfPurchaseId = null;
+            row.TypeOfPurchaseName = null;
+            row.TypeOfPurchaseColor = null;
+        }
+
+        if (!access.CanView("PlaceOfDelivery")) row.PlaceOfDelivery = string.Empty;
+        if (!access.CanView("ReserveNumber")) row.ReserveNumber = string.Empty;
+        if (!access.CanView("NationalMode")) row.NationalMode = string.Empty;
+        if (!access.CanView("BiddingDate")) row.BiddingDate = null;
+        if (!access.CanView("DateOfTransferForPlacement")) row.DateOfTransferForPlacement = null;
+        if (!access.CanView("DateOfPlacement")) row.DateOfPlacement = null;
+        if (!access.CanView("DateResults")) row.DateResults = null;
+        if (!access.CanView("DateOfConclusionOfTheContract")) row.DateOfConclusionOfTheContract = null;
+        if (!access.CanView("NMCK")) row.NMCK = 0m;
+        if (!access.CanView("MinPrice")) row.MinPrice = 0m;
+        if (!access.CanView("ResultPrice")) row.ResultPrice = 0m;
+        if (!access.CanView("Winner")) row.Winner = string.Empty;
+        if (!access.CanView("DeliveryTime")) row.DeliveryTime = string.Empty;
+        if (!access.CanView("Description")) row.Description = string.Empty;
+        if (!access.CanView("Note")) row.Note = string.Empty;
+
+        if (!access.CanView("B2BStatusId"))
+        {
+            row.B2BStatusId = null;
+            row.B2BStatusName = null;
+        }
+
+        if (!access.CanView("ExecutionStatusId"))
+        {
+            row.ExecutionStatusId = null;
+            row.ExecutionStatusName = null;
+        }
+
+        if (!access.CanView("IsFinished")) row.IsFinished = null;
+        if (!access.CanView("ArchivateDate")) row.ArchivateDate = null;
+    }
+
+    /// <summary>То же самое для формы редактирования — скрытые поля не должны попадать в браузер.</summary>
+    internal static void MaskRequest(RegeditUpsertRequest request, ColumnAccessMap access)
+    {
+        if (access.Unrestricted)
+        {
+            return;
+        }
+
+        if (!access.CanView("NameLink")) request.NameLink = string.Empty;
+        if (!access.CanView("Customer")) request.Customer = string.Empty;
+        if (!access.CanView("PlaceOfDelivery")) request.PlaceOfDelivery = string.Empty;
+        if (!access.CanView("ReserveNumber")) request.ReserveNumber = string.Empty;
+        if (!access.CanView("NationalMode")) request.NationalMode = string.Empty;
+        if (!access.CanView("DateOfTransferForPlacement")) request.DateOfTransferForPlacement = null;
+        if (!access.CanView("DateOfPlacement")) request.DateOfPlacement = null;
+        if (!access.CanView("BiddingDate")) request.BiddingDate = null;
+        if (!access.CanView("DateResults")) request.DateResults = null;
+        if (!access.CanView("DateOfConclusionOfTheContract")) request.DateOfConclusionOfTheContract = null;
+        if (!access.CanView("NMCK")) request.NMCK = 0m;
+        if (!access.CanView("MinPrice")) request.MinPrice = 0m;
+        if (!access.CanView("ResultPrice")) request.ResultPrice = 0m;
+        if (!access.CanView("Winner")) request.Winner = string.Empty;
+        if (!access.CanView("DeliveryTime")) request.DeliveryTime = string.Empty;
+        if (!access.CanView("Description")) request.Description = string.Empty;
+        if (!access.CanView("Note")) request.Note = string.Empty;
+        if (!access.CanView("TypeOfPurchaseId")) request.TypeOfPurchaseId = null;
+        if (!access.CanView("B2BStatusId")) request.B2BStatusId = null;
+        if (!access.CanView("ExecutionStatusId")) request.ExecutionStatusId = null;
+        if (!access.CanView("IsFinished")) request.IsFinished = false;
+    }
+
     public static string CellColorKey(int recordId, string columnName) => $"{recordId}|{columnName}";
 
     private static string Short(string value) =>
@@ -635,29 +755,33 @@ public sealed class RegistryService : IRegistryService
         return null;
     }
 
-    private static void Apply(Regedit entity, RegeditUpsertRequest request)
+    /// <summary>
+    /// Переносит значения формы в сущность, но только по тем полям, которые пользователю
+    /// разрешено редактировать. Остальные поля сохраняют текущее значение в базе.
+    /// </summary>
+    private static void Apply(Regedit entity, RegeditUpsertRequest request, ColumnAccessMap access)
     {
-        entity.NameLink = request.NameLink.Trim();
-        entity.Customer = request.Customer.Trim();
-        entity.PlaceOfDelivery = request.PlaceOfDelivery;
-        entity.ReserveNumber = request.ReserveNumber;
-        entity.NationalMode = request.NationalMode;
-        entity.DateOfTransferForPlacement = request.DateOfTransferForPlacement;
-        entity.DateOfPlacement = request.DateOfPlacement;
-        entity.BiddingDate = request.BiddingDate;
-        entity.DateResults = request.DateResults;
-        entity.DateOfConclusionOfTheContract = request.DateOfConclusionOfTheContract;
-        entity.NMCK = request.NMCK;
-        entity.MinPrice = request.MinPrice;
-        entity.ResultPrice = request.ResultPrice;
-        entity.Winner = request.Winner;
-        entity.DeliveryTime = request.DeliveryTime;
-        entity.Description = request.Description;
-        entity.Note = request.Note;
-        entity.TypeOfPurchaseId = Normalize(request.TypeOfPurchaseId);
-        entity.B2BStatusId = Normalize(request.B2BStatusId);
-        entity.ExecutionStatusId = Normalize(request.ExecutionStatusId);
-        entity.IsFinished = request.IsFinished;
+        if (access.CanEdit("NameLink")) entity.NameLink = request.NameLink.Trim();
+        if (access.CanEdit("Customer")) entity.Customer = request.Customer.Trim();
+        if (access.CanEdit("PlaceOfDelivery")) entity.PlaceOfDelivery = request.PlaceOfDelivery;
+        if (access.CanEdit("ReserveNumber")) entity.ReserveNumber = request.ReserveNumber;
+        if (access.CanEdit("NationalMode")) entity.NationalMode = request.NationalMode;
+        if (access.CanEdit("DateOfTransferForPlacement")) entity.DateOfTransferForPlacement = request.DateOfTransferForPlacement;
+        if (access.CanEdit("DateOfPlacement")) entity.DateOfPlacement = request.DateOfPlacement;
+        if (access.CanEdit("BiddingDate")) entity.BiddingDate = request.BiddingDate;
+        if (access.CanEdit("DateResults")) entity.DateResults = request.DateResults;
+        if (access.CanEdit("DateOfConclusionOfTheContract")) entity.DateOfConclusionOfTheContract = request.DateOfConclusionOfTheContract;
+        if (access.CanEdit("NMCK")) entity.NMCK = request.NMCK;
+        if (access.CanEdit("MinPrice")) entity.MinPrice = request.MinPrice;
+        if (access.CanEdit("ResultPrice")) entity.ResultPrice = request.ResultPrice;
+        if (access.CanEdit("Winner")) entity.Winner = request.Winner;
+        if (access.CanEdit("DeliveryTime")) entity.DeliveryTime = request.DeliveryTime;
+        if (access.CanEdit("Description")) entity.Description = request.Description;
+        if (access.CanEdit("Note")) entity.Note = request.Note;
+        if (access.CanEdit("TypeOfPurchaseId")) entity.TypeOfPurchaseId = Normalize(request.TypeOfPurchaseId);
+        if (access.CanEdit("B2BStatusId")) entity.B2BStatusId = Normalize(request.B2BStatusId);
+        if (access.CanEdit("ExecutionStatusId")) entity.ExecutionStatusId = Normalize(request.ExecutionStatusId);
+        if (access.CanEdit("IsFinished")) entity.IsFinished = request.IsFinished;
     }
 
     // В WPF-версии «нет значения» хранилось как 0 — сохраняем то же поведение, чтобы не ломать данные.
