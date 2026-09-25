@@ -1,0 +1,42 @@
+<section class="dict-card">
+    <div class="dict-card__header">
+        <h2>@Title</h2>
+        <button type="button" class="btn btn--small btn--primary" @onclick="OnCreate">＋ Добавить</button>
+    </div>
+
+    <table class="data-table data-table--compact">
+        <tbody>
+            @foreach (var item in Items)
+            {
+                <tr>
+                    <td>
+                        @if (WithColor && !string.IsNullOrWhiteSpace(item.ColorCode))
+                        {
+                            <span class="color-swatch color-swatch--static" style="@($"background:{item.ColorCode}")"></span>
+                        }
+                        @item.Name
+                    </td>
+                    <td class="row-actions">
+                        <button type="button" class="btn btn--small" @onclick="() => OnEdit.InvokeAsync(item)">Изменить</button>
+                        <button type="button" class="btn btn--small btn--danger" @onclick="() => OnDelete.InvokeAsync(item)">Удалить</button>
+                    </td>
+                </tr>
+            }
+            @if (Items.Count == 0)
+            {
+                <tr>
+                    <td class="registry-grid__empty">Пусто</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
+    [Parameter] public List<DictionaryItemDto> Items { get; set; } = new();
+    [Parameter] public bool WithColor { get; set; }
+    [Parameter] public EventCallback OnCreate { get; set; }
+    [Parameter] public EventCallback<DictionaryItemDto> OnEdit { get; set; }
+    [Parameter] public EventCallback<DictionaryItemDto> OnDelete { get; set; }
+}

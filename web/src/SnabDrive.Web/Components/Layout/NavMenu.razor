@@ -1,0 +1,40 @@
+@inject NavigationManager Navigation
+
+<nav class="nav">
+    <NavLink class="nav__item" href="" Match="NavLinkMatch.All">
+        <span class="nav__icon">▦</span> Обзор
+    </NavLink>
+    <NavLink class="nav__item" href="registry">
+        <span class="nav__icon">▤</span> Реестр
+    </NavLink>
+
+    @if (IsAdmin)
+    {
+        <NavLink class="nav__item" href="archive">
+            <span class="nav__icon">🗄</span> Архив
+        </NavLink>
+    }
+
+    <div class="nav__divider"></div>
+
+    @if (IsAdmin)
+    {
+        <NavLink class="nav__item" href="dictionaries">
+            <span class="nav__icon">☰</span> Справочники
+        </NavLink>
+        <NavLink class="nav__item" href="users">
+            <span class="nav__icon">👤</span> Пользователи
+        </NavLink>
+        <NavLink class="nav__item" href="audit">
+            <span class="nav__icon">🕓</span> Журнал
+        </NavLink>
+    }
+
+    <div class="nav__footer">
+        <a class="nav__link" href="/swagger" target="_blank">API (Swagger)</a>
+    </div>
+</nav>
+
+@code {
+    [Parameter] public bool IsAdmin { get; set; }
+}

@@ -1,0 +1,327 @@
+@page "/archive"
+@attribute [Authorize(Policy = AppPolicies.ManageArchive)]
+@implements IDisposable
+@inject IRegistryService RegistryService
+@inject IDictionaryService Dictionaries
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IRegistryEventBus EventBus
+@inject IToastService Toasts
+
+<PageTitle>Архив — SnabDrive</PageTitle>
+
+<div class="page">
+    <div class="page__header">
+        <div>
+            <h1>Архив</h1>
+            <p class="page__hint">Найдено @_data.TotalCount архивных записей</p>
+        </div>
+
+        <div class="toolbar">
+            <div class="search">
+                <input type="search" class="input" placeholder="Поиск по архиву…"
+                       value="@_query.Search" @oninput="OnSearchInput" />
+            </div>
+
+            <button type="button" class="btn" @onclick="RestoreSelectedAsync" disabled="@(_busy || _selected is null)">↩ Вернуть в реестр</button>
+            <button type="button" class="btn" @onclick="EditSelectedAsync" disabled="@(_busy || _selected is null)">✎ Изменить</button>
+            <button type="button" class="btn btn--danger" @onclick="AskDelete" disabled="@(_busy || _selected is null)">🗑 Удалить</button>
+            <button type="button" class="btn btn--ghost" @onclick="ReloadAsync">⟳</button>
+        </div>
+    </div>
+
+    <div class="page__section">
+        <RegistryGrid Rows="@_data.Items"
+                      Columns="@_columns"
+                      SortKey="@_query.SortBy"
+                      SortDescending="@_query.SortDescending"
+                      OnSortChanged="ToggleSortAsync"
+                      Filters="@_filters"
+                      OnFilterChanged="OnFilterChangedAsync"
+                      TypesOfPurchase="@_typesOfPurchase"
+                      B2BStatuses="@_b2bStatuses"
+                      ExecutionStatuses="@_executionStatuses"
+                      CellColors="@_colors"
+                      SelectedId="@(_selected?.Id ?? 0)"
+                      IsLoading="@_loading"
+                      OnRowSelected="SelectRow"
+                      OnCellSelected="SelectCell" />
+    </div>
+
+    <div class="pager">
+        <button type="button" class="btn btn--small" @onclick="() => GoToPageAsync(_data.Page - 1)" disabled="@(!_data.HasPrevious)">‹</button>
+        <span class="pager__info">@_data.FirstItemIndex–@_data.LastItemIndex из @_data.TotalCount</span>
+        <button type="button" class="btn btn--small" @onclick="() => GoToPageAsync(_data.Page + 1)" disabled="@(!_data.HasNext)">›</button>
+    </div>
+</div>
+
+@if (_showEditor && _editModel is not null && _editingId is not null)
+{
+    <RegistryEditDialog Model="@_editModel"
+                        Title="@($"Архивная запись #{_editingId}")"
+                        GlobalError="@_editorError"
+                        IsBusy="@_busy"
+                        IsArchive="true"
+                        TypesOfPurchase="@_typesOfPurchase"
+                        B2BStatuses="@_b2bStatuses"
+                        ExecutionStatuses="@_executionStatuses"
+                        OnSave="SaveAsync"
+                        OnClose="CloseEditor" />
+}
+
+@if (_confirm is not null)
+{
+    <ConfirmDialog Title="@_confirm.Value.Title"
+                   Message="@_confirm.Value.Message"
+                   ConfirmText="@_confirm.Value.ConfirmText"
+                   OnConfirm="@_confirm.Value.OnConfirm"
+                   OnCancel="@(() => _confirm = null)" />
+}
+
+@code {
+    private RegistryQuery _query = new() { SortBy = "ArchivateDate", SortDescending = true };
+    private Dictionary<string, string> _filters = new(StringComparer.OrdinalIgnoreCase);
+    private PagedResult<RegistryRowDto> _data = PagedResult<RegistryRowDto>.Empty(1, 50);
+    private IReadOnlyDictionary<string, string> _colors = new Dictionary<string, string>();
+
+    private List<RegistryColumn> _columns = RegistryColumns.All
+        .Where(c => c.Key != "IsFinished")
+        .Select(c => c with { VisibleByDefault = true })
+        .ToList();
+
+    private List<DictionaryItemDto> _typesOfPurchase = new();
+    private List<DictionaryItemDto> _b2bStatuses = new();
+    private List<DictionaryItemDto> _executionStatuses = new();
+
+    private RegistryRowDto? _selected;
+    private RegeditUpsertRequest? _editModel;
+    private int? _editingId;
+    private string? _editorError;
+    private bool _showEditor;
+    private bool _loading;
+    private bool _busy;
+    private ConfirmRequest? _confirm;
+    private CancellationTokenSource? _searchDebounce;
+    private ChangeActor _actor = ChangeActor.System;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        _actor = state.User.ToActor();
+
+        EventBus.Changed += OnRegistryChanged;
+
+        _typesOfPurchase = (await Dictionaries.GetTypesOfPurchaseAsync()).ToList();
+        _b2bStatuses = (await Dictionaries.GetB2BStatusesAsync()).ToList();
+        _executionStatuses = (await Dictionaries.GetExecutionStatusesAsync()).ToList();
+
+        await ReloadAsync();
+    }
+
+    private void SelectRow(RegistryRowDto row) => _selected = row;
+
+    private void SelectCell(CellClickArgs args) => _selected = args.Row;
+
+    private async Task ReloadAsync()
+    {
+        _loading = true;
+        try
+        {
+            _data = await RegistryService.QueryArchiveAsync(_query);
+            _colors = await RegistryService.GetCellColorsAsync(_data.Items.Select(r => r.ColorOwnerId));
+        }
+        catch (Exception ex)
+        {
+            Toasts.Show($"Не удалось загрузить архив: {ex.Message}", ToastKind.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void OnRegistryChanged(RegistryChangeEvent changeEvent)
+    {
+        _ = InvokeAsync(async () =>
+        {
+            await ReloadAsync();
+            StateHasChanged();
+        });
+    }
+
+    private async Task OnSearchInput(ChangeEventArgs args)
+    {
+        _query = _query with { Search = args.Value?.ToString(), Page = 1 };
+
+        _searchDebounce?.Cancel();
+        _searchDebounce = new CancellationTokenSource();
+        var token = _searchDebounce.Token;
+
+        try
+        {
+            await Task.Delay(400, token);
+            if (!token.IsCancellationRequested)
+            {
+                await ReloadAsync();
+            }
+        }
+        catch (TaskCanceledException)
+        {
+        }
+    }
+
+    private async Task OnFilterChangedAsync((string Key, string Value) change)
+    {
+        _filters[change.Key] = change.Value;
+        _query = _query with { ColumnFilters = new Dictionary<string, string>(_filters), Page = 1 };
+        await ReloadAsync();
+    }
+
+    private async Task ToggleSortAsync(string key)
+    {
+        _query = string.Equals(_query.SortBy, key, StringComparison.OrdinalIgnoreCase)
+            ? _query with { SortDescending = !_query.SortDescending }
+            : _query with { SortBy = key, SortDescending = false };
+
+        await ReloadAsync();
+    }
+
+    private async Task GoToPageAsync(int page)
+    {
+        if (page < 1 || page > Math.Max(_data.TotalPages, 1))
+        {
+            return;
+        }
+
+        _query = _query with { Page = page };
+        await ReloadAsync();
+    }
+
+    private async Task RestoreSelectedAsync()
+    {
+        if (_selected is null)
+        {
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            var result = await RegistryService.RestoreAsync(_selected.Id, _actor);
+            Toasts.Show(result.Success ? "Запись возвращена в реестр" : result.Error ?? "Ошибка",
+                result.Success ? ToastKind.Success : ToastKind.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task EditSelectedAsync()
+    {
+        if (_selected is null)
+        {
+            return;
+        }
+
+        _editModel = new RegeditUpsertRequest
+        {
+            NameLink = _selected.NameLink,
+            Customer = _selected.Customer,
+            PlaceOfDelivery = _selected.PlaceOfDelivery,
+            ReserveNumber = _selected.ReserveNumber,
+            NationalMode = _selected.NationalMode,
+            BiddingDate = _selected.BiddingDate,
+            DateOfTransferForPlacement = _selected.DateOfTransferForPlacement,
+            DateOfPlacement = _selected.DateOfPlacement,
+            DateResults = _selected.DateResults,
+            DateOfConclusionOfTheContract = _selected.DateOfConclusionOfTheContract,
+            NMCK = _selected.NMCK,
+            MinPrice = _selected.MinPrice,
+            ResultPrice = _selected.ResultPrice,
+            Winner = _selected.Winner,
+            DeliveryTime = _selected.DeliveryTime,
+            Description = _selected.Description,
+            Note = _selected.Note,
+            TypeOfPurchaseId = _selected.TypeOfPurchaseId,
+            B2BStatusId = _selected.B2BStatusId,
+            ExecutionStatusId = _selected.ExecutionStatusId
+        };
+
+        _editingId = _selected.Id;
+        _editorError = null;
+        _showEditor = true;
+        await Task.CompletedTask;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_editModel is null || _editingId is null)
+        {
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            var result = await RegistryService.UpdateArchiveAsync(_editingId.Value, _editModel, _actor);
+            if (result.Success)
+            {
+                Toasts.Show("Архивная запись сохранена", ToastKind.Success);
+                CloseEditor();
+            }
+            else
+            {
+                _editorError = result.Error;
+            }
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private void CloseEditor()
+    {
+        _showEditor = false;
+        _editModel = null;
+        _editingId = null;
+    }
+
+    private void AskDelete()
+    {
+        if (_selected is null)
+        {
+            return;
+        }
+
+        var row = _selected;
+        _confirm = new ConfirmRequest(
+            "Удаление из архива",
+            $"Удалить архивную запись «{row.NameLink}» безвозвратно?",
+            "Удалить",
+            async () =>
+            {
+                _confirm = null;
+                _busy = true;
+                try
+                {
+                    var result = await RegistryService.DeleteArchiveAsync(row.Id, _actor);
+                    Toasts.Show(result.Success ? "Запись удалена" : result.Error ?? "Ошибка",
+                        result.Success ? ToastKind.Success : ToastKind.Error);
+                }
+                finally
+                {
+                    _busy = false;
+                }
+            });
+    }
+
+    public void Dispose()
+    {
+        EventBus.Changed -= OnRegistryChanged;
+        _searchDebounce?.Cancel();
+        _searchDebounce?.Dispose();
+    }
+
+    private sealed record ConfirmRequest(string Title, string Message, string ConfirmText, Func<Task> OnConfirm);
+}

@@ -1,0 +1,411 @@
+@page "/users"
+@attribute [Authorize(Policy = AppPolicies.ManageSystem)]
+@using Microsoft.AspNetCore.Identity
+@inject UserManager<ApplicationUser> UserManager
+@inject IAuditService Audit
+@inject IRegistryNotifier Notifier
+@inject IPresenceService Presence
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IToastService Toasts
+@inject IRegistryEventBus EventBus
+@implements IDisposable
+
+<PageTitle>Пользователи — SnabDrive</PageTitle>
+
+<div class="page">
+    <div class="page__header">
+        <div>
+            <h1>Пользователи и роли</h1>
+            <p class="page__hint">Admin — всё, включая архив и справочники. Operator — работа с реестром.</p>
+        </div>
+        <div class="toolbar">
+            <button type="button" class="btn btn--primary" @onclick="StartCreate">＋ Добавить пользователя</button>
+            <button type="button" class="btn btn--ghost" @onclick="LoadAsync">⟳</button>
+        </div>
+    </div>
+
+    <div class="page__section">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Логин</th>
+                    <th>Отображаемое имя</th>
+                    <th>Email</th>
+                    <th>Роль</th>
+                    <th>Статус</th>
+                    <th>Последний вход</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var user in _users)
+                {
+                    <tr class="@(user.IsOnline ? "is-online" : null)">
+                        <td>@user.UserName</td>
+                        <td>@user.DisplayName</td>
+                        <td>@user.Email</td>
+                        <td>@(user.IsAdmin ? "Admin" : "Operator")</td>
+                        <td>
+                            @if (user.IsBlocked)
+                            {
+                                <span class="badge badge--danger">заблокирован</span>
+                            }
+                            else if (user.IsOnline)
+                            {
+                                <span class="badge badge--success">онлайн</span>
+                            }
+                            else
+                            {
+                                <span class="badge">офлайн</span>
+                            }
+                        </td>
+                        <td>@(user.LastLoginUtc?.ToLocalTime().ToString("dd.MM.yyyy HH:mm") ?? "—")</td>
+                        <td class="row-actions">
+                            <button type="button" class="btn btn--small" @onclick="() => StartEdit(user)">Изменить</button>
+                            <button type="button" class="btn btn--small btn--danger" @onclick="() => AskDelete(user)">Удалить</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@if (_showForm)
+{
+    <div class="modal-backdrop">
+        <div class="modal" @onclick:stopPropagation="true">
+            <div class="modal__header">
+                <h2>@(_editingId is null ? "Новый пользователь" : $"Пользователь {_model.UserName}")</h2>
+                <button type="button" class="modal__close" @onclick="CloseForm">×</button>
+            </div>
+            <div class="modal__body">
+                <div class="form-grid">
+                    <div class="form-field">
+                        <label>Логин *</label>
+                        <input class="input" @bind="_model.UserName" disabled="@(_editingId is not null)" />
+                    </div>
+                    <div class="form-field">
+                        <label>Отображаемое имя</label>
+                        <input class="input" @bind="_model.DisplayName" />
+                    </div>
+                    <div class="form-field">
+                        <label>Email</label>
+                        <input class="input" @bind="_model.Email" />
+                    </div>
+                    <div class="form-field">
+                        <label>@(_editingId is null ? "Пароль *" : "Новый пароль (пусто — не менять)")</label>
+                        <input class="input" type="password" @bind="_model.Password" />
+                    </div>
+                    <div class="form-field form-field--checkbox">
+                        <label class="checkbox-label">
+                            <input type="checkbox" @bind="_model.IsAdmin" /> Роль Admin
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" @bind="_model.IsBlocked" /> Заблокирован
+                        </label>
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrEmpty(_formError))
+                {
+                    <div class="form-error">@_formError</div>
+                }
+            </div>
+            <div class="modal__footer">
+                <button type="button" class="btn btn--primary" @onclick="SaveAsync" disabled="@_busy">Сохранить</button>
+                <button type="button" class="btn" @onclick="CloseForm">Отмена</button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_confirm is not null)
+{
+    <ConfirmDialog Title="@_confirm.Value.Title"
+                   Message="@_confirm.Value.Message"
+                   ConfirmText="@_confirm.Value.ConfirmText"
+                   OnConfirm="@_confirm.Value.OnConfirm"
+                   OnCancel="@(() => _confirm = null)" />
+}
+
+@code {
+    private sealed record UserRow(string Id, string UserName, string? DisplayName, string? Email,
+                                  bool IsAdmin, bool IsBlocked, bool IsOnline, DateTime? LastLoginUtc);
+
+    private sealed class UserModel
+    {
+        public string UserName { get; set; } = string.Empty;
+        public string? DisplayName { get; set; }
+        public string? Email { get; set; }
+        public string? Password { get; set; }
+        public bool IsAdmin { get; set; }
+        public bool IsBlocked { get; set; }
+    }
+
+    private List<UserRow> _users = new();
+    private UserModel _model = new();
+    private string? _editingId;
+    private string? _formError;
+    private bool _showForm;
+    private bool _busy;
+    private string _currentUserId = string.Empty;
+    private ConfirmRequest? _confirm;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Список онлайна меняется при каждом подключении/отключении — обновляем таблицу.
+        EventBus.PresenceChanged += OnPresenceChanged;
+
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        _currentUserId = state.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+        await LoadAsync();
+    }
+
+    private void OnPresenceChanged(IReadOnlyList<OnlineUser> online)
+    {
+        _ = InvokeAsync(async () =>
+        {
+            await LoadAsync();
+            StateHasChanged();
+        });
+    }
+
+    private async Task LoadAsync()
+    {
+        var online = Presence.GetOnline().Select(u => u.UserId).ToHashSet(StringComparer.Ordinal);
+        var users = UserManager.Users.OrderBy(u => u.UserName).ToList();
+        var rows = new List<UserRow>(users.Count);
+
+        foreach (var user in users)
+        {
+            rows.Add(new UserRow(
+                user.Id,
+                user.UserName ?? string.Empty,
+                user.DisplayName,
+                user.Email,
+                await UserManager.IsInRoleAsync(user, AppRoles.Admin),
+                user.IsBlocked,
+                online.Contains(user.Id),
+                user.LastLoginUtc));
+        }
+
+        _users = rows;
+    }
+
+    private void StartCreate()
+    {
+        _editingId = null;
+        _model = new UserModel();
+        _formError = null;
+        _showForm = true;
+    }
+
+    private void StartEdit(UserRow user)
+    {
+        _editingId = user.Id;
+        _model = new UserModel
+        {
+            UserName = user.UserName,
+            DisplayName = user.DisplayName,
+            Email = user.Email,
+            IsAdmin = user.IsAdmin,
+            IsBlocked = user.IsBlocked
+        };
+        _formError = null;
+        _showForm = true;
+    }
+
+    private void CloseForm()
+    {
+        _showForm = false;
+        _editingId = null;
+        _formError = null;
+        _model = new UserModel();
+    }
+
+    private async Task SaveAsync()
+    {
+        _busy = true;
+        _formError = null;
+
+        try
+        {
+            if (_editingId is null)
+            {
+                await CreateAsync();
+            }
+            else
+            {
+                await UpdateAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            _formError = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task CreateAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_model.UserName) || string.IsNullOrWhiteSpace(_model.Password))
+        {
+            _formError = "Укажите логин и пароль";
+            return;
+        }
+
+        if (await UserManager.FindByNameAsync(_model.UserName.Trim()) is not null)
+        {
+            _formError = $"Пользователь «{_model.UserName}» уже существует";
+            return;
+        }
+
+        var user = new ApplicationUser
+        {
+            UserName = _model.UserName.Trim(),
+            DisplayName = _model.DisplayName,
+            Email = string.IsNullOrWhiteSpace(_model.Email) ? null : _model.Email,
+            EmailConfirmed = !string.IsNullOrWhiteSpace(_model.Email),
+            IsBlocked = _model.IsBlocked
+        };
+
+        var created = await UserManager.CreateAsync(user, _model.Password);
+        if (!created.Succeeded)
+        {
+            _formError = string.Join("; ", created.Errors.Select(e => e.Description));
+            return;
+        }
+
+        await UserManager.AddToRoleAsync(user, _model.IsAdmin ? AppRoles.Admin : AppRoles.Operator);
+        await WriteAuditAsync("Создан пользователь «" + user.UserName + "»");
+
+        Toasts.Show("Пользователь создан", ToastKind.Success);
+        CloseForm();
+        await LoadAsync();
+    }
+
+    private async Task UpdateAsync()
+    {
+        var user = await UserManager.FindByIdAsync(_editingId!);
+        if (user is null)
+        {
+            _formError = "Пользователь не найден";
+            return;
+        }
+
+        user.DisplayName = _model.DisplayName;
+        user.IsBlocked = _model.IsBlocked;
+
+        if (!string.IsNullOrWhiteSpace(_model.Email))
+        {
+            user.Email = _model.Email;
+            user.EmailConfirmed = true;
+        }
+
+        if (!string.IsNullOrWhiteSpace(_model.Password))
+        {
+            var token = await UserManager.GeneratePasswordResetTokenAsync(user);
+            var reset = await UserManager.ResetPasswordAsync(user, token, _model.Password);
+            if (!reset.Succeeded)
+            {
+                _formError = string.Join("; ", reset.Errors.Select(e => e.Description));
+                return;
+            }
+        }
+
+        var updated = await UserManager.UpdateAsync(user);
+        if (!updated.Succeeded)
+        {
+            _formError = string.Join("; ", updated.Errors.Select(e => e.Description));
+            return;
+        }
+
+        var isAdmin = await UserManager.IsInRoleAsync(user, AppRoles.Admin);
+        if (_model.IsAdmin && !isAdmin)
+        {
+            await UserManager.RemoveFromRoleAsync(user, AppRoles.Operator);
+            await UserManager.AddToRoleAsync(user, AppRoles.Admin);
+        }
+        else if (!_model.IsAdmin && isAdmin)
+        {
+            await UserManager.RemoveFromRoleAsync(user, AppRoles.Admin);
+            await UserManager.AddToRoleAsync(user, AppRoles.Operator);
+        }
+
+        // Обновляем stamp — активные сессии пользователя перечитают права.
+        await UserManager.UpdateSecurityStampAsync(user);
+        await WriteAuditAsync($"Изменён пользователь «{user.UserName}»");
+
+        Toasts.Show("Изменения сохранены", ToastKind.Success);
+        CloseForm();
+        await LoadAsync();
+    }
+
+    private void AskDelete(UserRow user)
+    {
+        _confirm = new ConfirmRequest(
+            "Удаление пользователя",
+            $"Удалить учётную запись «{user.UserName}»?",
+            "Удалить",
+            async () =>
+            {
+                _confirm = null;
+                await DeleteAsync(user);
+            });
+    }
+
+    private async Task DeleteAsync(UserRow row)
+    {
+        if (string.Equals(row.Id, _currentUserId, StringComparison.Ordinal))
+        {
+            Toasts.Show("Нельзя удалить собственную учётную запись", ToastKind.Warning);
+            return;
+        }
+
+        var user = await UserManager.FindByIdAsync(row.Id);
+        if (user is null)
+        {
+            return;
+        }
+
+        var admins = await UserManager.GetUsersInRoleAsync(AppRoles.Admin);
+        if (row.IsAdmin && admins.Count <= 1)
+        {
+            Toasts.Show("Это последний администратор — сначала назначьте права другому пользователю", ToastKind.Warning);
+            return;
+        }
+
+        var deleted = await UserManager.DeleteAsync(user);
+        if (deleted.Succeeded)
+        {
+            await WriteAuditAsync($"Удалён пользователь «{user.UserName}»");
+            Toasts.Show("Пользователь удалён", ToastKind.Success);
+            await LoadAsync();
+        }
+        else
+        {
+            Toasts.Show(string.Join("; ", deleted.Errors.Select(e => e.Description)), ToastKind.Error);
+        }
+    }
+
+    private async Task WriteAuditAsync(string summary)
+    {
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        var actor = state.User.ToActor();
+
+        await Audit.WriteAsync(AuditAction.UserChanged, "User", 0, actor, summary: summary);
+        await Notifier.PublishAsync(new RegistryChangeEvent(
+            ChangeKind.UserChanged, "User", 0, actor.UserName, DateTime.UtcNow, summary));
+    }
+
+    public void Dispose()
+    {
+        EventBus.PresenceChanged -= OnPresenceChanged;
+    }
+
+    private sealed record ConfirmRequest(string Title, string Message, string ConfirmText, Func<Task> OnConfirm);
+}

@@ -1,0 +1,22 @@
+@using Microsoft.AspNetCore.Components.Web
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    <link rel="stylesheet" href="css/app.css" />
+    <title>SnabDrive — реестр закупок</title>
+    <HeadOutlet />
+</head>
+
+<body>
+    @* Весь UI работает в интерактивном серверном режиме: один циркул на пользователя,
+       realtime-обновление таблицы идёт по этому же соединению. *@
+    <Routes @rendermode="new InteractiveServerRenderMode(prerender: false)" />
+    <script src="_framework/blazor.web.js"></script>
+    <script src="js/realtime.js"></script>
+</body>
+
+</html>

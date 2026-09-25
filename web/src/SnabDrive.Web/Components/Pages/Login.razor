@@ -1,0 +1,91 @@
+@page "/login"
+@attribute [AllowAnonymous]
+@layout EmptyLayout
+@inject NavigationManager Navigation
+
+<PageTitle>Вход — SnabDrive</PageTitle>
+
+<div class="login-page">
+    <form class="login-card" method="post" action="/account/login">
+        <AntiforgeryToken />
+        <input type="hidden" name="returnUrl" value="@_returnUrl" />
+
+        <div class="login-card__brand">
+            <span class="app-logo app-logo--large">SD</span>
+            <div>
+                <div class="login-card__title">SnabDrive</div>
+                <div class="login-card__subtitle">Реестр закупок</div>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(_errorText))
+        {
+            <div class="form-error">@_errorText</div>
+        }
+
+        @if (!string.IsNullOrEmpty(_noticeText))
+        {
+            <div class="form-notice">@_noticeText</div>
+        }
+
+        <label class="login-card__label">
+            Логин
+            <input class="input" name="login" autocomplete="username" autofocus required />
+        </label>
+
+        <label class="login-card__label">
+            Пароль
+            <input class="input" name="password" type="password" autocomplete="current-password" required />
+        </label>
+
+        <label class="checkbox-label">
+            <input type="checkbox" name="rememberMe" value="true" />
+            Запомнить меня
+        </label>
+
+        <button type="submit" class="btn btn--primary btn--block">Войти</button>
+
+        <p class="login-card__hint">
+            После 5 неудачных попыток вход блокируется на 10 минут.
+        </p>
+    </form>
+</div>
+
+@code {
+    private string _returnUrl = "/";
+    private string? _errorText;
+    private string? _noticeText;
+
+    protected override void OnInitialized()
+    {
+        var uri = new Uri(Navigation.Uri);
+        var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+
+        if (query.TryGetValue("returnUrl", out var returnUrl))
+        {
+            var candidate = returnUrl.ToString();
+            if (candidate.StartsWith('/') && !candidate.StartsWith("//", StringComparison.Ordinal))
+            {
+                _returnUrl = candidate;
+            }
+        }
+
+        if (query.TryGetValue("loggedout", out _))
+        {
+            _noticeText = "Вы вышли из системы.";
+        }
+
+        if (query.TryGetValue("error", out var error))
+        {
+            _errorText = error.ToString() switch
+            {
+                "invalid" => "Неверный логин или пароль.",
+                "locked" => "Слишком много неудачных попыток. Вход временно заблокирован.",
+                "blocked" => "Учётная запись заблокирована. Обратитесь к администратору.",
+                "empty" => "Введите логин и пароль.",
+                "token" => "Сессия устарела. Попробуйте ещё раз.",
+                _ => "Не удалось выполнить вход."
+            };
+        }
+    }
+}

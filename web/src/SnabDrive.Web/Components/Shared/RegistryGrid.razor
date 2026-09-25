@@ -1,0 +1,268 @@
+@using System.Globalization
+
+<div class="grid-wrapper">
+    <table class="registry-grid">
+        <thead>
+            <tr class="registry-grid__head">
+                <th class="registry-grid__index">#</th>
+                @foreach (var column in Columns)
+                {
+                    <th style="@($"width:{column.Width};min-width:{column.Width}")"
+                        class="@HeaderClass(column.Key)"
+                        title="Сортировать по «@column.Title»"
+                        @onclick="() => OnSortChanged.InvokeAsync(column.Key)">
+                        <span class="registry-grid__head-text">@column.Title</span>
+                        @if (string.Equals(SortKey, column.Key, StringComparison.OrdinalIgnoreCase))
+                        {
+                            <span class="registry-grid__sort">@(SortDescending ? "▼" : "▲")</span>
+                        }
+                    </th>
+                }
+            </tr>
+            <tr class="registry-grid__filters">
+                <th></th>
+                @foreach (var column in Columns)
+                {
+                    <th>
+                        @if (column.Kind == ColumnKind.Dictionary && column.Key == "TypeOfPurchaseId")
+                        {
+                            <select class="filter-input" value="@GetFilter(column.Key)"
+                                    @onchange="e => OnFilterChanged.InvokeAsync((column.Key, e.Value?.ToString() ?? string.Empty))">
+                                <option value="">все</option>
+                                @foreach (var item in TypesOfPurchase)
+                                {
+                                    <option value="@item.Id">@item.Name</option>
+                                }
+                            </select>
+                        }
+                        else if (column.Kind == ColumnKind.Dictionary && column.Key == "B2BStatusId")
+                        {
+                            <select class="filter-input" value="@GetFilter(column.Key)"
+                                    @onchange="e => OnFilterChanged.InvokeAsync((column.Key, e.Value?.ToString() ?? string.Empty))">
+                                <option value="">все</option>
+                                @foreach (var item in B2BStatuses)
+                                {
+                                    <option value="@item.Id">@item.Name</option>
+                                }
+                            </select>
+                        }
+                        else if (column.Kind == ColumnKind.Dictionary && column.Key == "ExecutionStatusId")
+                        {
+                            <select class="filter-input" value="@GetFilter(column.Key)"
+                                    @onchange="e => OnFilterChanged.InvokeAsync((column.Key, e.Value?.ToString() ?? string.Empty))">
+                                <option value="">все</option>
+                                @foreach (var item in ExecutionStatuses)
+                                {
+                                    <option value="@item.Id">@item.Name</option>
+                                }
+                            </select>
+                        }
+                        else if (column.Kind == ColumnKind.Bool)
+                        {
+                            <select class="filter-input" value="@GetFilter(column.Key)"
+                                    @onchange="e => OnFilterChanged.InvokeAsync((column.Key, e.Value?.ToString() ?? string.Empty))">
+                                <option value="">все</option>
+                                <option value="true">да</option>
+                                <option value="false">нет</option>
+                            </select>
+                        }
+                        else if (column.Kind == ColumnKind.Date)
+                        {
+                            <input type="date" class="filter-input" value="@GetFilter(column.Key)"
+                                   @onchange="e => OnFilterChanged.InvokeAsync((column.Key, e.Value?.ToString() ?? string.Empty))" />
+                        }
+                        else if (column.Kind == ColumnKind.Money)
+                        {
+                            <input type="text" class="filter-input" placeholder="напр. >1000000"
+                                   value="@GetFilter(column.Key)"
+                                   @onchange="e => OnFilterChanged.InvokeAsync((column.Key, e.Value?.ToString() ?? string.Empty))" />
+                        }
+                        else
+                        {
+                            <input type="text" class="filter-input" placeholder="фильтр"
+                                   value="@GetFilter(column.Key)"
+                                   @onchange="e => OnFilterChanged.InvokeAsync((column.Key, e.Value?.ToString() ?? string.Empty))" />
+                        }
+                    </th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @if (Rows.Count == 0)
+            {
+                <tr>
+                    <td class="registry-grid__empty" colspan="@(Columns.Count + 1)">
+                        @(IsLoading ? "Загрузка…" : "Нет записей по текущим условиям")
+                    </td>
+                </tr>
+            }
+            else
+            {
+                @foreach (var row in Rows)
+                {
+                    <tr class="@RowClass(row)" @onclick="() => OnRowSelected.InvokeAsync(row)">
+                        <td class="registry-grid__index">@row.Id</td>
+                        @foreach (var column in Columns)
+                        {
+                            var colorKey = $"{row.ColorOwnerId}|{column.Key}";
+                            <td class="@CellClass(row, column.Key, colorKey)"
+                                style="@CellStyle(row, column.Key, colorKey)"
+                                @onclick="() => OnCellSelected.InvokeAsync(new CellClickArgs(row.ColorOwnerId, column.Key, row))">
+                                @if (column.Kind == ColumnKind.Link)
+                                {
+                                    <a class="registry-grid__link" href="@row.NameLink" target="_blank"
+                                       rel="noopener noreferrer" title="@row.NameLink">@Truncate(row.NameLink)</a>
+                                }
+                                else if (column.Kind == ColumnKind.Bool)
+                                {
+                                    <span class="bool-cell">@(row.IsFinished == true ? "✔" : "—")</span>
+                                }
+                                else if (column.Kind == ColumnKind.Money)
+                                {
+                                    <span class="money-cell">@MoneyValue(row, column.Key)</span>
+                                }
+                                else
+                                {
+                                    <span title="@TextValue(row, column.Key)">@TextValue(row, column.Key)</span>
+                                }
+                            </td>
+                        }
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    [Parameter] public IReadOnlyList<RegistryRowDto> Rows { get; set; } = Array.Empty<RegistryRowDto>();
+    [Parameter] public IReadOnlyList<RegistryColumn> Columns { get; set; } = Array.Empty<RegistryColumn>();
+    [Parameter] public string SortKey { get; set; } = RegistryQuery.DefaultSort;
+    [Parameter] public bool SortDescending { get; set; }
+    [Parameter] public EventCallback<string> OnSortChanged { get; set; }
+    [Parameter] public IReadOnlyDictionary<string, string> Filters { get; set; } = new Dictionary<string, string>();
+    [Parameter] public EventCallback<(string Key, string Value)> OnFilterChanged { get; set; }
+    [Parameter] public IReadOnlyList<DictionaryItemDto> TypesOfPurchase { get; set; } = Array.Empty<DictionaryItemDto>();
+    [Parameter] public IReadOnlyList<DictionaryItemDto> B2BStatuses { get; set; } = Array.Empty<DictionaryItemDto>();
+    [Parameter] public IReadOnlyList<DictionaryItemDto> ExecutionStatuses { get; set; } = Array.Empty<DictionaryItemDto>();
+    [Parameter] public IReadOnlyDictionary<string, string> CellColors { get; set; } = new Dictionary<string, string>();
+    [Parameter] public EventCallback<RegistryRowDto> OnRowSelected { get; set; }
+    [Parameter] public EventCallback<CellClickArgs> OnCellSelected { get; set; }
+    [Parameter] public int SelectedId { get; set; }
+    [Parameter] public string? SelectedCellKey { get; set; }
+    [Parameter] public bool IsLoading { get; set; }
+
+    private string GetFilter(string key) =>
+        Filters.TryGetValue(key, out var value) ? value : string.Empty;
+
+    private string HeaderClass(string key) =>
+        string.Equals(SortKey, key, StringComparison.OrdinalIgnoreCase) ? "is-sorted" : string.Empty;
+
+    private string RowClass(RegistryRowDto row)
+    {
+        var classes = new List<string>();
+
+        if (row.Id == SelectedId)
+        {
+            classes.Add("is-selected");
+        }
+
+        if (row.IsFinished == true)
+        {
+            classes.Add("is-finished");
+        }
+
+        if (IsBiddingToday(row.BiddingDate))
+        {
+            classes.Add("is-today");
+        }
+
+        return string.Join(' ', classes);
+    }
+
+    private string CellClass(RegistryRowDto row, string columnKey, string colorKey)
+    {
+        var classes = new List<string> { "registry-grid__cell" };
+
+        if (SelectedCellKey == colorKey)
+        {
+            classes.Add("cell-selected");
+        }
+
+        if (CellColors.ContainsKey(colorKey))
+        {
+            classes.Add("cell-colored");
+        }
+
+        return string.Join(' ', classes);
+    }
+
+    private string CellStyle(RegistryRowDto row, string columnKey, string colorKey)
+    {
+        if (CellColors.TryGetValue(colorKey, out var color) && !string.IsNullOrWhiteSpace(color))
+        {
+            return $"background-color:{NormalizeColor(color)};";
+        }
+
+        if (columnKey == "TypeOfPurchaseId" && !string.IsNullOrWhiteSpace(row.TypeOfPurchaseColor))
+        {
+            return $"background-color:{NormalizeColor(row.TypeOfPurchaseColor)}33;";
+        }
+
+        return string.Empty;
+    }
+
+    // Цвета в старой базе хранятся в формате WPF (#AARRGGBB) — приводим к CSS.
+    private static string NormalizeColor(string color)
+    {
+        var value = color.Trim();
+        if (value.StartsWith("#", StringComparison.Ordinal) && value.Length == 9)
+        {
+            return "#" + value[3..];
+        }
+
+        return value;
+    }
+
+    private static bool IsBiddingToday(DateTime? date) =>
+        date.HasValue && date.Value.Date == DateTime.Today;
+
+    private static string MoneyValue(RegistryRowDto row, string key) => key switch
+    {
+        "NMCK" => Format(row.NMCK),
+        "MinPrice" => Format(row.MinPrice),
+        "ResultPrice" => Format(row.ResultPrice),
+        _ => string.Empty
+    };
+
+    private static string Format(decimal value) =>
+        value == 0 ? "—" : value.ToString("#,0.##", CultureInfo.InvariantCulture);
+
+    private string TextValue(RegistryRowDto row, string key) => key switch
+    {
+        "NameLink" => Truncate(row.NameLink),
+        "Customer" => row.Customer,
+        "TypeOfPurchaseId" => row.TypeOfPurchaseName ?? string.Empty,
+        "PlaceOfDelivery" => row.PlaceOfDelivery,
+        "ReserveNumber" => row.ReserveNumber,
+        "NationalMode" => row.NationalMode,
+        "BiddingDate" => Date(row.BiddingDate),
+        "DateOfTransferForPlacement" => Date(row.DateOfTransferForPlacement),
+        "DateOfPlacement" => Date(row.DateOfPlacement),
+        "DateResults" => Date(row.DateResults),
+        "DateOfConclusionOfTheContract" => Date(row.DateOfConclusionOfTheContract),
+        "ArchivateDate" => Date(row.ArchivateDate),
+        "Winner" => row.Winner,
+        "DeliveryTime" => row.DeliveryTime,
+        "Description" => row.Description,
+        "Note" => row.Note,
+        "B2BStatusId" => row.B2BStatusName ?? string.Empty,
+        "ExecutionStatusId" => row.ExecutionStatusName ?? string.Empty,
+        _ => string.Empty
+    };
+
+    private static string Date(DateTime? value) => value?.ToString("dd.MM.yyyy") ?? string.Empty;
+
+    private static string Truncate(string value) =>
+        string.IsNullOrEmpty(value) ? string.Empty : (value.Length <= 120 ? value : value[..117] + "…");
+}

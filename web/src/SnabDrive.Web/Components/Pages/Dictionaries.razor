@@ -1,0 +1,260 @@
+@page "/dictionaries"
+@attribute [Authorize(Policy = AppPolicies.ManageSystem)]
+@inject IDictionaryService Dictionaries
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IRegistryEventBus EventBus
+@inject IToastService Toasts
+@implements IDisposable
+
+<PageTitle>Справочники — SnabDrive</PageTitle>
+
+<div class="page">
+    <div class="page__header">
+        <div>
+            <h1>Справочники</h1>
+            <p class="page__hint">Значения используются в выпадающих списках реестра. Изменения сразу видны всем пользователям.</p>
+        </div>
+        <div class="toolbar">
+            <button type="button" class="btn btn--ghost" @onclick="LoadAsync">⟳</button>
+        </div>
+    </div>
+
+    <div class="dict-layout">
+        <DictionarySection Title="Тип закупки" Items="@_typesOfPurchase" WithColor="true"
+                           OnCreate="@(() => StartCreate(DictKind.TypeOfPurchase))"
+                           OnEdit="@(item => StartEdit(DictKind.TypeOfPurchase, item))"
+                           OnDelete="@(item => AskDelete(DictKind.TypeOfPurchase, item))" />
+
+        <DictionarySection Title="Статус резерва B2B" Items="@_b2bStatuses"
+                           OnCreate="@(() => StartCreate(DictKind.B2B))"
+                           OnEdit="@(item => StartEdit(DictKind.B2B, item))"
+                           OnDelete="@(item => AskDelete(DictKind.B2B, item))" />
+
+        <DictionarySection Title="Статус исполнения контракта" Items="@_executionStatuses"
+                           OnCreate="@(() => StartCreate(DictKind.Execution))"
+                           OnEdit="@(item => StartEdit(DictKind.Execution, item))"
+                           OnDelete="@(item => AskDelete(DictKind.Execution, item))" />
+    </div>
+</div>
+
+@if (_showForm)
+{
+    <div class="modal-backdrop">
+        <div class="modal modal--small" @onclick:stopPropagation="true">
+            <div class="modal__header">
+                <h2>@_formTitle</h2>
+                <button type="button" class="modal__close" @onclick="CloseForm">×</button>
+            </div>
+            <div class="modal__body">
+                <div class="form-field">
+                    <label>Название *</label>
+                    <input class="input" @bind="_formName" />
+                </div>
+
+                @if (_formKind == DictKind.TypeOfPurchase)
+                {
+                    <div class="form-field">
+                        <label>Цвет подсветки</label>
+                        <input class="input" type="color" @bind="_formColor" />
+                    </div>
+                }
+
+                @if (!string.IsNullOrEmpty(_formError))
+                {
+                    <div class="form-error">@_formError</div>
+                }
+            </div>
+            <div class="modal__footer">
+                <button type="button" class="btn btn--primary" @onclick="SaveAsync" disabled="@_busy">Сохранить</button>
+                <button type="button" class="btn" @onclick="CloseForm">Отмена</button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_confirm is not null)
+{
+    <ConfirmDialog Title="@_confirm.Value.Title"
+                   Message="@_confirm.Value.Message"
+                   ConfirmText="@_confirm.Value.ConfirmText"
+                   OnConfirm="@_confirm.Value.OnConfirm"
+                   OnCancel="@(() => _confirm = null)" />
+}
+
+@code {
+    private enum DictKind { TypeOfPurchase, B2B, Execution }
+
+    private List<DictionaryItemDto> _typesOfPurchase = new();
+    private List<DictionaryItemDto> _b2bStatuses = new();
+    private List<DictionaryItemDto> _executionStatuses = new();
+
+    private bool _showForm;
+    private bool _busy;
+    private DictKind _formKind;
+    private int? _formId;
+    private string _formTitle = string.Empty;
+    private string _formName = string.Empty;
+    private string _formColor = "#ffffff";
+    private string? _formError;
+    private ChangeActor _actor = ChangeActor.System;
+    private ConfirmRequest? _confirm;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        _actor = state.User.ToActor();
+
+        EventBus.Changed += OnChanged;
+        await LoadAsync();
+    }
+
+    private void OnChanged(RegistryChangeEvent changeEvent)
+    {
+        if (changeEvent.Kind != ChangeKind.DictionaryChanged)
+        {
+            return;
+        }
+
+        _ = InvokeAsync(async () =>
+        {
+            await LoadAsync();
+            StateHasChanged();
+        });
+    }
+
+    private async Task LoadAsync()
+    {
+        _typesOfPurchase = (await Dictionaries.GetTypesOfPurchaseAsync()).ToList();
+        _b2bStatuses = (await Dictionaries.GetB2BStatusesAsync()).ToList();
+        _executionStatuses = (await Dictionaries.GetExecutionStatusesAsync()).ToList();
+    }
+
+    private void StartCreate(DictKind kind)
+    {
+        _formKind = kind;
+        _formId = null;
+        _formName = string.Empty;
+        _formColor = "#ffffff";
+        _formError = null;
+        _formTitle = KindTitle(kind) + ": новое значение";
+        _showForm = true;
+    }
+
+    private void StartEdit(DictKind kind, DictionaryItemDto item)
+    {
+        _formKind = kind;
+        _formId = item.Id;
+        _formName = item.Name;
+        _formColor = string.IsNullOrWhiteSpace(item.ColorCode) ? "#ffffff" : NormalizeColor(item.ColorCode);
+        _formError = null;
+        _formTitle = KindTitle(kind) + ": изменить";
+        _showForm = true;
+    }
+
+    private void CloseForm()
+    {
+        _showForm = false;
+        _formId = null;
+        _formError = null;
+    }
+
+    private static string NormalizeColor(string value)
+    {
+        var trimmed = value.Trim();
+        if (trimmed.StartsWith('#') && trimmed.Length == 9)
+        {
+            return "#" + trimmed[3..];
+        }
+
+        return trimmed.StartsWith('#') && trimmed.Length == 7 ? trimmed : "#ffffff";
+    }
+
+    private static string KindTitle(DictKind kind) => kind switch
+    {
+        DictKind.TypeOfPurchase => "Тип закупки",
+        DictKind.B2B => "Статус B2B",
+        _ => "Статус исполнения"
+    };
+
+    private async Task SaveAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_formName))
+        {
+            _formError = "Укажите название";
+            return;
+        }
+
+        _busy = true;
+        _formError = null;
+
+        try
+        {
+            Result<DictionaryItemDto> result = _formKind switch
+            {
+                DictKind.TypeOfPurchase => _formId is null
+                    ? await Dictionaries.CreateTypeOfPurchaseAsync(_formName, _formColor, _actor)
+                    : await Dictionaries.UpdateTypeOfPurchaseAsync(_formId.Value, _formName, _formColor, _actor),
+                DictKind.B2B => _formId is null
+                    ? await Dictionaries.CreateB2BStatusAsync(_formName, _actor)
+                    : await Dictionaries.UpdateB2BStatusAsync(_formId.Value, _formName, _actor),
+                _ => _formId is null
+                    ? await Dictionaries.CreateExecutionStatusAsync(_formName, _actor)
+                    : await Dictionaries.UpdateExecutionStatusAsync(_formId.Value, _formName, _actor)
+            };
+
+            if (result.Success)
+            {
+                Toasts.Show("Сохранено", ToastKind.Success);
+                CloseForm();
+            }
+            else
+            {
+                _formError = result.Error;
+            }
+        }
+        catch (Exception ex)
+        {
+            _formError = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private void AskDelete(DictKind kind, DictionaryItemDto item)
+    {
+        _confirm = new ConfirmRequest(
+            "Удаление значения справочника",
+            $"Удалить «{item.Name}»? Если значение используется в реестре, удаление будет отклонено.",
+            "Удалить",
+            async () =>
+            {
+                _confirm = null;
+                _busy = true;
+                try
+                {
+                    var result = kind switch
+                    {
+                        DictKind.TypeOfPurchase => await Dictionaries.DeleteTypeOfPurchaseAsync(item.Id, _actor),
+                        DictKind.B2B => await Dictionaries.DeleteB2BStatusAsync(item.Id, _actor),
+                        _ => await Dictionaries.DeleteExecutionStatusAsync(item.Id, _actor)
+                    };
+
+                    Toasts.Show(result.Success ? "Удалено" : result.Error ?? "Ошибка",
+                        result.Success ? ToastKind.Success : ToastKind.Warning);
+                }
+                finally
+                {
+                    _busy = false;
+                }
+            });
+    }
+
+    public void Dispose()
+    {
+        EventBus.Changed -= OnChanged;
+    }
+
+    private sealed record ConfirmRequest(string Title, string Message, string ConfirmText, Func<Task> OnConfirm);
+}

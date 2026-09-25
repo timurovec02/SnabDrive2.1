@@ -1,0 +1,100 @@
+@inherits LayoutComponentBase
+@implements IAsyncDisposable
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IPresenceService Presence
+@inject UserSessionState Session
+@inject IToastService Toasts
+
+<div class="app-shell">
+    <header class="app-header">
+        <div class="app-header__brand">
+            <span class="app-logo">SD</span>
+            <div>
+                <div class="app-title">SnabDrive</div>
+                <div class="app-subtitle">Реестр закупок</div>
+            </div>
+        </div>
+
+        <div class="app-header__spacer"></div>
+
+        <PresenceWidget />
+
+        <div class="app-header__user">
+            <span class="user-name" title="@_email">@_displayName</span>
+            @if (_isAdmin)
+            {
+                <span class="badge badge--admin">Админ</span>
+            }
+        </div>
+
+        <form method="post" action="/account/logout" class="logout-form">
+            <AntiforgeryToken />
+            <button type="submit" class="btn btn--ghost" title="Выйти из системы">Выйти</button>
+        </form>
+    </header>
+
+    <div class="app-body">
+        <NavMenu IsAdmin="_isAdmin" />
+
+        <main class="app-main">
+            @Body
+        </main>
+    </div>
+</div>
+
+<ToastHost />
+
+@code {
+    private string _displayName = "…";
+    private string _email = string.Empty;
+    private bool _isAdmin;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Toasts.Changed += OnToastsChanged;
+
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = state.User;
+
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            _displayName = user.FindFirstValue("DisplayName") ?? user.Identity.Name ?? "пользователь";
+            _email = user.FindFirstValue(ClaimTypes.Email) ?? string.Empty;
+            _isAdmin = user.IsInRole(SnabDrive.Web.Services.AppRoles.Admin);
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || Session.PresenceRegistered)
+        {
+            return;
+        }
+
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        var userId = state.User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (string.IsNullOrEmpty(userId))
+        {
+            return;
+        }
+
+        Session.PresenceRegistered = true;
+        Presence.Register(Session.SessionId, SessionKind.Blazor, userId, _displayName);
+    }
+
+    private void OnToastsChanged() => InvokeAsync(StateHasChanged);
+
+    public ValueTask DisposeAsync()
+    {
+        Toasts.Changed -= OnToastsChanged;
+
+        if (Session.PresenceRegistered)
+        {
+            Presence.Unregister(Session.SessionId);
+            Session.PresenceRegistered = false;
+        }
+
+        return ValueTask.CompletedTask;
+    }
+}

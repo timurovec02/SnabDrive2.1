@@ -361,3 +361,9 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+# SnabDrive Web: локальная dev-база SQLite и секреты
+web/src/SnabDrive.Web/*.db
+web/src/SnabDrive.Web/*.db-shm
+web/src/SnabDrive.Web/*.db-wal
+web/src/SnabDrive.Web/design-time.db
+web/src/SnabDrive.Web/appsettings.Production.json

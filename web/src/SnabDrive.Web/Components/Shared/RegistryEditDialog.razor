@@ -1,0 +1,181 @@
+@using System.Globalization
+
+<div class="modal-backdrop" @onclick="Close">
+    <div class="modal" @onclick:stopPropagation="true">
+        <div class="modal__header">
+            <h2>@Title</h2>
+            <button type="button" class="modal__close" @onclick="Close" title="Закрыть">×</button>
+        </div>
+
+        <EditForm Model="Model" OnValidSubmit="SubmitAsync" class="modal__body">
+            <DataAnnotationsValidator />
+
+            @if (!string.IsNullOrEmpty(GlobalError))
+            {
+                <div class="form-error">@GlobalError</div>
+            }
+
+            <div class="form-grid">
+                <div class="form-field form-field--wide">
+                    <label>Ссылка / наименование закупки *</label>
+                    <InputText @bind-Value="Model.NameLink" class="input" />
+                    <ValidationMessage For="() => Model.NameLink" />
+                </div>
+
+                <div class="form-field">
+                    <label>Заказчик *</label>
+                    <InputText @bind-Value="Model.Customer" class="input" />
+                    <ValidationMessage For="() => Model.Customer" />
+                </div>
+
+                <div class="form-field">
+                    <label>Тип закупки</label>
+                    <InputSelect @bind-Value="Model.TypeOfPurchaseId" class="input">
+                        <option value="">— не выбран —</option>
+                        @foreach (var item in TypesOfPurchase)
+                        {
+                            <option value="@item.Id">@item.Name</option>
+                        }
+                    </InputSelect>
+                </div>
+
+                <div class="form-field">
+                    <label>Место поставки товара</label>
+                    <InputText @bind-Value="Model.PlaceOfDelivery" class="input" />
+                </div>
+
+                <div class="form-field">
+                    <label>Номер резерва</label>
+                    <InputText @bind-Value="Model.ReserveNumber" class="input" />
+                </div>
+
+                <div class="form-field">
+                    <label>Нац режим</label>
+                    <InputText @bind-Value="Model.NationalMode" class="input" />
+                </div>
+
+                <div class="form-field">
+                    <label>Срок поставки</label>
+                    <InputText @bind-Value="Model.DeliveryTime" class="input" />
+                </div>
+
+                <div class="form-field">
+                    <label>Дата торгов</label>
+                    <InputDate @bind-Value="Model.BiddingDate" class="input" />
+                </div>
+
+                <div class="form-field">
+                    <label>Дата передачи на размещение</label>
+                    <InputDate @bind-Value="Model.DateOfTransferForPlacement" class="input" />
+                </div>
+
+                <div class="form-field">
+                    <label>Дата размещения на площадке</label>
+                    <InputDate @bind-Value="Model.DateOfPlacement" class="input" />
+                </div>
+
+                <div class="form-field">
+                    <label>Дата подведения итогов</label>
+                    <InputDate @bind-Value="Model.DateResults" class="input" />
+                    <ValidationMessage For="() => Model.DateResults" />
+                </div>
+
+                <div class="form-field">
+                    <label>Дата заключения контракта</label>
+                    <InputDate @bind-Value="Model.DateOfConclusionOfTheContract" class="input" />
+                    <ValidationMessage For="() => Model.DateOfConclusionOfTheContract" />
+                </div>
+
+                <div class="form-field">
+                    <label>НМЦК</label>
+                    <InputNumber @bind-Value="Model.NMCK" class="input" />
+                    <ValidationMessage For="() => Model.NMCK" />
+                </div>
+
+                <div class="form-field">
+                    <label>Наша минимальная сумма</label>
+                    <InputNumber @bind-Value="Model.MinPrice" class="input" />
+                    <ValidationMessage For="() => Model.MinPrice" />
+                </div>
+
+                <div class="form-field">
+                    <label>Итоговая сумма</label>
+                    <InputNumber @bind-Value="Model.ResultPrice" class="input" />
+                    <ValidationMessage For="() => Model.ResultPrice" />
+                </div>
+
+                <div class="form-field">
+                    <label>Победитель</label>
+                    <InputText @bind-Value="Model.Winner" class="input" />
+                    <ValidationMessage For="() => Model.Winner" />
+                </div>
+
+                <div class="form-field">
+                    <label>Статус резерва B2B</label>
+                    <InputSelect @bind-Value="Model.B2BStatusId" class="input">
+                        <option value="">— не выбран —</option>
+                        @foreach (var item in B2BStatuses)
+                        {
+                            <option value="@item.Id">@item.Name</option>
+                        }
+                    </InputSelect>
+                </div>
+
+                <div class="form-field">
+                    <label>Статус исполнения контракта</label>
+                    <InputSelect @bind-Value="Model.ExecutionStatusId" class="input">
+                        <option value="">— не выбран —</option>
+                        @foreach (var item in ExecutionStatuses)
+                        {
+                            <option value="@item.Id">@item.Name</option>
+                        }
+                    </InputSelect>
+                </div>
+
+                @if (!IsArchive)
+                {
+                    <div class="form-field form-field--checkbox">
+                        <label class="checkbox-label">
+                            <InputCheckbox @bind-Value="Model.IsFinished" />
+                            Оплачен
+                        </label>
+                    </div>
+                }
+
+                <div class="form-field form-field--wide">
+                    <label>Примечания</label>
+                    <InputTextArea @bind-Value="Model.Description" class="input" rows="3" />
+                </div>
+
+                <div class="form-field form-field--wide">
+                    <label>Доп записка</label>
+                    <InputTextArea @bind-Value="Model.Note" class="input" rows="3" />
+                </div>
+            </div>
+
+            <div class="modal__footer">
+                <button type="submit" class="btn btn--primary" disabled="@IsBusy">
+                    @(IsBusy ? "Сохранение…" : "Сохранить")
+                </button>
+                <button type="button" class="btn" @onclick="Close" disabled="@IsBusy">Отмена</button>
+            </div>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public RegeditUpsertRequest Model { get; set; } = new();
+    [Parameter] public string Title { get; set; } = "Запись реестра";
+    [Parameter] public string? GlobalError { get; set; }
+    [Parameter] public bool IsBusy { get; set; }
+    [Parameter] public bool IsArchive { get; set; }
+    [Parameter] public IReadOnlyList<DictionaryItemDto> TypesOfPurchase { get; set; } = Array.Empty<DictionaryItemDto>();
+    [Parameter] public IReadOnlyList<DictionaryItemDto> B2BStatuses { get; set; } = Array.Empty<DictionaryItemDto>();
+    [Parameter] public IReadOnlyList<DictionaryItemDto> ExecutionStatuses { get; set; } = Array.Empty<DictionaryItemDto>();
+    [Parameter] public EventCallback OnSave { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private Task SubmitAsync() => OnSave.InvokeAsync();
+
+    private Task Close() => OnClose.InvokeAsync();
+}

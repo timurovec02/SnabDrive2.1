@@ -1,0 +1,175 @@
+@page "/audit"
+@attribute [Authorize(Policy = AppPolicies.ManageSystem)]
+@inject IAuditService Audit
+
+<PageTitle>Журнал изменений — SnabDrive</PageTitle>
+
+<div class="page">
+    <div class="page__header">
+        <div>
+            <h1>Журнал изменений</h1>
+            <p class="page__hint">Кто, когда и что менял в реестре, справочниках и пользователях.</p>
+        </div>
+        <div class="toolbar">
+            <select class="input input--small" value="@_entityName" @onchange="OnEntityChanged">
+                <option value="">все сущности</option>
+                <option value="Regedit">Реестр</option>
+                <option value="ArchiveRegedit">Архив</option>
+                <option value="TypeOfPurchase">Тип закупки</option>
+                <option value="B2BStatus">Статус B2B</option>
+                <option value="ExecutionStatus">Статус исполнения</option>
+                <option value="User">Пользователи</option>
+            </select>
+
+            <select class="input input--small" value="@_action" @onchange="OnActionChanged">
+                <option value="">все операции</option>
+                <option value="Created">Создание</option>
+                <option value="Updated">Изменение</option>
+                <option value="Deleted">Удаление</option>
+                <option value="Archived">Архивация</option>
+                <option value="Restored">Возврат из архива</option>
+                <option value="CellColorChanged">Подсветка</option>
+                <option value="Login">Вход</option>
+                <option value="LoginFailed">Неудачный вход</option>
+            </select>
+
+            <input class="input input--small" placeholder="пользователь" value="@_userName" @onchange="OnUserChanged" />
+            <button type="button" class="btn btn--ghost" @onclick="LoadAsync">⟳</button>
+        </div>
+    </div>
+
+    <div class="page__section">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Когда</th>
+                    <th>Кто</th>
+                    <th>Операция</th>
+                    <th>Объект</th>
+                    <th>Что изменилось</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var entry in _data.Items)
+                {
+                    <tr>
+                        <td class="nowrap">@entry.CreatedAtLocal</td>
+                        <td>@entry.UserName</td>
+                        <td><span class="badge badge--@BadgeClass(entry.Action)">@ActionTitle(entry.Action)</span></td>
+                        <td>@EntityTitle(entry.EntityName) @(entry.EntityId > 0 ? $"#{entry.EntityId}" : string.Empty)</td>
+                        <td>
+                            <div class="audit-summary">@entry.Summary</div>
+                            @if (entry.Changes.Count > 0)
+                            {
+                                <ul class="audit-changes">
+                                    @foreach (var change in entry.Changes)
+                                    {
+                                        <li>
+                                            <span class="audit-field">@change.Key:</span>
+                                            <span class="audit-old">@(string.IsNullOrEmpty(change.Value.Old) ? "—" : change.Value.Old)</span>
+                                            →
+                                            <span class="audit-new">@(string.IsNullOrEmpty(change.Value.New) ? "—" : change.Value.New)</span>
+                                        </li>
+                                    }
+                                </ul>
+                            }
+                        </td>
+                    </tr>
+                }
+                @if (_data.Items.Count == 0)
+                {
+                    <tr><td class="registry-grid__empty" colspan="5">Записей журнала нет</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="pager">
+        <button type="button" class="btn btn--small" @onclick="() => GoToAsync(_data.Page - 1)" disabled="@(!_data.HasPrevious)">‹</button>
+        <span class="pager__info">страница @_data.Page из @Math.Max(_data.TotalPages, 1)</span>
+        <button type="button" class="btn btn--small" @onclick="() => GoToAsync(_data.Page + 1)" disabled="@(!_data.HasNext)">›</button>
+    </div>
+</div>
+
+@code {
+    private AuditQuery _query = new() { PageSize = 50 };
+    private PagedResult<AuditLogDto> _data = PagedResult<AuditLogDto>.Empty(1, 50);
+
+    private string _entityName = string.Empty;
+    private string _action = string.Empty;
+    private string _userName = string.Empty;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _data = await Audit.QueryAsync(_query);
+    }
+
+    private async Task OnEntityChanged(ChangeEventArgs args)
+    {
+        _entityName = args.Value?.ToString() ?? string.Empty;
+        _query = _query with { EntityName = string.IsNullOrEmpty(_entityName) ? null : _entityName, Page = 1 };
+        await LoadAsync();
+    }
+
+    private async Task OnActionChanged(ChangeEventArgs args)
+    {
+        _action = args.Value?.ToString() ?? string.Empty;
+        _query = _query with { Action = string.IsNullOrEmpty(_action) ? null : _action, Page = 1 };
+        await LoadAsync();
+    }
+
+    private async Task OnUserChanged(ChangeEventArgs args)
+    {
+        _userName = args.Value?.ToString() ?? string.Empty;
+        _query = _query with { UserName = string.IsNullOrEmpty(_userName) ? null : _userName, Page = 1 };
+        await LoadAsync();
+    }
+
+    private async Task GoToAsync(int page)
+    {
+        if (page < 1)
+        {
+            return;
+        }
+
+        _query = _query with { Page = page };
+        await LoadAsync();
+    }
+
+    private static string BadgeClass(string action) => action switch
+    {
+        AuditAction.Created => "success",
+        AuditAction.Updated => "info",
+        AuditAction.Deleted => "danger",
+        AuditAction.LoginFailed => "danger",
+        _ => ""
+    };
+
+    private static string ActionTitle(string action) => action switch
+    {
+        AuditAction.Created => "создание",
+        AuditAction.Updated => "изменение",
+        AuditAction.Deleted => "удаление",
+        AuditAction.Archived => "архивация",
+        AuditAction.Restored => "возврат",
+        AuditAction.CellColorChanged => "подсветка",
+        AuditAction.DictionaryChanged => "справочник",
+        AuditAction.UserChanged => "пользователи",
+        AuditAction.Login => "вход",
+        AuditAction.LoginFailed => "отказ входа",
+        _ => action
+    };
+
+    private static string EntityTitle(string entityName) => entityName switch
+    {
+        "Regedit" => "Реестр",
+        "ArchiveRegedit" => "Архив",
+        "TypeOfPurchase" => "Тип закупки",
+        "B2BStatus" => "Статус B2B",
+        "ExecutionStatus" => "Статус исполнения",
+        "User" => "Пользователи",
+        _ => entityName
+    };
+}

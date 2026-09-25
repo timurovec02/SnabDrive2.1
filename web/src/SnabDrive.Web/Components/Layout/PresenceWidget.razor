@@ -1,0 +1,52 @@
+@implements IDisposable
+@inject IPresenceService Presence
+@inject IRegistryEventBus EventBus
+
+<div class="presence" title="Кто сейчас работает в системе">
+    <span class="presence__dot"></span>
+    <button type="button" class="presence__toggle" @onclick="Toggle">
+        Онлайн: @_online.Count
+    </button>
+
+    @if (_expanded && _online.Count > 0)
+    {
+        <div class="presence__panel">
+            <div class="presence__title">Сейчас в системе</div>
+            <ul>
+                @foreach (var user in _online)
+                {
+                    <li>
+                        <span class="presence__name">@user.UserName</span>
+                        <span class="presence__meta">
+                            с @user.Since@(user.SessionCount > 1 ? $" · {user.SessionCount} устр." : "")
+                        </span>
+                    </li>
+                }
+            </ul>
+        </div>
+    }
+</div>
+
+@code {
+    private IReadOnlyList<OnlineUser> _online = Array.Empty<OnlineUser>();
+    private bool _expanded;
+
+    protected override void OnInitialized()
+    {
+        _online = Presence.GetOnline();
+        EventBus.PresenceChanged += OnPresenceChanged;
+    }
+
+    private void OnPresenceChanged(IReadOnlyList<OnlineUser> users)
+    {
+        _online = users;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void Toggle() => _expanded = !_expanded;
+
+    public void Dispose()
+    {
+        EventBus.PresenceChanged -= OnPresenceChanged;
+    }
+}

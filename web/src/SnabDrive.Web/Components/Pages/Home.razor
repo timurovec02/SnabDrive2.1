@@ -1,0 +1,132 @@
+@page "/"
+@attribute [Authorize]
+@implements IDisposable
+@inject IRegistryService RegistryService
+@inject IPresenceService Presence
+@inject IRegistryEventBus EventBus
+@inject IAuditService Audit
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>Обзор — SnabDrive</PageTitle>
+
+<div class="page">
+    <div class="page__header">
+        <div>
+            <h1>Обзор</h1>
+            <p class="page__hint">Данные обновляются автоматически — обновлять страницу не нужно.</p>
+        </div>
+    </div>
+
+    <div class="cards">
+        <div class="card">
+            <div class="card__value">@_registryCount</div>
+            <div class="card__label">Записей в реестре</div>
+            <a class="card__link" href="registry">Открыть реестр →</a>
+        </div>
+
+        @if (_isAdmin)
+        {
+            <div class="card">
+                <div class="card__value">@_archiveCount</div>
+                <div class="card__label">Записей в архиве</div>
+                <a class="card__link" href="archive">Открыть архив →</a>
+            </div>
+        }
+
+        <div class="card">
+            <div class="card__value">@_online.Count</div>
+            <div class="card__label">Пользователей онлайн</div>
+            @if (_online.Count > 0)
+            {
+                <div class="card__hint">@string.Join(", ", _online.Select(u => u.UserName))</div>
+            }
+        </div>
+
+        <div class="card">
+            <div class="card__value">@DateTime.Now.ToString("HH:mm")</div>
+            <div class="card__label">Время сервера</div>
+            <div class="card__hint">@_currentUserName</div>
+        </div>
+    </div>
+
+    @if (_isAdmin)
+    {
+        <div class="page__section">
+            <h2 class="section-title">Последние события</h2>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Когда</th>
+                        <th>Кто</th>
+                        <th>Событие</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var entry in _recent)
+                    {
+                        <tr>
+                            <td class="nowrap">@entry.CreatedAtLocal</td>
+                            <td>@entry.UserName</td>
+                            <td>@entry.Summary</td>
+                        </tr>
+                    }
+                    @if (_recent.Count == 0)
+                    {
+                        <tr><td class="registry-grid__empty" colspan="3">Событий пока нет</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@code {
+    private int _registryCount;
+    private int _archiveCount;
+    private IReadOnlyList<OnlineUser> _online = Array.Empty<OnlineUser>();
+    private List<AuditLogDto> _recent = new();
+    private bool _isAdmin;
+    private string _currentUserName = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        _isAdmin = state.User.IsInRole(AppRoles.Admin);
+        _currentUserName = state.User.Identity?.Name ?? string.Empty;
+
+        EventBus.Changed += OnChanged;
+        EventBus.PresenceChanged += OnPresenceChanged;
+
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _registryCount = await RegistryService.CountAsync();
+        _online = Presence.GetOnline();
+
+        if (_isAdmin)
+        {
+            _archiveCount = await RegistryService.CountArchiveAsync();
+            _recent = (await Audit.QueryAsync(new AuditQuery { PageSize = 10 })).Items.ToList();
+        }
+    }
+
+    private void OnChanged(RegistryChangeEvent changeEvent) => _ = InvokeAsync(async () =>
+    {
+        await LoadAsync();
+        StateHasChanged();
+    });
+
+    private void OnPresenceChanged(IReadOnlyList<OnlineUser> online)
+    {
+        _online = online;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        EventBus.Changed -= OnChanged;
+        EventBus.PresenceChanged -= OnPresenceChanged;
+    }
+}
