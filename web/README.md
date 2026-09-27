@@ -56,6 +56,11 @@ dotnet test
 
 Пошаговая инструкция по подключению базы в SSMS — в [`docs/SSMS.md`](docs/SSMS.md).
 
+Если не хочется возиться с миграциями — выполните в SSMS готовый скрипт
+[`sql/create_SnabDriveDB.sql`](sql/create_SnabDriveDB.sql): он создаёт базу, легаси-таблицы
+и все веб-таблицы (Identity, AuditLog, UserColumnPermission) за один раз.
+После этого в конфиге поставьте `"AutoMigrateIdentitySchema": false`.
+
 1. Скопируйте `src/SnabDrive.Web/appsettings.SqlServer.example.json`
    в `appsettings.Production.json` (или используйте user-secrets / переменную окружения
    `ConnectionStrings__Registry`).
