@@ -54,6 +54,8 @@ dotnet test
 
 ## 3. Подключение к боевой базе SnabDriveDB
 
+Пошаговая инструкция по подключению базы в SSMS — в [`docs/SSMS.md`](docs/SSMS.md).
+
 1. Скопируйте `src/SnabDrive.Web/appsettings.SqlServer.example.json`
    в `appsettings.Production.json` (или используйте user-secrets / переменную окружения
    `ConnectionStrings__Registry`).

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using SnabDrive.Web;
 using SnabDrive.Web.Components;
 using SnabDrive.Web.Data;
 using SnabDrive.Web.Hubs;
