@@ -13,8 +13,10 @@
 
 <body>
     @* Весь UI работает в интерактивном серверном режиме: один циркул на пользователя,
-       realtime-обновление таблицы идёт по этому же соединению. *@
-    <Routes @rendermode="new InteractiveServerRenderMode(prerender: false)" />
+       realtime-обновление таблицы идёт по этому же соединению.
+       prerender: true — страница логина и оболочка отдаются готовым HTML с сервера,
+       поэтому вход работает даже до загрузки blazor.web.js (иначе белая страница). *@
+    <Routes @rendermode="new InteractiveServerRenderMode(prerender: true)" />
     <script src="_framework/blazor.web.js"></script>
     <script src="js/realtime.js"></script>
 </body>
