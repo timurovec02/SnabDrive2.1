@@ -56,7 +56,31 @@ public static class DatabaseBootstrapper
             if (migrations)
             {
                 logger.LogInformation("Применяю миграции веб-схемы");
-                await context.Database.MigrateAsync();
+                try
+                {
+                    await context.Database.MigrateAsync();
+                }
+                catch (Exception ex)
+                {
+                    // Если веб-таблицы уже созданы SQL-скриптом (sql/create_SnabDriveDB.sql),
+                    // у модели могут остаться «незакрытые» изменения относительно миграций —
+                    // EF бросит PendingModelChangesWarning как исключение. Это не ошибка:
+                    // схема на месте, просто пропускаем миграции и идём дальше.
+                    if (await TableExistsAsync(context, "AspNetUsers") &&
+                        await TableExistsAsync(context, "UserColumnPermission") &&
+                        await TableExistsAsync(context, "AuditLog"))
+                    {
+                        logger.LogWarning(
+                            "Миграции не применились ({Message}), но веб-таблицы уже существуют " +
+                            "(созданы SQL-скриптом). Продолжаю без миграций. " +
+                            "Чтобы убрать сообщение — поставьте Database:AutoMigrateIdentitySchema=false.",
+                            ex.Message);
+                    }
+                    else
+                    {
+                        throw;
+                    }
+                }
             }
             else if (options.IsSqlServer)
             {
