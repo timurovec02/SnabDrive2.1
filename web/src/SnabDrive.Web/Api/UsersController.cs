@@ -136,7 +136,7 @@ public class UsersController : ControllerBase
 
         await _userManager.AddToRoleAsync(user, request.IsAdmin ? AppRoles.Admin : AppRoles.Operator);
 
-        await NotifyAsync(AuditAction.Created, user.Id, $"Создан пользователь «{user.UserName}»", cancellationToken);
+        await NotifyAsync(AuditAction.Created, 0, $"Создан пользователь «{user.UserName}» (id {user.Id})", cancellationToken);
         return Created($"/api/users/{user.Id}", user.Id);
     }
 

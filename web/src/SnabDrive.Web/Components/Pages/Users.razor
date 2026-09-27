@@ -431,12 +431,17 @@
         var permissions = (await ColumnAccess.GetPermissionsAsync(user.Id))
             .ToDictionary(p => p.Key, StringComparer.OrdinalIgnoreCase);
 
-        _columnRows = RegistryColumns.All.Select(c => new ColumnPermRow
+        _columnRows = RegistryColumns.All.Select(c =>
         {
-            Key = c.Key,
-            Title = c.Title,
-            View = permissions.TryGetValue(c.Key, out var p) ? p.CanView : true,
-            Edit = permissions.TryGetValue(c.Key, out var p) ? p.CanEdit : true
+            var has = permissions.TryGetValue(c.Key, out var permission);
+
+            return new ColumnPermRow
+            {
+                Key = c.Key,
+                Title = c.Title,
+                View = has ? permission.CanView : true,
+                Edit = has ? permission.CanEdit : true
+            };
         }).ToList();
 
         _columnError = null;

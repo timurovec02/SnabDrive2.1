@@ -52,7 +52,7 @@ public static class DatabaseBootstrapper
 
         if (options.AutoMigrateIdentitySchema)
         {
-            var migrations = (await context.Database.GetMigrationsAsync()).Any();
+            var migrations = context.Database.GetMigrations().Any();
             if (migrations)
             {
                 logger.LogInformation("Применяю миграции веб-схемы");

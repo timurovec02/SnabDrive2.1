@@ -19,11 +19,11 @@ public static class AccountEndpoints
     {
         app.MapPost("/account/login", HandleLoginAsync)
             .AllowAnonymous()
-            .AddEndpointFilter(AntiforgeryFilter("/login?error=token"));
+            .AddEndpointFilter(new AntiforgeryEndpointFilter("/login?error=token"));
 
         app.MapPost("/account/logout", HandleLogoutAsync)
             .RequireAuthorization()
-            .AddEndpointFilter(AntiforgeryFilter("/login?error=token"));
+            .AddEndpointFilter(new AntiforgeryEndpointFilter("/login?error=token"));
 
         return app;
     }
@@ -32,8 +32,14 @@ public static class AccountEndpoints
     /// Проверка antiforgery-токна для form-POST. Без неё любой сайт мог бы отправить
     /// форму входа/выхода от имени пользователя.
     /// </summary>
-    private static EndpointFilterDelegate AntiforgeryFilter(string failureRedirect) =>
-        async (context, next) =>
+    /// <summary>Проверка antiforgery-токена form-POST перед выполнением эндпоинта.</summary>
+    private sealed class AntiforgeryEndpointFilter : IEndpointFilter
+    {
+        private readonly string _failureRedirect;
+
+        public AntiforgeryEndpointFilter(string failureRedirect) => _failureRedirect = failureRedirect;
+
+        public async ValueTask<object?> InvokeAsync(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
         {
             var httpContext = context.HttpContext;
             var antiforgery = httpContext.RequestServices.GetRequiredService<IAntiforgery>();
@@ -44,11 +50,12 @@ public static class AccountEndpoints
             }
             catch (AntiforgeryValidationException)
             {
-                return Results.Redirect(failureRedirect);
+                return Results.Redirect(_failureRedirect);
             }
 
             return await next(context);
-        };
+        }
+    }
 
     private static async Task<IResult> HandleLogoutAsync(SignInManager<ApplicationUser> signInManager)
     {

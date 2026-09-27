@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SnabDrive.Web.Data;
@@ -1233,7 +1234,7 @@ public sealed class RegistryService : IRegistryService
 
     private static IOrderedQueryable<Regedit> ApplySort(IQueryable<Regedit> source, string key, bool descending)
     {
-        IOrderedQueryable<Regedit> Order<TKey>(Func<Regedit, TKey> selector) =>
+        IOrderedQueryable<Regedit> Order<TKey>(Expression<Func<Regedit, TKey>> selector) =>
             descending ? source.OrderByDescending(selector) : source.OrderBy(selector);
 
         return key switch
@@ -1265,7 +1266,7 @@ public sealed class RegistryService : IRegistryService
 
     private static IOrderedQueryable<ArchiveRegedit> ApplyArchiveSort(IQueryable<ArchiveRegedit> source, string key, bool descending)
     {
-        IOrderedQueryable<ArchiveRegedit> Order<TKey>(Func<ArchiveRegedit, TKey> selector) =>
+        IOrderedQueryable<ArchiveRegedit> Order<TKey>(Expression<Func<ArchiveRegedit, TKey>> selector) =>
             descending ? source.OrderByDescending(selector) : source.OrderBy(selector);
 
         return key switch
