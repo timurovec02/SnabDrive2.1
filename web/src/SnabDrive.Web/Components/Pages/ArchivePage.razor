@@ -72,10 +72,10 @@
 
 @if (_confirm is not null)
 {
-    <ConfirmDialog Title="@_confirm.Value.Title"
-                   Message="@_confirm.Value.Message"
-                   ConfirmText="@_confirm.Value.ConfirmText"
-                   OnConfirm="@_confirm.Value.OnConfirm"
+    <ConfirmDialog Title="@_confirm.Title"
+                   Message="@_confirm.Message"
+                   ConfirmText="@_confirm.ConfirmText"
+                   OnConfirm="@_confirm.OnConfirm"
                    OnCancel="@(() => _confirm = null)" />
 }
 

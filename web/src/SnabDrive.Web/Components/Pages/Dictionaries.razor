@@ -1,6 +1,6 @@
 @page "/dictionaries"
 @attribute [Authorize(Policy = AppPolicies.ManageSystem)]
-@inject IDictionaryService Dictionaries
+@inject IDictionaryService DictService
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IRegistryEventBus EventBus
 @inject IToastService Toasts
@@ -74,10 +74,10 @@
 
 @if (_confirm is not null)
 {
-    <ConfirmDialog Title="@_confirm.Value.Title"
-                   Message="@_confirm.Value.Message"
-                   ConfirmText="@_confirm.Value.ConfirmText"
-                   OnConfirm="@_confirm.Value.OnConfirm"
+    <ConfirmDialog Title="@_confirm.Title"
+                   Message="@_confirm.Message"
+                   ConfirmText="@_confirm.ConfirmText"
+                   OnConfirm="@_confirm.OnConfirm"
                    OnCancel="@(() => _confirm = null)" />
 }
 
@@ -124,9 +124,9 @@
 
     private async Task LoadAsync()
     {
-        _typesOfPurchase = (await Dictionaries.GetTypesOfPurchaseAsync()).ToList();
-        _b2bStatuses = (await Dictionaries.GetB2BStatusesAsync()).ToList();
-        _executionStatuses = (await Dictionaries.GetExecutionStatusesAsync()).ToList();
+        _typesOfPurchase = (await DictService.GetTypesOfPurchaseAsync()).ToList();
+        _b2bStatuses = (await DictService.GetB2BStatusesAsync()).ToList();
+        _executionStatuses = (await DictService.GetExecutionStatusesAsync()).ToList();
     }
 
     private void StartCreate(DictKind kind)
@@ -192,14 +192,14 @@
             Result<DictionaryItemDto> result = _formKind switch
             {
                 DictKind.TypeOfPurchase => _formId is null
-                    ? await Dictionaries.CreateTypeOfPurchaseAsync(_formName, _formColor, _actor)
-                    : await Dictionaries.UpdateTypeOfPurchaseAsync(_formId.Value, _formName, _formColor, _actor),
+                    ? await DictService.CreateTypeOfPurchaseAsync(_formName, _formColor, _actor)
+                    : await DictService.UpdateTypeOfPurchaseAsync(_formId.Value, _formName, _formColor, _actor),
                 DictKind.B2B => _formId is null
-                    ? await Dictionaries.CreateB2BStatusAsync(_formName, _actor)
-                    : await Dictionaries.UpdateB2BStatusAsync(_formId.Value, _formName, _actor),
+                    ? await DictService.CreateB2BStatusAsync(_formName, _actor)
+                    : await DictService.UpdateB2BStatusAsync(_formId.Value, _formName, _actor),
                 _ => _formId is null
-                    ? await Dictionaries.CreateExecutionStatusAsync(_formName, _actor)
-                    : await Dictionaries.UpdateExecutionStatusAsync(_formId.Value, _formName, _actor)
+                    ? await DictService.CreateExecutionStatusAsync(_formName, _actor)
+                    : await DictService.UpdateExecutionStatusAsync(_formId.Value, _formName, _actor)
             };
 
             if (result.Success)
@@ -236,9 +236,9 @@
                 {
                     var result = kind switch
                     {
-                        DictKind.TypeOfPurchase => await Dictionaries.DeleteTypeOfPurchaseAsync(item.Id, _actor),
-                        DictKind.B2B => await Dictionaries.DeleteB2BStatusAsync(item.Id, _actor),
-                        _ => await Dictionaries.DeleteExecutionStatusAsync(item.Id, _actor)
+                        DictKind.TypeOfPurchase => await DictService.DeleteTypeOfPurchaseAsync(item.Id, _actor),
+                        DictKind.B2B => await DictService.DeleteB2BStatusAsync(item.Id, _actor),
+                        _ => await DictService.DeleteExecutionStatusAsync(item.Id, _actor)
                     };
 
                     Toasts.Show(result.Success ? "Удалено" : result.Error ?? "Ошибка",
