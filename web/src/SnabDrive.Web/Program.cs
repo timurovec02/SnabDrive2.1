@@ -33,10 +33,13 @@ Action<DbContextOptionsBuilder> configureProvider = options =>
 
 // ------------------------------------------------------------------ данные
 
+// AddDbContext даёт scoped DbContextOptions<T>; фабрика по умолчанию singleton и
+// «не может есть» scoped-опции (падение при ValidateScopes). Выравниваем lifetime:
+// все потребители фабрики — scoped-сервисы либо явный CreateScope при старте.
 builder.Services.AddDbContext<RegistryDbContext>(configureProvider);
-builder.Services.AddDbContextFactory<RegistryDbContext>(configureProvider);
+builder.Services.AddDbContextFactory<RegistryDbContext>(configureProvider, ServiceLifetime.Scoped);
 builder.Services.AddDbContext<AppIdentityDbContext>(configureProvider);
-builder.Services.AddDbContextFactory<AppIdentityDbContext>(configureProvider);
+builder.Services.AddDbContextFactory<AppIdentityDbContext>(configureProvider, ServiceLifetime.Scoped);
 
 // ------------------------------------------------------------------ авторизация
 
