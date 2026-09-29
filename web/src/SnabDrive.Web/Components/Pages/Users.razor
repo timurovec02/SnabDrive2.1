@@ -433,14 +433,14 @@
 
         _columnRows = RegistryColumns.All.Select(c =>
         {
-            var has = permissions.TryGetValue(c.Key, out var permission);
+            permissions.TryGetValue(c.Key, out var permission);
 
             return new ColumnPermRow
             {
                 Key = c.Key,
                 Title = c.Title,
-                View = has ? permission.CanView : true,
-                Edit = has ? permission.CanEdit : true
+                View = permission is not null ? permission.CanView : true,
+                Edit = permission is not null ? permission.CanEdit : true
             };
         }).ToList();
 
