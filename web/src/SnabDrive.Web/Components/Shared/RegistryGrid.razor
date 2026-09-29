@@ -66,7 +66,7 @@
                                 <option value="false">нет</option>
                             </select>
                         }
-                        else if (column.Kind == ColumnKind.Date)
+                        else if (column.Kind == ColumnKind.Date || column.Kind == ColumnKind.DateTime)
                         {
                             <input type="date" class="filter-input" value="@GetFilter(column.Key)"
                                    @onchange="e => OnFilterChanged.InvokeAsync((column.Key, e.Value?.ToString() ?? string.Empty))" />
@@ -105,25 +105,89 @@
                         @foreach (var column in Columns)
                         {
                             var colorKey = $"{row.ColorOwnerId}|{column.Key}";
-                            <td class="@CellClass(row, column.Key, colorKey)"
+                            var cellLock = LockFor(row.Id, column.Key);
+                            var lockedByOther = cellLock is not null && cellLock.UserId != CurrentUserId;
+                            var editing = EditingCell is not null
+                                          && EditingCell.Value.RecordId == row.Id
+                                          && EditingCell.Value.ColumnKey == column.Key;
+
+                            <td class="@CellClass(row, column.Key, colorKey, lockedByOther, editing)"
                                 style="@CellStyle(row, column.Key, colorKey)"
-                                @onclick="() => OnCellSelected.InvokeAsync(new CellClickArgs(row.ColorOwnerId, column.Key, row))">
-                                @if (column.Kind == ColumnKind.Link)
+                                title="@CellTitle(cellLock)"
+                                @onclick="() => OnCellSelected.InvokeAsync(new CellClickArgs(row.ColorOwnerId, column.Key, row))"
+                                @ondblclick="() => BeginEdit(row, column)"
+                                @ondblclick:stopPropagation="true">
+                                @if (editing)
+                                {
+                                    <div class="cell-editor" @onclick:stopPropagation="true" @ondblclick:stopPropagation="true">
+                                        @if (column.Kind == ColumnKind.Bool)
+                                        {
+                                            <input type="checkbox" class="cell-input" checked="@_editBool"
+                                                   @onchange="OnBoolChange" @onkeydown="OnEditorKeyDown" />
+                                        }
+                                        else if (column.Kind == ColumnKind.Dictionary)
+                                        {
+                                            <select class="cell-input" value="@_editText"
+                                                    @onchange="OnSelectChange" @onkeydown="OnEditorKeyDown">
+                                                <option value="">—</option>
+                                                @foreach (var opt in OptionsFor(column.Key))
+                                                {
+                                                    <option value="@opt.Id">@opt.Name</option>
+                                                }
+                                            </select>
+                                        }
+                                        else if (column.Kind == ColumnKind.DateTime)
+                                        {
+                                            <input type="datetime-local" class="cell-input" value="@_editText"
+                                                   @oninput="e => _editText = e.Value?.ToString() ?? string.Empty"
+                                                   @onchange="CommitEdit" @onkeydown="OnEditorKeyDown" />
+                                        }
+                                        else if (column.Kind == ColumnKind.Date)
+                                        {
+                                            <input type="date" class="cell-input" value="@_editText"
+                                                   @oninput="e => _editText = e.Value?.ToString() ?? string.Empty"
+                                                   @onchange="CommitEdit" @onkeydown="OnEditorKeyDown" />
+                                        }
+                                        else
+                                        {
+                                            <input type="text" class="cell-input" value="@_editText"
+                                                   @oninput="e => _editText = e.Value?.ToString() ?? string.Empty"
+                                                   @onchange="CommitEdit" @onkeydown="OnEditorKeyDown" />
+                                        }
+                                    </div>
+                                }
+                                else if (column.Kind == ColumnKind.Link)
                                 {
                                     <a class="registry-grid__link" href="@row.NameLink" target="_blank"
                                        rel="noopener noreferrer" title="@row.NameLink">@Truncate(row.NameLink)</a>
+                                    @if (lockedByOther)
+                                    {
+                                        <LockBadge UserName="@cellLock!.UserName" />
+                                    }
                                 }
                                 else if (column.Kind == ColumnKind.Bool)
                                 {
                                     <span class="bool-cell">@(row.IsFinished == true ? "✔" : "—")</span>
+                                    @if (lockedByOther)
+                                    {
+                                        <LockBadge UserName="@cellLock!.UserName" />
+                                    }
                                 }
                                 else if (column.Kind == ColumnKind.Money)
                                 {
                                     <span class="money-cell">@MoneyValue(row, column.Key)</span>
+                                    @if (lockedByOther)
+                                    {
+                                        <LockBadge UserName="@cellLock!.UserName" />
+                                    }
                                 }
                                 else
                                 {
                                     <span title="@TextValue(row, column.Key)">@TextValue(row, column.Key)</span>
+                                    @if (lockedByOther)
+                                    {
+                                        <LockBadge UserName="@cellLock!.UserName" />
+                                    }
                                 }
                             </td>
                         }
@@ -151,6 +215,119 @@
     [Parameter] public int SelectedId { get; set; }
     [Parameter] public string? SelectedCellKey { get; set; }
     [Parameter] public bool IsLoading { get; set; }
+
+    // ---- инлайн-редактирование и блокировки (как в Excel) ----
+    [Parameter] public IReadOnlyList<CellEditLock> Locks { get; set; } = Array.Empty<CellEditLock>();
+    [Parameter] public string CurrentUserId { get; set; } = string.Empty;
+    [Parameter] public (int RecordId, string ColumnKey)? EditingCell { get; set; }
+    [Parameter] public EventCallback<CellClickArgs> OnBeginEdit { get; set; }
+    [Parameter] public EventCallback<CellEditCommit> OnCommitEdit { get; set; }
+    [Parameter] public EventCallback OnCancelEdit { get; set; }
+
+    private string _editText = string.Empty;
+    private bool _editBool;
+    private (int RecordId, string ColumnKey)? _lastEditCell;
+    private Dictionary<string, CellEditLock> _lockIndex = new(StringComparer.Ordinal);
+
+    protected override void OnParametersSet()
+    {
+        _lockIndex = Locks.ToDictionary(l => l.Key, l => l, StringComparer.Ordinal);
+
+        if (EditingCell != _lastEditCell)
+        {
+            _lastEditCell = EditingCell;
+
+            if (EditingCell is not null)
+            {
+                var row = Rows.FirstOrDefault(r => r.Id == EditingCell.Value.RecordId);
+                if (row is not null)
+                {
+                    _editText = EditorRaw(row, EditingCell.Value.ColumnKey);
+                    _editBool = row.IsFinished == true;
+                }
+            }
+        }
+    }
+
+    private CellEditLock? LockFor(int recordId, string columnKey) =>
+        _lockIndex.TryGetValue($"{recordId}|{columnKey}", out var lockInfo) ? lockInfo : null;
+
+    private static string CellTitle(CellEditLock? cellLock) =>
+        cellLock is null ? "Двойной клик — редактировать" : $"Редактирует {cellLock.UserName}";
+
+    private IReadOnlyList<DictionaryItemDto> OptionsFor(string columnKey) => columnKey switch
+    {
+        "TypeOfPurchaseId" => TypesOfPurchase,
+        "B2BStatusId" => B2BStatuses,
+        "ExecutionStatusId" => ExecutionStatuses,
+        _ => Array.Empty<DictionaryItemDto>()
+    };
+
+    private void BeginEdit(RegistryRowDto row, RegistryColumn column) =>
+        OnBeginEdit.InvokeAsync(new CellClickArgs(row.Id, column.Key, row));
+
+    private void OnEditorKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            CommitEdit();
+        }
+        else if (e.Key == "Escape")
+        {
+            OnCancelEdit.InvokeAsync();
+        }
+    }
+
+    private void CommitEdit()
+    {
+        if (EditingCell is null)
+        {
+            return;
+        }
+
+        OnCommitEdit.InvokeAsync(new CellEditCommit(EditingCell.Value.RecordId, EditingCell.Value.ColumnKey, _editText));
+    }
+
+    private void OnBoolChange(ChangeEventArgs e)
+    {
+        _editBool = e.Value is bool b && b;
+
+        if (EditingCell is not null)
+        {
+            OnCommitEdit.InvokeAsync(new CellEditCommit(EditingCell.Value.RecordId, EditingCell.Value.ColumnKey, _editBool ? "true" : "false"));
+        }
+    }
+
+    private void OnSelectChange(ChangeEventArgs e)
+    {
+        _editText = e.Value?.ToString() ?? string.Empty;
+        CommitEdit();
+    }
+
+    private static string EditorRaw(RegistryRowDto row, string key) => key switch
+    {
+        "NameLink" => row.NameLink,
+        "Customer" => row.Customer,
+        "PlaceOfDelivery" => row.PlaceOfDelivery,
+        "ReserveNumber" => row.ReserveNumber,
+        "NationalMode" => row.NationalMode,
+        "Winner" => row.Winner,
+        "DeliveryTime" => row.DeliveryTime,
+        "Description" => row.Description,
+        "Note" => row.Note,
+        "BiddingDate" => row.BiddingDate?.ToString("yyyy-MM-ddTHH:mm", CultureInfo.InvariantCulture) ?? string.Empty,
+        "DateOfTransferForPlacement" => row.DateOfTransferForPlacement?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? string.Empty,
+        "DateOfPlacement" => row.DateOfPlacement?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? string.Empty,
+        "DateResults" => row.DateResults?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? string.Empty,
+        "DateOfConclusionOfTheContract" => row.DateOfConclusionOfTheContract?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? string.Empty,
+        "NMCK" => row.NMCK.ToString(CultureInfo.InvariantCulture),
+        "MinPrice" => row.MinPrice.ToString(CultureInfo.InvariantCulture),
+        "ResultPrice" => row.ResultPrice.ToString(CultureInfo.InvariantCulture),
+        "TypeOfPurchaseId" => row.TypeOfPurchaseId?.ToString() ?? string.Empty,
+        "B2BStatusId" => row.B2BStatusId?.ToString() ?? string.Empty,
+        "ExecutionStatusId" => row.ExecutionStatusId?.ToString() ?? string.Empty,
+        _ => string.Empty
+    };
 
     private string GetFilter(string key) =>
         Filters.TryGetValue(key, out var value) ? value : string.Empty;
@@ -180,7 +357,7 @@
         return string.Join(' ', classes);
     }
 
-    private string CellClass(RegistryRowDto row, string columnKey, string colorKey)
+    private string CellClass(RegistryRowDto row, string columnKey, string colorKey, bool lockedByOther, bool editing)
     {
         var classes = new List<string> { "registry-grid__cell" };
 
@@ -192,6 +369,16 @@
         if (CellColors.ContainsKey(colorKey))
         {
             classes.Add("cell-colored");
+        }
+
+        if (lockedByOther)
+        {
+            classes.Add("cell-locked");
+        }
+
+        if (editing)
+        {
+            classes.Add("cell-editing");
         }
 
         return string.Join(' ', classes);
@@ -246,7 +433,7 @@
         "PlaceOfDelivery" => row.PlaceOfDelivery,
         "ReserveNumber" => row.ReserveNumber,
         "NationalMode" => row.NationalMode,
-        "BiddingDate" => Date(row.BiddingDate),
+        "BiddingDate" => row.BiddingDate?.ToString("dd.MM.yyyy HH:mm") ?? string.Empty,
         "DateOfTransferForPlacement" => Date(row.DateOfTransferForPlacement),
         "DateOfPlacement" => Date(row.DateOfPlacement),
         "DateResults" => Date(row.DateResults),

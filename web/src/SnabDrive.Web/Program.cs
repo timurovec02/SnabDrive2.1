@@ -126,6 +126,7 @@ builder.Services.AddScoped<IRegistryNotifier, SignalRRegistryNotifier>();
 builder.Services.AddScoped<IRegistryService, RegistryService>();
 builder.Services.AddScoped<IDictionaryService, DictionaryService>();
 builder.Services.AddScoped<IColumnAccessService, ColumnAccessService>();
+builder.Services.AddSingleton<ICellEditLockService, CellEditLockService>();
 builder.Services.AddScoped<UserSessionState>();
 builder.Services.AddScoped<IToastService, ToastService>();
 

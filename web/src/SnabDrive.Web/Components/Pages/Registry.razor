@@ -1,8 +1,10 @@
+@page "/"
 @page "/registry"
 @attribute [Authorize]
 @implements IDisposable
 @inject IRegistryService RegistryService
 @inject IColumnAccessService ColumnAccess
+@inject ICellEditLockService Locks
 @inject IDictionaryService Dictionaries
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IRegistryEventBus EventBus
@@ -88,7 +90,13 @@
                       SelectedCellKey="@_selectedCellKey"
                       IsLoading="@_loading"
                       OnRowSelected="SelectRow"
-                      OnCellSelected="SelectCell" />
+                      OnCellSelected="SelectCell"
+                      Locks="@_locks"
+                      CurrentUserId="@_actor.UserId"
+                      EditingCell="@_editCell"
+                      OnBeginEdit="BeginEditCell"
+                      OnCommitEdit="CommitEditCellAsync"
+                      OnCancelEdit="CancelEditCell" />
     </div>
 
     <div class="pager">
@@ -181,6 +189,10 @@
     private CancellationTokenSource? _searchDebounce;
     private ChangeActor _actor = ChangeActor.System;
 
+    // инлайн-редактирование (как в Excel) + блокировки ячеек
+    private (int RecordId, string ColumnKey)? _editCell;
+    private IReadOnlyList<CellEditLock> _locks = Array.Empty<CellEditLock>();
+
     private string ExportUrl
     {
         get
@@ -214,6 +226,8 @@
         _actor = state.User.ToActor() with { Access = _access };
 
         EventBus.Changed += OnRegistryChanged;
+        Locks.LocksChanged += OnLocksChanged;
+        _locks = Locks.GetActive();
         _realtimeOn = true;
 
         _typesOfPurchase = (await Dictionaries.GetTypesOfPurchaseAsync()).ToList();
@@ -398,6 +412,72 @@
         }
     }
 
+    // ------------------------------------------------------------ инлайн-правки и блокировки
+
+    private void OnLocksChanged()
+    {
+        _ = InvokeAsync(() =>
+        {
+            _locks = Locks.GetActive();
+            StateHasChanged();
+        });
+    }
+
+    private void BeginEditCell(CellClickArgs args)
+    {
+        var existing = Locks.Find(args.RecordId, args.ColumnKey);
+
+        if (existing is not null && existing.UserId != _actor.UserId)
+        {
+            Toasts.Show($"Ячейку сейчас редактирует {existing.UserName}", ToastKind.Warning);
+            return;
+        }
+
+        if (!Locks.TryAcquire(args.RecordId, args.ColumnKey, _actor.UserId, _actor.UserName))
+        {
+            Toasts.Show("Ячейка уже редактируется другим пользователем", ToastKind.Warning);
+            return;
+        }
+
+        _selected = args.Row;
+        _editCell = (args.RecordId, args.ColumnKey);
+    }
+
+    private async Task CommitEditCellAsync(CellEditCommit commit)
+    {
+        _busy = true;
+
+        try
+        {
+            var result = await RegistryService.UpdateCellAsync(commit.RecordId, commit.ColumnKey, commit.RawValue, _actor);
+
+            if (!result.Success)
+            {
+                Toasts.Show(result.Error ?? "Не удалось сохранить ячейку", ToastKind.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Toasts.Show($"Ошибка сохранения: {ex.Message}", ToastKind.Error);
+        }
+        finally
+        {
+            Locks.Release(commit.RecordId, commit.ColumnKey, _actor.UserId);
+            _editCell = null;
+            _busy = false;
+        }
+    }
+
+    private void CancelEditCell()
+    {
+        if (_editCell is not null)
+        {
+            Locks.Release(_editCell.Value.RecordId, _editCell.Value.ColumnKey, _actor.UserId);
+        }
+
+        _editCell = null;
+    }
+
     // ------------------------------------------------------------ CRUD
 
     private async Task CreateAsync()
@@ -550,6 +630,8 @@
     public void Dispose()
     {
         EventBus.Changed -= OnRegistryChanged;
+        Locks.LocksChanged -= OnLocksChanged;
+        Locks.ReleaseAll(_actor.UserId);
         _searchDebounce?.Cancel();
         _searchDebounce?.Dispose();
     }

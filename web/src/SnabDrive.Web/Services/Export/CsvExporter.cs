@@ -31,7 +31,7 @@ public static class CsvExporter
         "PlaceOfDelivery" => row.PlaceOfDelivery,
         "ReserveNumber" => row.ReserveNumber,
         "NationalMode" => row.NationalMode,
-        "BiddingDate" => FormatDate(row.BiddingDate),
+        "BiddingDate" => FormatDateTime(row.BiddingDate),
         "DateOfTransferForPlacement" => FormatDate(row.DateOfTransferForPlacement),
         "DateOfPlacement" => FormatDate(row.DateOfPlacement),
         "DateResults" => FormatDate(row.DateResults),
@@ -51,6 +51,8 @@ public static class CsvExporter
     };
 
     private static string FormatDate(DateTime? value) => value?.ToString("dd.MM.yyyy") ?? string.Empty;
+
+    private static string FormatDateTime(DateTime? value) => value?.ToString("dd.MM.yyyy HH:mm") ?? string.Empty;
 
     private static string FormatMoney(decimal value) =>
         value.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);

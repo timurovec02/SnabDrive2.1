@@ -144,6 +144,17 @@ public class RegeditController : ControllerBase
         });
     }
 
+    /// <summary>Инлайн-правка одной ячейки (как в Excel).</summary>
+    [HttpPut("{id}/cell")]
+    [Authorize(Policy = AppPolicies.WriteRegistry)]
+    public async Task<IActionResult> UpdateCell(int id, [FromBody] UpdateCellRequest request, CancellationToken cancellationToken)
+    {
+        var result = await _registry.UpdateCellAsync(id, request.ColumnKey, request.Value,
+            await User.ToActorAsync(_columnAccess, cancellationToken), cancellationToken);
+
+        return result.Success ? NoContent() : BadRequest(new { error = result.Error });
+    }
+
     private string CurrentUserId => User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "-";
 
     private ActionResult<RegistryRowDto> ToActionResult(Result<RegistryRowDto> result, int successStatus)
@@ -165,3 +176,5 @@ public sealed class CellColorRequest
     /// <summary>null или пустая строка — снять подсветку.</summary>
     public string? ColorCode { get; set; }
 }
+
+public sealed record UpdateCellRequest(string ColumnKey, string Value);

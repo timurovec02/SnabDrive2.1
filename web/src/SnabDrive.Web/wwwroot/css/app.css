@@ -1031,3 +1031,43 @@ input:disabled {
     color: var(--text-muted, #8a8a8a);
     cursor: not-allowed;
 }
+
+/* --- инлайн-редактирование ячеек (как в Excel) --- */
+.cell-editor {
+    display: block;
+}
+
+.cell-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 2px 4px;
+    border: 1px solid var(--accent, #1976d2);
+    border-radius: 3px;
+    background: #fff;
+    font: inherit;
+    outline: none;
+}
+
+.cell-editing {
+    outline: 2px solid var(--accent, #1976d2);
+    outline-offset: -1px;
+}
+
+.cell-locked {
+    position: relative;
+    background: repeating-linear-gradient(45deg, #fff8e1, #fff8e1 6px, #ffecb3 6px, #ffecb3 12px);
+    cursor: not-allowed;
+}
+
+.cell-lock {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 0 5px;
+    border-radius: 8px;
+    background: #ffb300;
+    color: #212121;
+    font-size: 11px;
+    line-height: 16px;
+    white-space: nowrap;
+    vertical-align: middle;
+}

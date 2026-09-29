@@ -17,6 +17,7 @@ public enum ColumnKind
 {
     Text,
     Date,
+    DateTime,
     Money,
     Bool,
     Dictionary,
@@ -34,7 +35,7 @@ public static class RegistryColumns
         new("PlaceOfDelivery", "Место поставки товара", ColumnKind.Text, "170px"),
         new("ReserveNumber", "Номер резерва", ColumnKind.Text, "150px"),
         new("NationalMode", "Нац режим", ColumnKind.Text, "120px"),
-        new("BiddingDate", "Дата торгов", ColumnKind.Date, "130px"),
+        new("BiddingDate", "Дата торгов", ColumnKind.DateTime, "150px"),
         new("DateOfTransferForPlacement", "Дата передачи на размещение", ColumnKind.Date, "150px"),
         new("DateOfPlacement", "Дата размещения на площадке", ColumnKind.Date, "150px"),
         new("DateResults", "Дата подведения итогов", ColumnKind.Date, "150px"),

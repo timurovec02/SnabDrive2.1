@@ -65,8 +65,9 @@
                 </div>
 
                 <div class="form-field">
-                    <label>Дата торгов</label>
-                    <InputDate @bind-Value="Model.BiddingDate" class="input" disabled="@ReadOnly("BiddingDate")" />
+                    <label>Дата торгов (с временем)</label>
+                    <input type="datetime-local" class="input" value="@BiddingDateText"
+                           disabled="@ReadOnly("BiddingDate")" @onchange="OnBiddingDateChange" />
                 </div>
 
                 <div class="form-field">
@@ -183,6 +184,14 @@
     [Parameter] public IReadOnlyList<DictionaryItemDto> ExecutionStatuses { get; set; } = Array.Empty<DictionaryItemDto>();
     [Parameter] public EventCallback OnSave { get; set; }
     [Parameter] public EventCallback OnClose { get; set; }
+
+    private string BiddingDateText =>
+        Model.BiddingDate?.ToString("yyyy-MM-ddTHH:mm", System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty;
+
+    private void OnBiddingDateChange(ChangeEventArgs e)
+    {
+        Model.BiddingDate = DateTime.TryParse(e.Value?.ToString(), out var d) ? d : null;
+    }
 
     /// <summary>Blazor не рендерит атрибут, если значение null — поле останется активным.</summary>
     private string? ReadOnly(string columnKey) => Access.CanEdit(columnKey) ? null : "disabled";

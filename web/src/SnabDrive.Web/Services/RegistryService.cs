@@ -23,6 +23,9 @@ public interface IRegistryService
 
     Task<Result<RegistryRowDto>> UpdateAsync(int id, RegeditUpsertRequest request, ChangeActor actor, CancellationToken cancellationToken = default);
 
+    /// <summary>Инлайн-правка одной ячейки (как в Excel) с аудитом и рассылкой.</summary>
+    Task<Result> UpdateCellAsync(int id, string columnKey, string rawValue, ChangeActor actor, CancellationToken cancellationToken = default);
+
     Task<Result> DeleteAsync(int id, ChangeActor actor, CancellationToken cancellationToken = default);
 
     Task<Result> ArchiveAsync(int id, ChangeActor actor, CancellationToken cancellationToken = default);
@@ -358,6 +361,155 @@ public sealed class RegistryService : IRegistryService
 
         return Result<RegistryRowDto>.Ok(row);
     }
+
+    public async Task<Result> UpdateCellAsync(int id, string columnKey, string rawValue, ChangeActor actor, CancellationToken cancellationToken = default)
+    {
+        var column = RegistryColumns.Find(columnKey);
+        if (column is null)
+        {
+            return Result.Fail($"Неизвестная колонка «{columnKey}».");
+        }
+
+        if (!actor.Access.CanEdit(columnKey))
+        {
+            return Result.Fail($"Нет права на редактирование колонки «{column.Title}».");
+        }
+
+        await using var context = await _factory.CreateDbContextAsync(cancellationToken);
+
+        var entity = await context.Regedit.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+        if (entity is null)
+        {
+            return Result.Fail($"Запись #{id} не найдена. Возможно, её уже удалили.");
+        }
+
+        var changes = new Dictionary<string, FieldChange>(StringComparer.Ordinal);
+        var raw = (rawValue ?? string.Empty).Trim();
+
+        switch (columnKey)
+        {
+            case "NameLink":
+                AddCellChange(changes, column.Title, entity.NameLink, entity.NameLink = raw);
+                break;
+            case "Customer":
+                AddCellChange(changes, column.Title, entity.Customer, entity.Customer = raw);
+                break;
+            case "PlaceOfDelivery":
+                AddCellChange(changes, column.Title, entity.PlaceOfDelivery, entity.PlaceOfDelivery = raw);
+                break;
+            case "ReserveNumber":
+                AddCellChange(changes, column.Title, entity.ReserveNumber, entity.ReserveNumber = raw);
+                break;
+            case "NationalMode":
+                AddCellChange(changes, column.Title, entity.NationalMode, entity.NationalMode = raw);
+                break;
+            case "Winner":
+                AddCellChange(changes, column.Title, entity.Winner, entity.Winner = raw);
+                break;
+            case "DeliveryTime":
+                AddCellChange(changes, column.Title, entity.DeliveryTime, entity.DeliveryTime = raw);
+                break;
+            case "Description":
+                AddCellChange(changes, column.Title, entity.Description, entity.Description = raw);
+                break;
+            case "Note":
+                AddCellChange(changes, column.Title, entity.Note, entity.Note = raw);
+                break;
+            case "NMCK":
+                if (!TryParseMoney(raw, out var nmck)) return Result.Fail("НМЦК: некорректное число.");
+                AddCellChange(changes, column.Title, FmtMoney(entity.NMCK), FmtMoney(entity.NMCK = nmck));
+                break;
+            case "MinPrice":
+                if (!TryParseMoney(raw, out var minPrice)) return Result.Fail("Минимальная сумма: некорректное число.");
+                AddCellChange(changes, column.Title, FmtMoney(entity.MinPrice), FmtMoney(entity.MinPrice = minPrice));
+                break;
+            case "ResultPrice":
+                if (!TryParseMoney(raw, out var resultPrice)) return Result.Fail("Итоговая сумма: некорректное число.");
+                AddCellChange(changes, column.Title, FmtMoney(entity.ResultPrice), FmtMoney(entity.ResultPrice = resultPrice));
+                break;
+            case "BiddingDate":
+                AddCellChange(changes, column.Title, FmtDate(entity.BiddingDate), FmtDate(entity.BiddingDate = ParseDate(raw)));
+                break;
+            case "DateOfTransferForPlacement":
+                AddCellChange(changes, column.Title, FmtDate(entity.DateOfTransferForPlacement), FmtDate(entity.DateOfTransferForPlacement = ParseDate(raw)));
+                break;
+            case "DateOfPlacement":
+                AddCellChange(changes, column.Title, FmtDate(entity.DateOfPlacement), FmtDate(entity.DateOfPlacement = ParseDate(raw)));
+                break;
+            case "DateResults":
+                AddCellChange(changes, column.Title, FmtDate(entity.DateResults), FmtDate(entity.DateResults = ParseDate(raw)));
+                break;
+            case "DateOfConclusionOfTheContract":
+                AddCellChange(changes, column.Title, FmtDate(entity.DateOfConclusionOfTheContract), FmtDate(entity.DateOfConclusionOfTheContract = ParseDate(raw)));
+                break;
+            case "IsFinished":
+                AddCellChange(changes, column.Title, FmtBool(entity.IsFinished), FmtBool(entity.IsFinished = raw == "true"));
+                break;
+            case "TypeOfPurchaseId":
+                AddCellChange(changes, column.Title, entity.TypeOfPurchaseId?.ToString() ?? "", entity.TypeOfPurchaseId = ParseInt(raw)?.ToString() ?? "");
+                break;
+            case "B2BStatusId":
+                AddCellChange(changes, column.Title, entity.B2BStatusId?.ToString() ?? "", entity.B2BStatusId = ParseInt(raw)?.ToString() ?? "");
+                break;
+            case "ExecutionStatusId":
+                AddCellChange(changes, column.Title, entity.ExecutionStatusId?.ToString() ?? "", entity.ExecutionStatusId = ParseInt(raw)?.ToString() ?? "");
+                break;
+            default:
+                return Result.Fail($"Колонка «{column.Title}» не поддерживает инлайн-редактирование.");
+        }
+
+        if (changes.Count == 0)
+        {
+            return Result.Ok();
+        }
+
+        await context.SaveChangesAsync(cancellationToken);
+
+        await _audit.WriteAsync(AuditAction.Updated, EntityName, id, actor, changes,
+            $"Изменена запись «{Short(entity.NameLink)}»", cancellationToken);
+
+        await _notifier.PublishAsync(new RegistryChangeEvent(
+            ChangeKind.Updated, EntityName, id, actor.UserName, DateTime.UtcNow,
+            $"{actor.UserName}: {column.Title} → {raw}", null), cancellationToken);
+
+        return Result.Ok();
+    }
+
+    private static void AddCellChange(Dictionary<string, FieldChange> changes, string title, string old, string @new)
+    {
+        var o = old ?? string.Empty;
+        var n = @new ?? string.Empty;
+        if (!string.Equals(o, n, StringComparison.Ordinal))
+        {
+            changes[title] = new FieldChange(o, n);
+        }
+    }
+
+    private static bool TryParseMoney(string raw, out decimal value)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            value = 0m;
+            return true;
+        }
+
+        var normalized = raw.Replace(" ", "").Replace(",", ".");
+        return decimal.TryParse(normalized, NumberStyles.Any, CultureInfo.InvariantCulture, out value);
+    }
+
+    private static DateTime? ParseDate(string raw) =>
+        string.IsNullOrWhiteSpace(raw)
+            ? null
+            : DateTime.TryParse(raw, CultureInfo.InvariantCulture, DateTimeStyles.None, out var d) ? d : null;
+
+    private static int? ParseInt(string raw) =>
+        string.IsNullOrWhiteSpace(raw) ? null : int.TryParse(raw, out var v) ? v : null;
+
+    private static string FmtMoney(decimal value) => value.ToString("0.##", CultureInfo.InvariantCulture);
+
+    private static string FmtDate(DateTime? value) => value?.ToString("dd.MM.yyyy HH:mm") ?? string.Empty;
+
+    private static string FmtBool(bool? value) => value == null ? "" : value == true ? "да" : "нет";
 
     public async Task<Result> DeleteAsync(int id, ChangeActor actor, CancellationToken cancellationToken = default)
     {
