@@ -14,7 +14,7 @@
     <div class="page__header">
         <div>
             <h1>Архив</h1>
-            <p class="page__hint">Найдено @_data.TotalCount архивных записей</p>
+            <p class="page__hint">Найдено @_data.TotalCount архивных записей · архив только для чтения — данные не изменяются</p>
         </div>
 
         <div class="toolbar">
@@ -24,7 +24,6 @@
             </div>
 
             <button type="button" class="btn" @onclick="RestoreSelectedAsync" disabled="@(_busy || _selected is null)">↩ Вернуть в реестр</button>
-            <button type="button" class="btn" @onclick="EditSelectedAsync" disabled="@(_busy || _selected is null)">✎ Изменить</button>
             <button type="button" class="btn btn--danger" @onclick="AskDelete" disabled="@(_busy || _selected is null)">🗑 Удалить</button>
             <button type="button" class="btn btn--ghost" @onclick="ReloadAsync">⟳</button>
         </div>
@@ -55,21 +54,6 @@
     </div>
 </div>
 
-@if (_showEditor && _editModel is not null && _editingId is not null)
-{
-    <RegistryEditDialog Model="@_editModel"
-                        Title="@($"Архивная запись #{_editingId}")"
-                        GlobalError="@_editorError"
-                        IsBusy="@_busy"
-                        IsArchive="true"
-                        TypesOfPurchase="@_typesOfPurchase"
-                        B2BStatuses="@_b2bStatuses"
-                        ExecutionStatuses="@_executionStatuses"
-                        Access="@_access"
-                        OnSave="SaveAsync"
-                        OnClose="CloseEditor" />
-}
-
 @if (_confirm is not null)
 {
     <ConfirmDialog Title="@_confirm.Title"
@@ -93,10 +77,6 @@
     private List<DictionaryItemDto> _executionStatuses = new();
 
     private RegistryRowDto? _selected;
-    private RegeditUpsertRequest? _editModel;
-    private int? _editingId;
-    private string? _editorError;
-    private bool _showEditor;
     private bool _loading;
     private bool _busy;
     private ConfirmRequest? _confirm;
@@ -221,77 +201,6 @@
         {
             _busy = false;
         }
-    }
-
-    private async Task EditSelectedAsync()
-    {
-        if (_selected is null)
-        {
-            return;
-        }
-
-        _editModel = new RegeditUpsertRequest
-        {
-            NameLink = _selected.NameLink,
-            Customer = _selected.Customer,
-            PlaceOfDelivery = _selected.PlaceOfDelivery,
-            ReserveNumber = _selected.ReserveNumber,
-            NationalMode = _selected.NationalMode,
-            BiddingDate = _selected.BiddingDate,
-            DateOfTransferForPlacement = _selected.DateOfTransferForPlacement,
-            DateOfPlacement = _selected.DateOfPlacement,
-            DateResults = _selected.DateResults,
-            DateOfConclusionOfTheContract = _selected.DateOfConclusionOfTheContract,
-            NMCK = _selected.NMCK,
-            MinPrice = _selected.MinPrice,
-            ResultPrice = _selected.ResultPrice,
-            Winner = _selected.Winner,
-            DeliveryTime = _selected.DeliveryTime,
-            Description = _selected.Description,
-            Note = _selected.Note,
-            TypeOfPurchaseId = _selected.TypeOfPurchaseId,
-            B2BStatusId = _selected.B2BStatusId,
-            ExecutionStatusId = _selected.ExecutionStatusId
-        };
-
-        _editingId = _selected.Id;
-        _editorError = null;
-        _showEditor = true;
-        await Task.CompletedTask;
-    }
-
-    private async Task SaveAsync()
-    {
-        if (_editModel is null || _editingId is null)
-        {
-            return;
-        }
-
-        _busy = true;
-        try
-        {
-            var result = await RegistryService.UpdateArchiveAsync(_editingId.Value, _editModel, _actor);
-            if (result.Success)
-            {
-                Toasts.Show("Архивная запись сохранена", ToastKind.Success);
-                CloseEditor();
-            }
-            else
-            {
-                _editorError = result.Error;
-            }
-        }
-        finally
-        {
-            _busy = false;
-        }
-    }
-
-    private void CloseEditor()
-    {
-        _showEditor = false;
-        _editModel = null;
-        _editingId = null;
     }
 
     private void AskDelete()

@@ -9,10 +9,12 @@ public sealed record CellEditLock(int RecordId, string ColumnKey, string UserId,
 }
 
 /// <summary>
-/// Короткоживущие блокировки ячеек «как в Excel»: пока один пользователь редактирует
-/// ячейку, у остальных она заблокирована и видно, кто её правит. Хранится в памяти —
-/// для одного сервера и ~10 одновременных пользователей этого достаточно.
-/// Блокировка живёт не дольше <see cref="Ttl"/> и снимается при сохранении/отмене/выходе.
+/// Блокировки ячеек «как в Excel»: пока один пользователь редактирует ячейку, у остальных
+/// она заблокирована и видно, кто её правит. Хранится в памяти (один сервер, ~10 пользователей).
+///
+/// Таймер бездействия: блокировка живёт, пока есть активность (ввод в ячейке). Если ничего
+/// не меняется <see cref="IdleLimit"/> (2 минуты), блокировка снимается и ячейка открывается
+/// для всех. Активность продлевает блокировку через <see cref="Touch"/>.
 /// </summary>
 public interface ICellEditLockService
 {
@@ -25,16 +27,29 @@ public interface ICellEditLockService
     /// <summary>true — заблокировали (или обновили свою блокировку); false — ячейку правит кто-то другой.</summary>
     bool TryAcquire(int recordId, string columnKey, string userId, string userName);
 
+    /// <summary>Отметить активность (ввод) — продлевает блокировку ещё на 2 минуты.</summary>
+    void Touch(int recordId, string columnKey, string userId);
+
     void Release(int recordId, string columnKey, string userId);
 
     void ReleaseAll(string userId);
 }
 
-public sealed class CellEditLockService : ICellEditLockService
+public sealed class CellEditLockService : ICellEditLockService, IDisposable
 {
-    private static readonly TimeSpan Ttl = TimeSpan.FromSeconds(90);
+    /// <summary>Сколько ячейка ждёт без активности, прежде чем открыться.</summary>
+    private static readonly TimeSpan IdleLimit = TimeSpan.FromMinutes(2);
+
+    private static readonly TimeSpan SweepPeriod = TimeSpan.FromSeconds(15);
 
     private readonly ConcurrentDictionary<string, CellEditLock> _locks = new(StringComparer.Ordinal);
+
+    private readonly Timer _sweepTimer;
+
+    public CellEditLockService()
+    {
+        _sweepTimer = new Timer(_ => SweepAndNotify(), null, SweepPeriod, SweepPeriod);
+    }
 
     public event Action? LocksChanged;
 
@@ -55,7 +70,7 @@ public sealed class CellEditLockService : ICellEditLockService
             return null;
         }
 
-        if (DateTime.UtcNow - lockInfo.SinceUtc > Ttl)
+        if (DateTime.UtcNow - lockInfo.SinceUtc > IdleLimit)
         {
             _locks.TryRemove(key, out _);
             return null;
@@ -78,6 +93,18 @@ public sealed class CellEditLockService : ICellEditLockService
         _locks[key] = new CellEditLock(recordId, columnKey, userId, userName, DateTime.UtcNow);
         LocksChanged?.Invoke();
         return true;
+    }
+
+    public void Touch(int recordId, string columnKey, string userId)
+    {
+        var key = Key(recordId, columnKey);
+
+        // Продлеваем только свою блокировку; событие не дёргаем — остальным важно лишь
+        // то, что ячейка занята, а не точное время последней активности.
+        if (_locks.TryGetValue(key, out var existing) && existing.UserId == userId)
+        {
+            _locks[key] = existing with { SinceUtc = DateTime.UtcNow };
+        }
     }
 
     public void Release(int recordId, string columnKey, string userId)
@@ -108,14 +135,26 @@ public sealed class CellEditLockService : ICellEditLockService
         LocksChanged?.Invoke();
     }
 
-    private void Purge()
+    private void SweepAndNotify()
+    {
+        if (Purge() > 0)
+        {
+            LocksChanged?.Invoke();
+        }
+    }
+
+    private int Purge()
     {
         var now = DateTime.UtcNow;
-        var expired = _locks.Values.Where(x => now - x.SinceUtc > Ttl).Select(x => x.Key).ToList();
+        var expired = _locks.Values.Where(x => now - x.SinceUtc > IdleLimit).Select(x => x.Key).ToList();
 
         foreach (var key in expired)
         {
             _locks.TryRemove(key, out _);
         }
+
+        return expired.Count;
     }
+
+    public void Dispose() => _sweepTimer.Dispose();
 }

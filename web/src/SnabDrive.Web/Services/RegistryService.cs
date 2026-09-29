@@ -26,6 +26,9 @@ public interface IRegistryService
     /// <summary>Инлайн-правка одной ячейки (как в Excel) с аудитом и рассылкой.</summary>
     Task<Result> UpdateCellAsync(int id, string columnKey, string rawValue, ChangeActor actor, CancellationToken cancellationToken = default);
 
+    /// <summary>Быстрое добавление пустой строки (кнопка «Добавить» без модальной формы).</summary>
+    Task<Result<RegistryRowDto>> QuickCreateAsync(ChangeActor actor, CancellationToken cancellationToken = default);
+
     Task<Result> DeleteAsync(int id, ChangeActor actor, CancellationToken cancellationToken = default);
 
     Task<Result> ArchiveAsync(int id, ChangeActor actor, CancellationToken cancellationToken = default);
@@ -485,6 +488,31 @@ public sealed class RegistryService : IRegistryService
             $"{actor.UserName}: {column.Title} → {raw}", null), cancellationToken);
 
         return Result.Ok();
+    }
+
+    public async Task<Result<RegistryRowDto>> QuickCreateAsync(ChangeActor actor, CancellationToken cancellationToken = default)
+    {
+        if (!actor.Access.CanEdit("NameLink") || !actor.Access.CanEdit("Customer"))
+        {
+            return Result<RegistryRowDto>.Fail("Недостаточно прав для добавления строк.");
+        }
+
+        await using var context = await _factory.CreateDbContextAsync(cancellationToken);
+
+        var entity = new Regedit();
+        context.Regedit.Add(entity);
+        await context.SaveChangesAsync(cancellationToken);
+
+        var row = await LoadRowAsync(entity.Id, cancellationToken) ?? new RegistryRowDto { Id = entity.Id };
+
+        await _audit.WriteAsync(AuditAction.Created, EntityName, entity.Id, actor,
+            new Dictionary<string, FieldChange>(), "Добавлена пустая строка", cancellationToken);
+
+        await _notifier.PublishAsync(new RegistryChangeEvent(
+            ChangeKind.Created, EntityName, entity.Id, actor.UserName, DateTime.UtcNow,
+            $"{actor.UserName} добавил(а) строку", row), cancellationToken);
+
+        return Result<RegistryRowDto>.Ok(row);
     }
 
     private static void AddCellChange(Dictionary<string, FieldChange> changes, string title, string old, string @new)

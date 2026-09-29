@@ -139,19 +139,19 @@
                                         else if (column.Kind == ColumnKind.DateTime)
                                         {
                                             <input type="datetime-local" class="cell-input" value="@_editText"
-                                                   @oninput="e => _editText = e.Value?.ToString() ?? string.Empty"
+                                                   @oninput="OnTextInput"
                                                    @onchange="CommitEdit" @onkeydown="OnEditorKeyDown" />
                                         }
                                         else if (column.Kind == ColumnKind.Date)
                                         {
                                             <input type="date" class="cell-input" value="@_editText"
-                                                   @oninput="e => _editText = e.Value?.ToString() ?? string.Empty"
+                                                   @oninput="OnTextInput"
                                                    @onchange="CommitEdit" @onkeydown="OnEditorKeyDown" />
                                         }
                                         else
                                         {
                                             <input type="text" class="cell-input" value="@_editText"
-                                                   @oninput="e => _editText = e.Value?.ToString() ?? string.Empty"
+                                                   @oninput="OnTextInput"
                                                    @onchange="CommitEdit" @onkeydown="OnEditorKeyDown" />
                                         }
                                     </div>
@@ -223,6 +223,7 @@
     [Parameter] public EventCallback<CellClickArgs> OnBeginEdit { get; set; }
     [Parameter] public EventCallback<CellEditCommit> OnCommitEdit { get; set; }
     [Parameter] public EventCallback OnCancelEdit { get; set; }
+    [Parameter] public EventCallback OnEditActivity { get; set; }
 
     private string _editText = string.Empty;
     private bool _editBool;
@@ -297,6 +298,14 @@
             OnCommitEdit.InvokeAsync(new CellEditCommit(EditingCell.Value.RecordId, EditingCell.Value.ColumnKey, _editBool ? "true" : "false"));
         }
     }
+
+    private void OnTextInput(ChangeEventArgs e)
+    {
+        _editText = e.Value?.ToString() ?? string.Empty;
+        Activity();
+    }
+
+    private void Activity() => OnEditActivity.InvokeAsync();
 
     private void OnSelectChange(ChangeEventArgs e)
     {

@@ -48,7 +48,7 @@
                 @if (_columnsOpen)
                 {
                     <div class="columns-picker__panel">
-                        @foreach (var column in RegistryColumns.All.Where(c => _access.CanView(c.Key)))
+                        @foreach (var column in RegistryColumns.All.Where(c => c.Key != "ArchivateDate" && _access.CanView(c.Key)))
                         {
                             <label class="checkbox-label">
                                 <input type="checkbox" checked="@_visible.Contains(column.Key)"
@@ -96,7 +96,8 @@
                       EditingCell="@_editCell"
                       OnBeginEdit="BeginEditCell"
                       OnCommitEdit="CommitEditCellAsync"
-                      OnCancelEdit="CancelEditCell" />
+                      OnCancelEdit="CancelEditCell"
+                      OnEditActivity="OnEditActivity" />
     </div>
 
     <div class="pager">
@@ -215,7 +216,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        _visible = RegistryColumns.DefaultVisible.Select(c => c.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        _visible = RegistryColumns.DefaultVisible.Where(c => c.Key != "ArchivateDate").Select(c => c.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
         RebuildVisibleColumns();
 
         var state = await AuthStateProvider.GetAuthenticationStateAsync();
@@ -240,7 +241,7 @@
     private void RebuildVisibleColumns()
     {
         _visibleColumns = RegistryColumns.All
-            .Where(c => _visible.Contains(c.Key) && _access.CanView(c.Key))
+            .Where(c => c.Key != "ArchivateDate" && _visible.Contains(c.Key) && _access.CanView(c.Key))
             .ToList();
     }
 
@@ -468,6 +469,14 @@
         }
     }
 
+    private void OnEditActivity()
+    {
+        if (_editCell is not null)
+        {
+            Locks.Touch(_editCell.Value.RecordId, _editCell.Value.ColumnKey, _actor.UserId);
+        }
+    }
+
     private void CancelEditCell()
     {
         if (_editCell is not null)
@@ -482,18 +491,31 @@
 
     private async Task CreateAsync()
     {
-        _editModel = new RegeditUpsertRequest
+        _busy = true;
+
+        try
         {
-            BiddingDate = DateTime.Today,
-            TypeOfPurchaseId = _typesOfPurchase.FirstOrDefault()?.Id,
-            B2BStatusId = _b2bStatuses.FirstOrDefault()?.Id,
-            ExecutionStatusId = _executionStatuses.FirstOrDefault()?.Id
-        };
-        _editingId = null;
-        _editorTitle = "Новая запись";
-        _editorError = null;
-        _showEditor = true;
-        await Task.CompletedTask;
+            var result = await RegistryService.QuickCreateAsync(_actor);
+
+            if (!result.Success)
+            {
+                Toasts.Show(result.Error ?? "Не удалось добавить строку", ToastKind.Error);
+                return;
+            }
+
+            Toasts.Show("Строка добавлена — заполните значения прямо в таблице", ToastKind.Success);
+            await ReloadAsync();
+
+            var newRow = _data.Items.FirstOrDefault(r => r.Id == result.Value!.Id);
+            if (newRow is not null)
+            {
+                BeginEditCell(new CellClickArgs(newRow.Id, "NameLink", newRow));
+            }
+        }
+        finally
+        {
+            _busy = false;
+        }
     }
 
     private async Task EditSelectedAsync()
