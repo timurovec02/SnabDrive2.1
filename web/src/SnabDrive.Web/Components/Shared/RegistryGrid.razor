@@ -159,7 +159,7 @@
                                 else if (column.Kind == ColumnKind.Link)
                                 {
                                     <a class="registry-grid__link" href="@row.NameLink" target="_blank"
-                                       rel="noopener noreferrer" title="@row.NameLink">@Truncate(row.NameLink)</a>
+                                       rel="noopener noreferrer" title="@row.NameLink">@row.NameLink</a>
                                     @if (lockedByOther)
                                     {
                                         <LockBadge UserName="@cellLock!.UserName" />
@@ -436,7 +436,7 @@
 
     private string TextValue(RegistryRowDto row, string key) => key switch
     {
-        "NameLink" => Truncate(row.NameLink),
+        "NameLink" => row.NameLink,
         "Customer" => row.Customer,
         "TypeOfPurchaseId" => row.TypeOfPurchaseName ?? string.Empty,
         "PlaceOfDelivery" => row.PlaceOfDelivery,

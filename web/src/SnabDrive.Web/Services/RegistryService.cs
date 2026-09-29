@@ -515,6 +515,20 @@ public sealed class RegistryService : IRegistryService
         return Result<RegistryRowDto>.Ok(row);
     }
 
+    /// <summary>
+    /// База WPF создана БЕЗ каскадного удаления по FK_CellColors_Regedit, поэтому
+    /// перед удалением/архивацией строки чистим её подсветку явно — иначе SQL Server
+    /// бросит конфликт DELETE (error 547).
+    /// </summary>
+    private static async Task RemoveCellColorsAsync(RegistryDbContext context, int regeditId, CancellationToken cancellationToken)
+    {
+        var colors = await context.CellColors.Where(c => c.RegeditId == regeditId).ToListAsync(cancellationToken);
+        if (colors.Count > 0)
+        {
+            context.CellColors.RemoveRange(colors);
+        }
+    }
+
     private static void AddCellChange(Dictionary<string, FieldChange> changes, string title, string old, string @new)
     {
         var o = old ?? string.Empty;
@@ -562,6 +576,7 @@ public sealed class RegistryService : IRegistryService
         }
 
         var name = entity.NameLink;
+        await RemoveCellColorsAsync(context, id, cancellationToken);
         context.Regedit.Remove(entity);
         await context.SaveChangesAsync(cancellationToken);
 
@@ -612,6 +627,7 @@ public sealed class RegistryService : IRegistryService
         };
 
         context.ArchiveRegedit.Add(archive);
+        await RemoveCellColorsAsync(context, id, cancellationToken);
         context.Regedit.Remove(entity);
         await context.SaveChangesAsync(cancellationToken);
 
