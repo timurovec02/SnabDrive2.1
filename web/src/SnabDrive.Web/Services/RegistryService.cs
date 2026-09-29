@@ -446,14 +446,26 @@ public sealed class RegistryService : IRegistryService
                 AddCellChange(changes, column.Title, FmtBool(entity.IsFinished), FmtBool(entity.IsFinished = raw == "true"));
                 break;
             case "TypeOfPurchaseId":
-                AddCellChange(changes, column.Title, entity.TypeOfPurchaseId?.ToString() ?? "", entity.TypeOfPurchaseId = ParseInt(raw)?.ToString() ?? "");
+            {
+                var old_TypeOfPurchaseId = entity.TypeOfPurchaseId?.ToString() ?? "";
+                entity.TypeOfPurchaseId = ParseInt(raw);
+                AddCellChange(changes, column.Title, old_TypeOfPurchaseId, entity.TypeOfPurchaseId?.ToString() ?? "");
                 break;
+            }
             case "B2BStatusId":
-                AddCellChange(changes, column.Title, entity.B2BStatusId?.ToString() ?? "", entity.B2BStatusId = ParseInt(raw)?.ToString() ?? "");
+            {
+                var old_B2BStatusId = entity.B2BStatusId?.ToString() ?? "";
+                entity.B2BStatusId = ParseInt(raw);
+                AddCellChange(changes, column.Title, old_B2BStatusId, entity.B2BStatusId?.ToString() ?? "");
                 break;
+            }
             case "ExecutionStatusId":
-                AddCellChange(changes, column.Title, entity.ExecutionStatusId?.ToString() ?? "", entity.ExecutionStatusId = ParseInt(raw)?.ToString() ?? "");
+            {
+                var old_ExecutionStatusId = entity.ExecutionStatusId?.ToString() ?? "";
+                entity.ExecutionStatusId = ParseInt(raw);
+                AddCellChange(changes, column.Title, old_ExecutionStatusId, entity.ExecutionStatusId?.ToString() ?? "");
                 break;
+            }
             default:
                 return Result.Fail($"Колонка «{column.Title}» не поддерживает инлайн-редактирование.");
         }
