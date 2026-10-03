@@ -5,8 +5,9 @@
 @inject UserSessionState Session
 @inject IToastService Toasts
 
-<div class="app-shell">
+<div class="app-shell @(_navCollapsed ? "nav-collapsed" : "")">
     <header class="app-header">
+        <button class="btn btn--ghost nav-toggle" @onclick="ToggleNav" title="@(_navCollapsed ? "Развернуть меню" : "Свернуть меню")">@(_navCollapsed ? "»" : "«")</button>
         <div class="app-header__brand">
             <span class="app-logo">SD</span>
             <div>
@@ -34,7 +35,7 @@
     </header>
 
     <div class="app-body">
-        <NavMenu IsAdmin="_isAdmin" />
+        <NavMenu IsAdmin="_isAdmin" Collapsed="_navCollapsed" />
 
         <main class="app-main">
             @Body
@@ -48,6 +49,9 @@
     private string _displayName = "…";
     private string _email = string.Empty;
     private bool _isAdmin;
+    private bool _navCollapsed;
+
+    private void ToggleNav() => _navCollapsed = !_navCollapsed;
 
     protected override async Task OnInitializedAsync()
     {

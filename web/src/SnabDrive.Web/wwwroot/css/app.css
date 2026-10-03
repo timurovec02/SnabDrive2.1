@@ -1075,3 +1075,23 @@ input:disabled {
     white-space: nowrap;
     vertical-align: middle;
 }
+
+/* --- сворачиваемый левый бар --- */
+.nav-toggle {
+    font-weight: 700;
+    padding: 4px 10px;
+    line-height: 1;
+}
+
+.app-shell.nav-collapsed .nav {
+    width: 64px;
+}
+
+.app-shell.nav-collapsed .nav__item {
+    justify-content: center;
+}
+
+.app-shell.nav-collapsed .nav__item .nav__label,
+.app-shell.nav-collapsed .nav__footer {
+    display: none;
+}

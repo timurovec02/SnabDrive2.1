@@ -1,17 +1,17 @@
 @inject NavigationManager Navigation
 
-<nav class="nav">
-    <NavLink class="nav__item" href="" Match="NavLinkMatch.All">
-        <span class="nav__icon">▤</span> Реестр
+<nav class="nav" title="@(Collapsed ? "Меню свёрнуто" : null)">
+    <NavLink class="nav__item" href="" Match="NavLinkMatch.All" title="Реестр">
+        <span class="nav__icon">▤</span><span class="nav__label">Реестр</span>
     </NavLink>
-    <NavLink class="nav__item" href="home">
-        <span class="nav__icon">▦</span> Обзор
+    <NavLink class="nav__item" href="home" title="Обзор">
+        <span class="nav__icon">▦</span><span class="nav__label">Обзор</span>
     </NavLink>
 
     @if (IsAdmin)
     {
-        <NavLink class="nav__item" href="archive">
-            <span class="nav__icon">🗄</span> Архив
+        <NavLink class="nav__item" href="archive" title="Архив">
+            <span class="nav__icon">🗄</span><span class="nav__label">Архив</span>
         </NavLink>
     }
 
@@ -19,14 +19,14 @@
 
     @if (IsAdmin)
     {
-        <NavLink class="nav__item" href="dictionaries">
-            <span class="nav__icon">☰</span> Справочники
+        <NavLink class="nav__item" href="dictionaries" title="Справочники">
+            <span class="nav__icon">☰</span><span class="nav__label">Справочники</span>
         </NavLink>
-        <NavLink class="nav__item" href="users">
-            <span class="nav__icon">👤</span> Пользователи
+        <NavLink class="nav__item" href="users" title="Пользователи">
+            <span class="nav__icon">👤</span><span class="nav__label">Пользователи</span>
         </NavLink>
-        <NavLink class="nav__item" href="audit">
-            <span class="nav__icon">🕓</span> Журнал
+        <NavLink class="nav__item" href="audit" title="Журнал">
+            <span class="nav__icon">🕓</span><span class="nav__label">Журнал</span>
         </NavLink>
     }
 
@@ -37,4 +37,5 @@
 
 @code {
     [Parameter] public bool IsAdmin { get; set; }
+    [Parameter] public bool Collapsed { get; set; }
 }
