@@ -174,7 +174,7 @@
         catch (Exception ex)
         {
             _messageOk = false;
-            _message = $"Ошибка загрузки: {ex.Message}";
+            _message = $"Ошибка загрузки: {ex.InnerException?.Message ?? ex.Message}";
         }
         finally
         {

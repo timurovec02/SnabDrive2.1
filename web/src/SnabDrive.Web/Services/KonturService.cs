@@ -86,7 +86,16 @@ public sealed class KonturService : IKonturService
             return Result<int>.Fail("Все строки из файла уже есть в избранном.");
         }
 
-        await context.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            var inner = ex.InnerException?.Message ?? ex.Message;
+            return Result<int>.Fail($"Не удалось сохранить избранное. Убедитесь, что выполнен web/sql/kontur.sql. Причина: {inner}");
+        }
+
         return Result<int>.Ok(added);
     }
 
