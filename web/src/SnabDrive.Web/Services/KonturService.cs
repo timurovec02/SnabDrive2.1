@@ -40,7 +40,12 @@ public sealed class KonturService : IKonturService
         List<KonturFavorite> parsed;
         try
         {
-            parsed = ParseWorkbook(excelStream, actor.UserName);
+            // Поток из InputFile (Blazor Server) не поддерживает синхронное чтение,
+            // а ClosedXML читает синхронно — буферизуем в MemoryStream.
+            using var buffer = new MemoryStream();
+            await excelStream.CopyToAsync(buffer, cancellationToken);
+            buffer.Position = 0;
+            parsed = ParseWorkbook(buffer, actor.UserName);
         }
         catch (Exception ex)
         {
