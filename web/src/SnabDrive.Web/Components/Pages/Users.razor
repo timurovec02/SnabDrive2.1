@@ -106,6 +106,9 @@
                         <label class="checkbox-label">
                             <input type="checkbox" @bind="_model.IsBlocked" /> Заблокирован
                         </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" @bind="_model.KonturEnabled" /> Доступ к Контур
+                        </label>
                     </div>
                 </div>
 
@@ -193,7 +196,7 @@
 
 @code {
     private sealed record UserRow(string Id, string UserName, string? DisplayName, string? Email,
-                                  bool IsAdmin, bool IsBlocked, bool IsOnline, DateTime? LastLoginUtc);
+                                  bool IsAdmin, bool IsBlocked, bool IsOnline, DateTime? LastLoginUtc, bool KonturEnabled);
 
     private sealed class UserModel
     {
@@ -203,6 +206,7 @@
         public string? Password { get; set; }
         public bool IsAdmin { get; set; }
         public bool IsBlocked { get; set; }
+        public bool KonturEnabled { get; set; }
     }
 
     private List<UserRow> _users = new();
@@ -249,7 +253,8 @@
                 await UserManager.IsInRoleAsync(user, AppRoles.Admin),
                 user.IsBlocked,
                 online.Contains(user.Id),
-                user.LastLoginUtc));
+                user.LastLoginUtc,
+                user.KonturEnabled));
         }
 
         _users = rows;
@@ -272,7 +277,8 @@
             DisplayName = user.DisplayName,
             Email = user.Email,
             IsAdmin = user.IsAdmin,
-            IsBlocked = user.IsBlocked
+            IsBlocked = user.IsBlocked,
+            KonturEnabled = user.KonturEnabled
         };
         _formError = null;
         _showForm = true;
@@ -332,7 +338,8 @@
             DisplayName = _model.DisplayName,
             Email = string.IsNullOrWhiteSpace(_model.Email) ? null : _model.Email,
             EmailConfirmed = !string.IsNullOrWhiteSpace(_model.Email),
-            IsBlocked = _model.IsBlocked
+            IsBlocked = _model.IsBlocked,
+            KonturEnabled = _model.KonturEnabled
         };
 
         var created = await UserManager.CreateAsync(user, _model.Password);
@@ -361,6 +368,7 @@
 
         user.DisplayName = _model.DisplayName;
         user.IsBlocked = _model.IsBlocked;
+        user.KonturEnabled = _model.KonturEnabled;
 
         if (!string.IsNullOrWhiteSpace(_model.Email))
         {

@@ -25,6 +25,7 @@ public class RegistryDbContext : DbContext
     public DbSet<ExecutionStatus> ExecutionStatuses => Set<ExecutionStatus>();
     public DbSet<CellColor> CellColors => Set<CellColor>();
     public DbSet<LegacyUser> LegacyUsers => Set<LegacyUser>();
+    public DbSet<KonturFavorite> KonturFavorites => Set<KonturFavorite>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -177,6 +178,24 @@ public class RegistryDbContext : DbContext
             entity.Property(x => x.Password).HasColumnName("Password");
             entity.Property(x => x.Email).HasColumnName("Email");
             entity.Property(x => x.IsAdmin).HasColumnName("IsAdmin");
+        });
+
+        modelBuilder.Entity<KonturFavorite>(entity =>
+        {
+            entity.ToTable("KonturFavorites");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.PurchaseNumber).HasColumnName("PurchaseNumber").HasMaxLength(200);
+            entity.Property(x => x.NameLink).HasColumnName("NameLink").HasMaxLength(1000).IsRequired();
+            entity.Property(x => x.Customer).HasColumnName("Customer").HasMaxLength(1000);
+            entity.Property(x => x.NMCK).HasColumnName("NMCK").HasPrecision(18, 2);
+            entity.Property(x => x.BiddingDate).HasColumnName("BiddingDate");
+            entity.Property(x => x.DateOfPlacement).HasColumnName("DateOfPlacement");
+            entity.Property(x => x.Status).HasColumnName("Status");
+            entity.Property(x => x.RegeditId).HasColumnName("RegeditId");
+            entity.Property(x => x.RawJson).HasColumnName("RawJson");
+            entity.Property(x => x.AddedAt).HasColumnName("AddedAt");
+            entity.Property(x => x.AddedBy).HasColumnName("AddedBy").HasMaxLength(256);
+            entity.HasIndex(x => x.Status);
         });
     }
 }

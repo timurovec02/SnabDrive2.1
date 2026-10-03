@@ -1,0 +1,197 @@
+@page "/kontur"
+@attribute [Authorize]
+@inject IKonturService Kontur
+@inject IToastService Toasts
+
+<PageTitle>Избранное Контур — SnabDrive</PageTitle>
+
+<div class="page">
+    <div class="page__header">
+        <div>
+            <h1>Избранное Контур</h1>
+            <p class="page__hint">
+                Выгрузка из Контур.Закупки. Загрузите Excel-файл, отберите нужные закупки
+                и перенесите их в реестр.
+            </p>
+        </div>
+    </div>
+
+    @if (_denied)
+    {
+        <div class="alert alert--warn">У вас нет доступа к выгрузке из Контур. Обратитесь к администратору.</div>
+    }
+    else
+    {
+        <div class="toolbar">
+            <label class="btn btn--primary">
+                Загрузить Excel
+                <InputFile OnChange="OnFileSelected" style="display:none" />
+            </label>
+            <button class="btn" @onclick="LoadAsync">Обновить</button>
+            <label class="chk">
+                <input type="checkbox" @bind="_onlyNew" @bind:after="LoadAsync" /> только новые
+            </label>
+            <div class="toolbar__spacer"></div>
+            <button class="btn btn--primary" disabled="@(_selected.Count == 0 || _busy)" @onclick="ImportSelectedAsync">
+                Перенести в реестр (@_selected.Count)
+            </button>
+            <button class="btn" disabled="@(_selected.Count == 0 || _busy)" @onclick="RejectSelectedAsync">Отклонить</button>
+        </div>
+
+        @if (_message is not null)
+        {
+            <div class="alert @(_messageOk ? "alert--ok" : "alert--warn")">@_message</div>
+        }
+
+        <div class="table-wrap">
+            <table class="registry-grid">
+                <thead>
+                    <tr>
+                        <th style="width:36px"></th>
+                        <th>Номер</th>
+                        <th>Наименование</th>
+                        <th>Заказчик</th>
+                        <th>НМЦК</th>
+                        <th>Дата торгов</th>
+                        <th>Статус</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (_favorites.Count == 0)
+                    {
+                        <tr><td colspan="7" class="registry-grid__empty">Нет строк. Загрузите Excel-выгрузку из Контур.</td></tr>
+                    }
+                    else
+                    {
+                        @foreach (var f in _favorites)
+                        {
+                            <tr class="@(f.Status == KonturFavoriteStatus.Imported ? "is-finished" : "")">
+                                <td>
+                                    @if (f.Status == KonturFavoriteStatus.New)
+                                    {
+                                        <input type="checkbox" checked="@_selected.Contains(f.Id)"
+                                               @onchange="e => Toggle(f.Id, e.Value is bool b && b)" />
+                                    }
+                                </td>
+                                <td>@f.PurchaseNumber</td>
+                                <td>@f.NameLink</td>
+                                <td>@f.Customer</td>
+                                <td class="money-cell">@f.NMCK.ToString("# ##0.00")</td>
+                                <td>@(f.BiddingDate?.ToString("dd.MM.yyyy HH:mm") ?? "—")</td>
+                                <td>
+                                    @switch (f.Status)
+                                    {
+                                        case KonturFavoriteStatus.Imported:
+                                            <span class="badge badge--ok">в реестре @(f.RegeditId is null ? "" : $"#{f.RegeditId}")</span>
+                                            break;
+                                        case KonturFavoriteStatus.Rejected:
+                                            <span class="badge">отклонено</span>
+                                            break;
+                                        default:
+                                            <span class="badge badge--info">новое</span>
+                                            break;
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
+
+    private List<KonturFavorite> _favorites = new();
+    private readonly HashSet<int> _selected = new();
+    private ChangeActor _actor = new(string.Empty, "system");
+    private bool _denied;
+    private bool _onlyNew = true;
+    private bool _busy;
+    private string? _message;
+    private bool _messageOk;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthState is not null)
+        {
+            var state = await AuthState;
+            var user = state.User;
+            _denied = !KonturClaim.CanUse(user);
+            _actor = new ChangeActor(user.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty,
+                                     user.Identity?.Name ?? "system");
+        }
+
+        if (!_denied)
+        {
+            await LoadAsync();
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        _favorites = (await Kontur.GetFavoritesAsync(_onlyNew)).ToList();
+        _selected.Clear();
+    }
+
+    private void Toggle(int id, bool on)
+    {
+        if (on)
+        {
+            _selected.Add(id);
+        }
+        else
+        {
+            _selected.Remove(id);
+        }
+    }
+
+    private async Task OnFileSelected(InputFileChangeEventArgs e)
+    {
+        _busy = true;
+        _message = null;
+        try
+        {
+            await using var stream = e.File.OpenReadStream(20 * 1024 * 1024);
+            var result = await Kontur.ImportFromExcelAsync(stream, _actor);
+            _messageOk = result.Success;
+            _message = result.Success
+                ? $"Добавлено строк в избранное: {result.Value}."
+                : result.Error;
+            if (result.Success)
+            {
+                await LoadAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            _messageOk = false;
+            _message = $"Ошибка загрузки: {ex.Message}";
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task ImportSelectedAsync()
+    {
+        _busy = true;
+        _message = null;
+        var result = await Kontur.ImportToRegistryAsync(_selected, _actor);
+        _messageOk = result.Success;
+        _message = result.Success ? $"Перенесено в реестр: {result.Value}." : result.Error;
+        await LoadAsync();
+        _busy = false;
+    }
+
+    private async Task RejectSelectedAsync()
+    {
+        _busy = true;
+        await Kontur.SetStatusAsync(_selected, KonturFavoriteStatus.Rejected);
+        await LoadAsync();
+        _busy = false;
+    }
+}

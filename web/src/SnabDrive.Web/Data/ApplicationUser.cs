@@ -22,5 +22,8 @@ public class ApplicationUser : IdentityUser
     /// <summary>Все колонки либо только разрешённые в UserColumnPermission.</summary>
     public ColumnAccessMode ColumnAccessMode { get; set; } = ColumnAccessMode.AllColumns;
 
+    /// <summary>Доступ к выгрузке из Контур.Закупки (Избранное Контур).</summary>
+    public bool KonturEnabled { get; set; }
+
     public string DisplayNameOrDefault => string.IsNullOrWhiteSpace(DisplayName) ? (UserName ?? string.Empty) : DisplayName;
 }

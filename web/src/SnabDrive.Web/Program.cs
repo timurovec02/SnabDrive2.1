@@ -74,6 +74,7 @@ builder.Services
     .AddRoles<IdentityRole>()
     .AddEntityFrameworkStores<AppIdentityDbContext>()
     .AddSignInManager()
+    .AddClaimsPrincipalFactory<AppClaimsPrincipalFactory>()
     .AddDefaultTokenProviders();
 
 builder.Services.ConfigureApplicationCookie(options =>
@@ -124,6 +125,7 @@ builder.Services.AddSingleton<IPresenceService, PresenceService>();
 builder.Services.AddScoped<IAuditService, AuditService>();
 builder.Services.AddScoped<IRegistryNotifier, SignalRRegistryNotifier>();
 builder.Services.AddScoped<IRegistryService, RegistryService>();
+builder.Services.AddScoped<IKonturService, KonturService>();
 builder.Services.AddScoped<IDictionaryService, DictionaryService>();
 builder.Services.AddScoped<IColumnAccessService, ColumnAccessService>();
 builder.Services.AddSingleton<ICellEditLockService, CellEditLockService>();

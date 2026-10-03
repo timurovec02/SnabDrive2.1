@@ -61,6 +61,10 @@
             </div>
 
             <button type="button" class="btn btn--primary" @onclick="CreateAsync" disabled="@_busy">＋ Добавить</button>
+            @if (_konturEnabled)
+            {
+                <button type="button" class="btn" @onclick='() => Navigation.NavigateTo("/kontur")'>★ Контур</button>
+            }
             <button type="button" class="btn" @onclick="EditSelectedAsync" disabled="@(_busy || _selected is null)">✎ Изменить</button>
             <button type="button" class="btn btn--danger" @onclick="AskDelete" disabled="@(_busy || _selected is null)">🗑 Удалить</button>
 
@@ -177,6 +181,7 @@
     private bool _loading;
     private bool _busy;
     private bool _isAdmin;
+    private bool _konturEnabled;
     private bool _columnsOpen;
     private bool _realtimeOn;
 
@@ -221,6 +226,7 @@
 
         var state = await AuthStateProvider.GetAuthenticationStateAsync();
         _isAdmin = state.User.IsInRole(AppRoles.Admin);
+        _konturEnabled = SnabDrive.Web.Data.KonturClaim.CanUse(state.User);
 
         var userId = state.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "-";
         _access = await ColumnAccess.GetAsync(userId);
