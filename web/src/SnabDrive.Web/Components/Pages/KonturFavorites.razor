@@ -53,13 +53,16 @@
                         <th>Заказчик</th>
                         <th>НМЦК</th>
                         <th>Дата торгов</th>
+                        <th>Место поставки</th>
+                        <th>Победитель</th>
+                        <th>Итог</th>
                         <th>Статус</th>
                     </tr>
                 </thead>
                 <tbody>
                     @if (_favorites.Count == 0)
                     {
-                        <tr><td colspan="7" class="registry-grid__empty">Нет строк. Загрузите Excel-выгрузку из Контур.</td></tr>
+                        <tr><td colspan="10" class="registry-grid__empty">Нет строк. Загрузите Excel-выгрузку из Контур.</td></tr>
                     }
                     else
                     {
@@ -78,6 +81,9 @@
                                 <td>@f.Customer</td>
                                 <td class="money-cell">@f.NMCK.ToString("# ##0.00")</td>
                                 <td>@(f.BiddingDate?.ToString("dd.MM.yyyy HH:mm") ?? "—")</td>
+                                <td>@f.PlaceOfDelivery</td>
+                                <td>@f.Winner</td>
+                                <td class="money-cell">@f.ResultPrice.ToString("# ##0.00")</td>
                                 <td>
                                     @switch (f.Status)
                                     {

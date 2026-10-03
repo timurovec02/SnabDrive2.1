@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Linq;
 using System.Text.Json;
 using ClosedXML.Excel;
 using Microsoft.EntityFrameworkCore;
@@ -119,7 +120,10 @@ public sealed class KonturService : IKonturService
                 Customer = favorite.Customer,
                 NMCK = favorite.NMCK,
                 BiddingDate = favorite.BiddingDate,
-                DateOfPlacement = favorite.DateOfPlacement
+                DateOfPlacement = favorite.DateOfPlacement,
+                PlaceOfDelivery = favorite.PlaceOfDelivery,
+                Winner = favorite.Winner,
+                ResultPrice = favorite.ResultPrice
             };
 
             var created = await _registry.CreateAsync(request, actor, cancellationToken);
@@ -166,31 +170,77 @@ public sealed class KonturService : IKonturService
         }
 
         var headerRow = rows[0];
-        var headers = new Dictionary<int, string>();
+        var cols = new List<(int Col, string Name)>();
         foreach (var cell in headerRow.CellsUsed())
         {
-            headers[cell.Address.ColumnNumber] = cell.GetString().Trim();
+            cols.Add((cell.Address.ColumnNumber, cell.GetString().Trim()));
         }
 
-        var colNumber = FindColumn(headers, "номер", "реестров", "извещен", "№");
-        var colName = FindColumn(headers, "наименован", "предмет", "объект");
-        var colCustomer = FindColumn(headers, "заказчик", "организатор", "организаци");
-        var colNmck = FindColumn(headers, "нмцк", "нмц", "начальн", "цена", "сумма", "бюджет");
-        var colBidding = FindColumn(headers, "окончан", "подач", "торг", "подведен", "вскрыт");
-        var colPlacement = FindColumn(headers, "размещен", "публикац", "опубликован");
+        int? Find(params string[] names)
+        {
+            foreach (var c in cols)
+            {
+                if (names.Any(n => string.Equals(c.Name, n, StringComparison.OrdinalIgnoreCase)))
+                {
+                    return c.Col;
+                }
+            }
+
+            return null;
+        }
+
+        int? FindContains(params string[] parts)
+        {
+            foreach (var c in cols)
+            {
+                if (parts.Any(pt => c.Name.Contains(pt, StringComparison.OrdinalIgnoreCase)))
+                {
+                    return c.Col;
+                }
+            }
+
+            return null;
+        }
+
+        // Точная карта колонок выгрузки Контур. Дубликат «Название»:
+        // первое — наименование закупки, второе (после «Регион») — заказчик.
+        var colNumber = Find("Номер");
+        var colName = Find("Название");
+        var colNmck = Find("НМЦ");
+        var colPlacement = Find("Дата публикации");
+        var colBidding = Find("Проведение отбора") ?? Find("Окончание приема заявок");
+        var colDelivery = Find("Место поставки");
+        var colWinner = Find("Название победителя") ?? Find("Название поставщика");
+        var colResult = Find("Предложение победителя") ?? Find("Цена договора");
+
+        int? colCustomer = null;
+        var regionCol = Find("Регион");
+        if (regionCol is not null)
+        {
+            foreach (var c in cols)
+            {
+                if (c.Col > regionCol && c.Name == "Название")
+                {
+                    colCustomer = c.Col;
+                    break;
+                }
+            }
+        }
+
+        colCustomer ??= FindContains("Размещает") ?? FindContains("заказчик", "организатор");
+        colName ??= FindContains("наименован", "предмет", "объект");
+        colNmck ??= FindContains("нмц", "цена", "бюджет");
 
         for (var i = 1; i < rows.Count; i++)
         {
             var row = rows[i];
             var raw = new Dictionary<string, string>();
-            foreach (var (col, name) in headers)
+            foreach (var (col, name) in cols)
             {
                 raw[name] = sheet.Cell(row.RowNumber(), col).GetString().Trim();
             }
 
-            var nameLink = colNumber is null && colName is null
-                ? string.Empty
-                : Text(sheet, row.RowNumber(), colName);
+            var nameLink = Text(sheet, row.RowNumber(), colName);
             var purchaseNumber = Text(sheet, row.RowNumber(), colNumber);
 
             if (string.IsNullOrWhiteSpace(nameLink) && string.IsNullOrWhiteSpace(purchaseNumber))
@@ -206,6 +256,9 @@ public sealed class KonturService : IKonturService
                 NMCK = Money(sheet, row.RowNumber(), colNmck),
                 BiddingDate = Date(sheet, row.RowNumber(), colBidding),
                 DateOfPlacement = Date(sheet, row.RowNumber(), colPlacement),
+                PlaceOfDelivery = Text(sheet, row.RowNumber(), colDelivery),
+                Winner = Text(sheet, row.RowNumber(), colWinner),
+                ResultPrice = Money(sheet, row.RowNumber(), colResult),
                 Status = KonturFavoriteStatus.New,
                 RawJson = JsonSerializer.Serialize(raw),
                 AddedAt = DateTime.Now,
@@ -214,20 +267,6 @@ public sealed class KonturService : IKonturService
         }
 
         return result;
-    }
-
-    private static int? FindColumn(Dictionary<int, string> headers, params string[] keywords)
-    {
-        foreach (var (col, name) in headers)
-        {
-            var lower = name.ToLowerInvariant();
-            if (keywords.Any(k => lower.Contains(k, StringComparison.OrdinalIgnoreCase)))
-            {
-                return col;
-            }
-        }
-
-        return null;
     }
 
     private static string Text(IXLWorksheet sheet, int row, int? col) =>

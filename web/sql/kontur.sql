@@ -15,6 +15,9 @@ BEGIN
         NameLink        nvarchar(1000) NOT NULL,
         Customer        nvarchar(1000) NULL,
         NMCK            decimal(18,2)  NOT NULL CONSTRAINT DF_KonturFavorites_NMCK DEFAULT(0),
+        PlaceOfDelivery nvarchar(1000) NULL,
+        Winner          nvarchar(500)  NULL,
+        ResultPrice     decimal(18,2)  NOT NULL CONSTRAINT DF_KonturFavorites_ResultPrice DEFAULT(0),
         BiddingDate     datetime2(7)   NULL,
         DateOfPlacement datetime2(7)   NULL,
         Status          int            NOT NULL CONSTRAINT DF_KonturFavorites_Status DEFAULT(0),
@@ -29,6 +32,17 @@ BEGIN
 END
 ELSE
     PRINT 'KonturFavorites уже существует.';
+GO
+
+IF OBJECT_ID('dbo.KonturFavorites', 'U') IS NOT NULL
+BEGIN
+    IF COL_LENGTH('dbo.KonturFavorites', 'PlaceOfDelivery') IS NULL
+        ALTER TABLE dbo.KonturFavorites ADD PlaceOfDelivery nvarchar(1000) NULL;
+    IF COL_LENGTH('dbo.KonturFavorites', 'Winner') IS NULL
+        ALTER TABLE dbo.KonturFavorites ADD Winner nvarchar(500) NULL;
+    IF COL_LENGTH('dbo.KonturFavorites', 'ResultPrice') IS NULL
+        ALTER TABLE dbo.KonturFavorites ADD ResultPrice decimal(18,2) NOT NULL CONSTRAINT DF_KonturFavorites_ResultPrice DEFAULT(0);
+END
 GO
 
 IF COL_LENGTH('dbo.AspNetUsers', 'KonturEnabled') IS NULL

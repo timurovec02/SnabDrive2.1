@@ -188,6 +188,9 @@ public class RegistryDbContext : DbContext
             entity.Property(x => x.NameLink).HasColumnName("NameLink").HasMaxLength(1000).IsRequired();
             entity.Property(x => x.Customer).HasColumnName("Customer").HasMaxLength(1000);
             entity.Property(x => x.NMCK).HasColumnName("NMCK").HasPrecision(18, 2);
+            entity.Property(x => x.PlaceOfDelivery).HasColumnName("PlaceOfDelivery").HasMaxLength(1000);
+            entity.Property(x => x.Winner).HasColumnName("Winner").HasMaxLength(500);
+            entity.Property(x => x.ResultPrice).HasColumnName("ResultPrice").HasPrecision(18, 2);
             entity.Property(x => x.BiddingDate).HasColumnName("BiddingDate");
             entity.Property(x => x.DateOfPlacement).HasColumnName("DateOfPlacement");
             entity.Property(x => x.Status).HasColumnName("Status");

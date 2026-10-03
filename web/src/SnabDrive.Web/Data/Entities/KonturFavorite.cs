@@ -20,6 +20,15 @@ public class KonturFavorite
     /// <summary>НМЦК.</summary>
     public decimal NMCK { get; set; }
 
+    /// <summary>Место поставки.</summary>
+    public string PlaceOfDelivery { get; set; } = string.Empty;
+
+    /// <summary>Победитель / поставщик.</summary>
+    public string Winner { get; set; } = string.Empty;
+
+    /// <summary>Итоговая сумма (предложение победителя / цена договора).</summary>
+    public decimal ResultPrice { get; set; }
+
     /// <summary>Дата окончания подачи заявок / торгов.</summary>
     public DateTime? BiddingDate { get; set; }
 
