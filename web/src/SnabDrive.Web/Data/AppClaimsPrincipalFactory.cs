@@ -8,8 +8,11 @@ namespace SnabDrive.Web.Data;
 /// <summary>Добавляет клейм kontur=1 пользователям с правом выгрузки из Контур.Закупки.</summary>
 public class AppClaimsPrincipalFactory : UserClaimsPrincipalFactory<ApplicationUser, IdentityRole>
 {
-    public AppClaimsPrincipalFactory(UserManager<ApplicationUser> userManager, IOptions<IdentityOptions> options)
-        : base(userManager, options)
+    public AppClaimsPrincipalFactory(
+        UserManager<ApplicationUser> userManager,
+        RoleManager<IdentityRole> roleManager,
+        IOptions<IdentityOptions> options)
+        : base(userManager, roleManager, options)
     {
     }
 

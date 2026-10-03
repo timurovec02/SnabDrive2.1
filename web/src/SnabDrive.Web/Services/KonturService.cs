@@ -172,12 +172,12 @@ public sealed class KonturService : IKonturService
             headers[cell.Address.ColumnNumber] = cell.GetString().Trim();
         }
 
-        var colNumber = FindColumn(headers, "номер", "реестровый", "№");
-        var colName = FindColumn(headers, "наименование", "предмет", "объект");
-        var colCustomer = FindColumn(headers, "заказчик");
-        var colNmck = FindColumn(headers, "нмцк", "начальная", "цена контракта", "сумма");
-        var colBidding = FindColumn(headers, "окончание подачи", "дата окончания", "дата торгов", "подведения");
-        var colPlacement = FindColumn(headers, "дата размещения", "размещения", "опубликовано");
+        var colNumber = FindColumn(headers, "номер", "реестров", "извещен", "№");
+        var colName = FindColumn(headers, "наименован", "предмет", "объект");
+        var colCustomer = FindColumn(headers, "заказчик", "организатор", "организаци");
+        var colNmck = FindColumn(headers, "нмцк", "нмц", "начальн", "цена", "сумма", "бюджет");
+        var colBidding = FindColumn(headers, "окончан", "подач", "торг", "подведен", "вскрыт");
+        var colPlacement = FindColumn(headers, "размещен", "публикац", "опубликован");
 
         for (var i = 1; i < rows.Count; i++)
         {
