@@ -264,14 +264,14 @@ public sealed class KonturService : IKonturService
 
             result.Add(new KonturFavorite
             {
-                PurchaseNumber = purchaseNumber,
-                NameLink = string.IsNullOrWhiteSpace(nameLink) ? purchaseNumber : nameLink,
-                Customer = Text(sheet, row.RowNumber(), colCustomer),
+                PurchaseNumber = Clamp(purchaseNumber, 200),
+                NameLink = Clamp(string.IsNullOrWhiteSpace(nameLink) ? purchaseNumber : nameLink, 1000),
+                Customer = Clamp(Text(sheet, row.RowNumber(), colCustomer), 1000),
                 NMCK = Money(sheet, row.RowNumber(), colNmck),
                 BiddingDate = Date(sheet, row.RowNumber(), colBidding),
                 DateOfPlacement = Date(sheet, row.RowNumber(), colPlacement),
-                PlaceOfDelivery = Text(sheet, row.RowNumber(), colDelivery),
-                Winner = Text(sheet, row.RowNumber(), colWinner),
+                PlaceOfDelivery = Clamp(Text(sheet, row.RowNumber(), colDelivery), 1000),
+                Winner = Clamp(Text(sheet, row.RowNumber(), colWinner), 500),
                 ResultPrice = Money(sheet, row.RowNumber(), colResult),
                 Status = KonturFavoriteStatus.New,
                 RawJson = JsonSerializer.Serialize(raw),
@@ -282,6 +282,9 @@ public sealed class KonturService : IKonturService
 
         return result;
     }
+
+    private static string Clamp(string value, int max) =>
+        value.Length <= max ? value : value.Substring(0, max);
 
     private static string Text(IXLWorksheet sheet, int row, int? col) =>
         col is null ? string.Empty : sheet.Cell(row, col.Value).GetString().Trim();

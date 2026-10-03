@@ -42,6 +42,16 @@ BEGIN
         ALTER TABLE dbo.KonturFavorites ADD Winner nvarchar(500) NULL;
     IF COL_LENGTH('dbo.KonturFavorites', 'ResultPrice') IS NULL
         ALTER TABLE dbo.KonturFavorites ADD ResultPrice decimal(18,2) NOT NULL CONSTRAINT DF_KonturFavorites_ResultPrice DEFAULT(0);
+
+    -- Защитное расширение: если колонки созданы короче, приводим к нужной длине.
+    IF COL_LENGTH('dbo.KonturFavorites', 'PlaceOfDelivery') < 1000
+        ALTER TABLE dbo.KonturFavorites ALTER COLUMN PlaceOfDelivery nvarchar(1000) NULL;
+    IF COL_LENGTH('dbo.KonturFavorites', 'Winner') < 500
+        ALTER TABLE dbo.KonturFavorites ALTER COLUMN Winner nvarchar(500) NULL;
+    IF COL_LENGTH('dbo.KonturFavorites', 'Customer') < 1000
+        ALTER TABLE dbo.KonturFavorites ALTER COLUMN Customer nvarchar(1000) NULL;
+    IF COL_LENGTH('dbo.KonturFavorites', 'NameLink') < 1000
+        ALTER TABLE dbo.KonturFavorites ALTER COLUMN NameLink nvarchar(1000) NOT NULL;
 END
 GO
 
