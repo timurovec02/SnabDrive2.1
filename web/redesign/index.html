@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>СнабДрайв — Реестр закупок</title>
+<link rel="stylesheet" href="redesign.css">
+</head>
+<body>
+  <div class="topbar">
+    <div class="topbar__inner">
+      <span class="topbar__note">Дочерняя компания ООО «Вершина»</span>
+      <div class="topbar__right">
+        <a href="tel:+79181610202" class="topbar__phone">+7 (918) 161-02-02</a>
+        <a href="#" class="topbar__login">Вход для сотрудников</a>
+      </div>
+    </div>
+  </div>
+
+  <header class="header">
+    <div class="header__inner">
+      <div class="brand">
+        <div class="brand__logo">СД</div>
+        <div>
+          <div class="brand__name">СнабДрайв</div>
+          <div class="brand__sub">Реестр закупок · часть группы «Вершина»</div>
+        </div>
+      </div>
+      <button class="icon-btn" title="Свернуть меню">«</button>
+    </div>
+  </header>
+
+  <div class="shell">
+    <aside class="side">
+      <a class="side__item active" href="#"><span class="side__ico">▤</span> Реестр</a>
+      <a class="side__item" href="#"><span class="side__ico">▦</span> Обзор</a>
+      <a class="side__item" href="#"><span class="side__ico">★</span> Контур</a>
+      <div class="side__divider"></div>
+      <a class="side__item" href="#"><span class="side__ico">🗄</span> Архив</a>
+      <a class="side__item" href="#"><span class="side__ico">☰</span> Справочники</a>
+      <a class="side__item" href="#"><span class="side__ico">👤</span> Пользователи</a>
+      <a class="side__item" href="#"><span class="side__ico">🕓</span> Журнал</a>
+    </aside>
+
+    <main class="main">
+      <section class="hero">
+        <div class="hero__text">
+          <h1>Реестр закупок</h1>
+          <p>Единая таблица закупок компании — от передачи на размещение до исполнения контракта.</p>
+        </div>
+        <div class="hero__stats">
+          <div class="stat"><b>10 000 000</b><span>шин в год поставляет группа</span></div>
+          <div class="stat"><b>34</b><span>производителя шин и дисков</span></div>
+          <div class="stat"><b>100+</b><span>городов охвата сети</span></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="toolbar">
+          <input class="search" placeholder="Поиск по реестру…">
+          <button class="btn btn--primary">＋ Добавить</button>
+          <button class="btn">★ Контур</button>
+          <button class="btn btn--ghost">Экспорт</button>
+        </div>
+
+        <div class="table-wrap">
+          <table class="grid">
+            <thead>
+              <tr>
+                <th>Ссылка / наименование</th>
+                <th>Заказчик</th>
+                <th>НМЦК</th>
+                <th>Дата торгов</th>
+                <th>Статус</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><a href="#">Поставка автомобильных шин для нужд учреждения</a></td>
+                <td>ГБУ «Автобаза»</td>
+                <td class="num">1 250 000,00</td>
+                <td>06.10.2026 09:00</td>
+                <td><span class="tag tag--ok">В работе</span></td>
+              </tr>
+              <tr>
+                <td><a href="#">Диски колёсные легкосплавные, партия</a></td>
+                <td>ООО «Транспорт»</td>
+                <td class="num">480 000,00</td>
+                <td>08.10.2026 12:30</td>
+                <td><span class="tag tag--warn">Ожидание</span></td>
+              </tr>
+              <tr>
+                <td><a href="#">Шины грузовые 315/80 R22.5</a></td>
+                <td>АО «Логистика Юг»</td>
+                <td class="num">2 340 000,00</td>
+                <td>10.10.2026 10:00</td>
+                <td><span class="tag">Завершено</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <footer class="footer">
+    <div class="footer__inner">
+      <span>© 2026 СнабДрайв · дочерняя компания ООО «Вершина»</span>
+      <span>Краснодар · +7 (918) 161-02-02</span>
+    </div>
+  </footer>
+</body>
+</html>
