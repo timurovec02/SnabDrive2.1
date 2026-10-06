@@ -123,12 +123,12 @@
                                         @if (column.Kind == ColumnKind.Bool)
                                         {
                                             <input type="checkbox" class="cell-input" checked="@_editBool"
-                                                   @onchange="OnBoolChange" @onkeydown="OnEditorKeyDown" />
+                                                   @onchange="OnBoolChange" @onkeydown="OnEditorKeyDown" @onblur="OnEditorBlur" />
                                         }
                                         else if (column.Kind == ColumnKind.Dictionary)
                                         {
                                             <select class="cell-input" value="@_editText"
-                                                    @onchange="OnSelectChange" @onkeydown="OnEditorKeyDown">
+                                                    @onchange="OnSelectChange" @onkeydown="OnEditorKeyDown" @onblur="OnEditorBlur">
                                                 <option value="">—</option>
                                                 @foreach (var opt in OptionsFor(column.Key))
                                                 {
@@ -140,19 +140,19 @@
                                         {
                                             <input type="datetime-local" class="cell-input" value="@_editText"
                                                    @oninput="OnTextInput"
-                                                   @onchange="CommitEdit" @onkeydown="OnEditorKeyDown" />
+                                                   @onchange="CommitEdit" @onkeydown="OnEditorKeyDown" @onblur="OnEditorBlur" />
                                         }
                                         else if (column.Kind == ColumnKind.Date)
                                         {
                                             <input type="date" class="cell-input" value="@_editText"
                                                    @oninput="OnTextInput"
-                                                   @onchange="CommitEdit" @onkeydown="OnEditorKeyDown" />
+                                                   @onchange="CommitEdit" @onkeydown="OnEditorKeyDown" @onblur="OnEditorBlur" />
                                         }
                                         else
                                         {
                                             <input type="text" class="cell-input" value="@_editText"
                                                    @oninput="OnTextInput"
-                                                   @onchange="CommitEdit" @onkeydown="OnEditorKeyDown" />
+                                                   @onchange="CommitEdit" @onkeydown="OnEditorKeyDown" @onblur="OnEditorBlur" />
                                         }
                                     </div>
                                 }
@@ -227,6 +227,9 @@
 
     private string _editText = string.Empty;
     private bool _editBool;
+    private string _originalText = string.Empty;
+    private bool _originalBool;
+    private bool _hadLock;
     private (int RecordId, string ColumnKey)? _lastEditCell;
     private Dictionary<string, CellEditLock> _lockIndex = new(StringComparer.Ordinal);
 
@@ -237,6 +240,7 @@
         if (EditingCell != _lastEditCell)
         {
             _lastEditCell = EditingCell;
+            _hadLock = false;
 
             if (EditingCell is not null)
             {
@@ -245,8 +249,30 @@
                 {
                     _editText = EditorRaw(row, EditingCell.Value.ColumnKey);
                     _editBool = row.IsFinished == true;
+                    _originalText = _editText;
+                    _originalBool = _editBool;
                 }
             }
+        }
+
+        // Блокировка снята по таймеру бездействия, а пользователь всё ещё «в ячейке» —
+        // сохраняем последнее введённое значение (данные на момент последней активности).
+        if (EditingCell is not null)
+        {
+            var lockInfo = LockFor(EditingCell.Value.RecordId, EditingCell.Value.ColumnKey);
+            if (lockInfo is not null && lockInfo.UserId == CurrentUserId)
+            {
+                _hadLock = true;
+            }
+            else if (lockInfo is null && _hadLock)
+            {
+                _hadLock = false;
+                OnCommitEdit.InvokeAsync(new CellEditCommit(EditingCell.Value.RecordId, EditingCell.Value.ColumnKey, _editText));
+            }
+        }
+        else
+        {
+            _hadLock = false;
         }
     }
 
@@ -306,6 +332,20 @@
     }
 
     private void Activity() => OnEditActivity.InvokeAsync();
+
+    private void OnEditorBlur()
+    {
+        if (EditingCell is null)
+        {
+            return;
+        }
+
+        // Вышли из ячейки, ничего не изменив — просто снимаем блокировку.
+        if (_editText == _originalText && _editBool == _originalBool)
+        {
+            OnCancelEdit.InvokeAsync();
+        }
+    }
 
     private void OnSelectChange(ChangeEventArgs e)
     {
