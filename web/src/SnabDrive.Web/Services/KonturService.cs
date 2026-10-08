@@ -240,6 +240,8 @@ public sealed class KonturService : IKonturService
         var colDelivery = Find("Место поставки");
         var colWinner = Find("Название победителя") ?? Find("Название поставщика");
         var colResult = Find("Предложение победителя") ?? Find("Цена договора");
+        var colLabel = Find("Метка");
+        var colEis = Find("Ссылка на ЕИС") ?? FindContains("ЕИС");
 
         int? colCustomer = null;
         var regionCol = Find("Регион");
@@ -287,6 +289,8 @@ public sealed class KonturService : IKonturService
                 PlaceOfDelivery = Clamp(Text(sheet, row.RowNumber(), colDelivery), 1000),
                 Winner = Clamp(Text(sheet, row.RowNumber(), colWinner), 500),
                 ResultPrice = Money(sheet, row.RowNumber(), colResult),
+                Label = Clamp(Text(sheet, row.RowNumber(), colLabel), 500),
+                EisLink = Clamp(Text(sheet, row.RowNumber(), colEis), 1000),
                 Status = KonturFavoriteStatus.New,
                 RawJson = JsonSerializer.Serialize(raw),
                 AddedAt = DateTime.Now,

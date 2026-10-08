@@ -29,6 +29,12 @@ public class KonturFavorite
     /// <summary>Итоговая сумма (предложение победителя / цена договора).</summary>
     public decimal ResultPrice { get; set; }
 
+    /// <summary>Метка из Контур (отображается как «Статус»).</summary>
+    public string Label { get; set; } = string.Empty;
+
+    /// <summary>Ссылка на ЕИС.</summary>
+    public string EisLink { get; set; } = string.Empty;
+
     /// <summary>Дата окончания подачи заявок / торгов.</summary>
     public DateTime? BiddingDate { get; set; }
 

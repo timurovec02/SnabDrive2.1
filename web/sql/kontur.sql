@@ -18,6 +18,8 @@ BEGIN
         PlaceOfDelivery nvarchar(1000) NULL,
         Winner          nvarchar(500)  NULL,
         ResultPrice     decimal(18,2)  NOT NULL CONSTRAINT DF_KonturFavorites_ResultPrice DEFAULT(0),
+        Label           nvarchar(500)  NULL,
+        EisLink         nvarchar(1000) NULL,
         BiddingDate     datetime2(7)   NULL,
         DateOfPlacement datetime2(7)   NULL,
         Status          int            NOT NULL CONSTRAINT DF_KonturFavorites_Status DEFAULT(0),
@@ -52,6 +54,10 @@ BEGIN
         ALTER TABLE dbo.KonturFavorites ALTER COLUMN Customer nvarchar(1000) NULL;
     IF COL_LENGTH('dbo.KonturFavorites', 'NameLink') < 1000
         ALTER TABLE dbo.KonturFavorites ALTER COLUMN NameLink nvarchar(1000) NOT NULL;
+    IF COL_LENGTH('dbo.KonturFavorites', 'Label') IS NULL
+        ALTER TABLE dbo.KonturFavorites ADD Label nvarchar(500) NULL;
+    IF COL_LENGTH('dbo.KonturFavorites', 'EisLink') IS NULL
+        ALTER TABLE dbo.KonturFavorites ADD EisLink nvarchar(1000) NULL;
 END
 GO
 

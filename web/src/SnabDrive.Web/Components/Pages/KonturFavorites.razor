@@ -43,29 +43,31 @@
         }
 
         <div class="table-wrap">
-            <table class="registry-grid">
+            <table class="registry-grid registry-grid--wide">
                 <thead>
                     <tr>
                         <th style="width:36px"></th>
-                        <th>Номер</th>
+                        <th class="th-sort" @onclick="() => SortBy("PurchaseNumber")">Номер @Arrow("PurchaseNumber")</th>
                         <th>Наименование</th>
                         <th>Заказчик</th>
-                        <th>НМЦК</th>
-                        <th>Дата торгов</th>
+                        <th class="th-sort" @onclick="() => SortBy("NMCK")">НМЦК @Arrow("NMCK")</th>
+                        <th class="th-sort" @onclick="() => SortBy("BiddingDate")">Дата торгов @Arrow("BiddingDate")</th>
                         <th>Место поставки</th>
                         <th>Победитель</th>
-                        <th>Итог</th>
-                        <th>Статус</th>
+                        <th class="th-sort" @onclick="() => SortBy("ResultPrice")">Итог @Arrow("ResultPrice")</th>
+                        <th class="th-sort" @onclick="() => SortBy("Label")">Статус @Arrow("Label")</th>
+                        <th>Ссылка на ЕИС</th>
+                        <th>Обработка</th>
                     </tr>
                 </thead>
                 <tbody>
                     @if (_favorites.Count == 0)
                     {
-                        <tr><td colspan="10" class="registry-grid__empty">Нет строк. Загрузите Excel-выгрузку из Контур.</td></tr>
+                        <tr><td colspan="12" class="registry-grid__empty">Нет строк. Нажмите «Выгрузить сейчас».</td></tr>
                     }
                     else
                     {
-                        @foreach (var f in _favorites)
+                        @foreach (var f in Sorted())
                         {
                             <tr class="@(f.Status == KonturFavoriteStatus.Imported ? "is-finished" : "")">
                                 <td>
@@ -83,6 +85,17 @@
                                 <td>@f.PlaceOfDelivery</td>
                                 <td>@f.Winner</td>
                                 <td class="money-cell">@f.ResultPrice.ToString("# ##0.00")</td>
+                                <td>@f.Label</td>
+                                <td>
+                                    @if (!string.IsNullOrWhiteSpace(f.EisLink))
+                                    {
+                                        <a class="registry-grid__link" href="@f.EisLink" target="_blank" rel="noopener noreferrer">ЕИС</a>
+                                    }
+                                    else
+                                    {
+                                        <span>—</span>
+                                    }
+                                </td>
                                 <td>
                                     @switch (f.Status)
                                     {
@@ -117,6 +130,8 @@
     private bool _busy;
     private string? _message;
     private bool _messageOk;
+    private string _sortKey = "AddedAt";
+    private bool _sortDesc = true;
 
     protected override async Task OnInitializedAsync()
     {
@@ -152,6 +167,34 @@
             _selected.Remove(id);
         }
     }
+
+    private void SortBy(string key)
+    {
+        if (_sortKey == key)
+        {
+            _sortDesc = !_sortDesc;
+        }
+        else
+        {
+            _sortKey = key;
+            _sortDesc = false;
+        }
+    }
+
+    private string Arrow(string key) => _sortKey == key ? (_sortDesc ? "▼" : "▲") : "";
+
+    private IEnumerable<KonturFavorite> Sorted() => _sortKey switch
+    {
+        "PurchaseNumber" => Ord(f => f.PurchaseNumber),
+        "NMCK" => Ord(f => f.NMCK),
+        "BiddingDate" => Ord(f => f.BiddingDate),
+        "ResultPrice" => Ord(f => f.ResultPrice),
+        "Label" => Ord(f => f.Label),
+        _ => Ord(f => f.AddedAt)
+    };
+
+    private IEnumerable<KonturFavorite> Ord<T>(Func<KonturFavorite, T> key) =>
+        _sortDesc ? _favorites.OrderByDescending(key) : _favorites.OrderBy(key);
 
     private async Task ExportNowAsync()
     {
