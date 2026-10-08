@@ -235,13 +235,16 @@ public sealed class KonturSchedulerService : BackgroundService
     {
         if (string.IsNullOrWhiteSpace(options.ExporterPath) || !File.Exists(options.ExporterPath))
         {
-            _state.AddLog("Экспортер не настроен или не найден — пробуем импорт из папки.");
+            _state.AddLog($"Экспортер не найден по пути «{options.ExporterPath}». Проверьте Kontur:ExporterPath в appsettings. Пробуем импорт из папки.");
             return;
         }
 
+        var args = $"--headless --no-pause --output \"{outDir}\"";
+        _state.AddLog($"Команда: \"{options.ExporterPath}\" {args}");
+
         try
         {
-            var psi = new ProcessStartInfo(options.ExporterPath, $"--headless --no-pause --output \"{outDir}\"")
+            var psi = new ProcessStartInfo(options.ExporterPath, args)
             {
                 UseShellExecute = false,
                 WorkingDirectory = Path.GetDirectoryName(Path.GetFullPath(options.ExporterPath)) ?? outDir,
@@ -256,6 +259,9 @@ public sealed class KonturSchedulerService : BackgroundService
                 return;
             }
 
+            var stdoutTask = process.StandardOutput.ReadToEndAsync();
+            var stderrTask = process.StandardError.ReadToEndAsync();
+
             var timeout = TimeSpan.FromMinutes(options.TimeoutMinutes <= 0 ? 15 : options.TimeoutMinutes);
             if (!process.WaitForExit((int)timeout.TotalMilliseconds))
             {
@@ -266,12 +272,19 @@ public sealed class KonturSchedulerService : BackgroundService
             {
                 _state.AddLog($"Экспортер завершился с кодом {process.ExitCode}.");
             }
+
+            var stdout = stdoutTask.Result.Trim();
+            var stderr = stderrTask.Result.Trim();
+            if (stdout.Length > 0) _state.AddLog("Вывод: " + Tail(stdout));
+            if (stderr.Length > 0) _state.AddLog("Ошибки: " + Tail(stderr));
         }
         catch (Exception ex)
         {
             _state.AddLog("Ошибка запуска экспортера: " + ex.Message);
         }
     }
+
+    private static string Tail(string value) => value.Length <= 1500 ? value : value[^1500..];
 
     private async Task ImportNewestAsync(string outDir, DateTime start)
     {
