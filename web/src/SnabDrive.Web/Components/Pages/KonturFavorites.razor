@@ -46,16 +46,16 @@
             <table class="registry-grid registry-grid--wide">
                 <thead>
                     <tr>
-                        <th style="width:36px"></th>
-                        <th class="th-sort" @onclick="() => SortBy("PurchaseNumber")">Номер @Arrow("PurchaseNumber")</th>
+                        <th style="width:36px"><input type="checkbox" checked="@AllSelected" @onchange="ToggleAll" title="Выделить все" /></th>
+                        <th class="th-sort" @onclick='() => SortBy("PurchaseNumber")'>Номер @Arrow("PurchaseNumber")</th>
                         <th>Наименование</th>
                         <th>Заказчик</th>
-                        <th class="th-sort" @onclick="() => SortBy("NMCK")">НМЦК @Arrow("NMCK")</th>
-                        <th class="th-sort" @onclick="() => SortBy("BiddingDate")">Дата торгов @Arrow("BiddingDate")</th>
+                        <th class="th-sort" @onclick='() => SortBy("NMCK")'>НМЦК @Arrow("NMCK")</th>
+                        <th class="th-sort" @onclick='() => SortBy("BiddingDate")'>Дата торгов @Arrow("BiddingDate")</th>
                         <th>Место поставки</th>
                         <th>Победитель</th>
-                        <th class="th-sort" @onclick="() => SortBy("ResultPrice")">Итог @Arrow("ResultPrice")</th>
-                        <th class="th-sort" @onclick="() => SortBy("Label")">Статус @Arrow("Label")</th>
+                        <th class="th-sort" @onclick='() => SortBy("ResultPrice")'>Итог @Arrow("ResultPrice")</th>
+                        <th class="th-sort" @onclick='() => SortBy("Label")'>Статус @Arrow("Label")</th>
                         <th>Ссылка на ЕИС</th>
                         <th>Обработка</th>
                     </tr>
@@ -154,6 +154,23 @@
     {
         _favorites = (await Kontur.GetFavoritesAsync(_onlyNew)).ToList();
         _selected.Clear();
+    }
+
+    private bool AllSelected =>
+        _favorites.Any(f => f.Status == KonturFavoriteStatus.New) &&
+        _favorites.Where(f => f.Status == KonturFavoriteStatus.New).All(f => _selected.Contains(f.Id));
+
+    private void ToggleAll(ChangeEventArgs e)
+    {
+        var on = e.Value is bool b && b;
+        _selected.Clear();
+        if (on)
+        {
+            foreach (var id in _favorites.Where(f => f.Status == KonturFavoriteStatus.New).Select(f => f.Id))
+            {
+                _selected.Add(id);
+            }
+        }
     }
 
     private void Toggle(int id, bool on)
