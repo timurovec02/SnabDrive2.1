@@ -20,20 +20,20 @@ public class KonturFavorite
     /// <summary>НМЦК.</summary>
     public decimal NMCK { get; set; }
 
-    /// <summary>Место поставки.</summary>
-    public string PlaceOfDelivery { get; set; } = string.Empty;
+    /// <summary>Место поставки; NULL для строк до ввода колонки.</summary>
+    public string? PlaceOfDelivery { get; set; }
 
-    /// <summary>Победитель / поставщик.</summary>
-    public string Winner { get; set; } = string.Empty;
+    /// <summary>Победитель / поставщик; NULL для строк до ввода колонки.</summary>
+    public string? Winner { get; set; }
 
     /// <summary>Итоговая сумма (предложение победителя / цена договора).</summary>
     public decimal ResultPrice { get; set; }
 
-    /// <summary>Метка из Контур (отображается как «Статус»).</summary>
-    public string Label { get; set; } = string.Empty;
+    /// <summary>Метка из Контур (отображается как «Статус»); NULL для строк до ввода колонки.</summary>
+    public string? Label { get; set; }
 
-    /// <summary>Ссылка на ЕИС.</summary>
-    public string EisLink { get; set; } = string.Empty;
+    /// <summary>Ссылка на ЕИС; NULL для строк до ввода колонки.</summary>
+    public string? EisLink { get; set; }
 
     /// <summary>Дата окончания подачи заявок / торгов.</summary>
     public DateTime? BiddingDate { get; set; }

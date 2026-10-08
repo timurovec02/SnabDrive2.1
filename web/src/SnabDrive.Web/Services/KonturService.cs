@@ -135,8 +135,8 @@ public sealed class KonturService : IKonturService
                 NMCK = favorite.NMCK,
                 BiddingDate = favorite.BiddingDate,
                 DateOfPlacement = favorite.DateOfPlacement,
-                PlaceOfDelivery = favorite.PlaceOfDelivery,
-                Winner = favorite.Winner,
+                PlaceOfDelivery = favorite.PlaceOfDelivery ?? string.Empty,
+                Winner = favorite.Winner ?? string.Empty,
                 ResultPrice = favorite.ResultPrice
             };
 
