@@ -1,0 +1,141 @@
+@page "/kontur-scheduler"
+@attribute [Authorize]
+@inject AuthenticationStateProvider AuthStateProvider
+@inject KonturScheduleStore Store
+@inject KonturSchedulerState State
+@inject KonturSchedulerService Scheduler
+@inject IConfiguration Config
+@inject IToastService Toasts
+
+<PageTitle>Планировщик Контур — SnabDrive</PageTitle>
+
+<div class="page">
+    <div class="page__header">
+        <div>
+            <h1>Планировщик Контур</h1>
+            <p class="page__hint">
+                Автоматически запускает KonturExport и импортирует выгрузку в «Избранное Контур»
+                по расписанию (например, утром и вечером).
+            </p>
+        </div>
+    </div>
+
+    @if (!_isAdmin)
+    {
+        <div class="alert alert--warn">Доступно только администратору.</div>
+    }
+    else
+    {
+        <div class="card">
+            <h2>Расписание</h2>
+            <label class="checkbox-label" style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
+                <input type="checkbox" @bind="_enabled" /> Планировщик включён
+            </label>
+
+            <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+                @foreach (var t in _times)
+                {
+                    <span class="badge badge--info">@t
+                        <button class="chip-remove" @onclick="() => RemoveTime(t)" title="Убрать">×</button>
+                    </span>
+                }
+            </div>
+
+            <div class="toolbar">
+                <input type="time" class="input" @bind="_newTime" style="width:140px" />
+                <button class="btn" @onclick="AddTime">＋ Добавить время</button>
+                <div class="toolbar__spacer"></div>
+                <button class="btn btn--primary" @onclick="SaveSchedule">Сохранить</button>
+            </div>
+
+            <p class="page__hint" style="margin-top:12px">
+                Экспортер: <code>@(_exporterPath == "" ? "не задан (appsettings → Kontur:ExporterPath)" : _exporterPath)</code><br>
+                Папка Excel: <code>@(_outputDir == "" ? "~/Downloads/KonturExports" : _outputDir)</code>
+            </p>
+        </div>
+
+        <div class="card">
+            <h2>Состояние</h2>
+            <div class="toolbar">
+                <button class="btn btn--primary" disabled="@State.IsRunning" @onclick="RunNow">
+                    @(State.IsRunning ? "Выполняется…" : "▶ Запустить сейчас")
+                </button>
+                <button class="btn" @onclick="Refresh">Обновить</button>
+            </div>
+
+            <table class="kv">
+                <tr><td>Последний запуск</td><td>@(State.LastRunUtc?.ToLocalTime().ToString("dd.MM.yyyy HH:mm:ss") ?? "—")</td></tr>
+                <tr><td>Следующий запуск</td><td>@(State.NextRunUtc?.ToLocalTime().ToString("dd.MM.yyyy HH:mm") ?? "—")</td></tr>
+                <tr><td>Результат</td><td>@(State.LastSuccess ? "✔ " : "✖ ")@State.LastMessage</td></tr>
+                <tr><td>Добавлено строк</td><td>@State.LastAdded</td></tr>
+            </table>
+
+            <h3 style="margin-top:14px">Журнал</h3>
+            <div class="log">
+                @foreach (var line in _log)
+                {
+                    <div>@line</div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private bool _isAdmin;
+    private bool _enabled = true;
+    private List<string> _times = new();
+    private string _newTime = "08:00";
+    private string _exporterPath = "";
+    private string _outputDir = "";
+    private IReadOnlyList<string> _log = new List<string>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        _isAdmin = state.User.IsInRole(SnabDrive.Web.Services.AppRoles.Admin);
+
+        _enabled = Store.Value.Enabled;
+        _times = Store.Value.Times.ToList();
+
+        var section = Config.GetSection("Kontur");
+        _exporterPath = section["ExporterPath"] ?? "";
+        _outputDir = section["OutputDirectory"] ?? "";
+
+        _log = State.GetLog();
+    }
+
+    private void AddTime()
+    {
+        if (TimeSpan.TryParse(_newTime, out var ts))
+        {
+            var value = ts.ToString(@"hh\:mm");
+            if (!_times.Contains(value))
+            {
+                _times.Add(value);
+                _times = _times.OrderBy(x => x).ToList();
+            }
+        }
+    }
+
+    private void RemoveTime(string t) => _times.Remove(t);
+
+    private void SaveSchedule()
+    {
+        Store.Value.Enabled = _enabled;
+        Store.Value.Times = _times.ToList();
+        Store.Save();
+        Toasts.Show("Расписание сохранено", ToastKind.Success);
+    }
+
+    private async Task RunNow()
+    {
+        await Scheduler.RunAsync("вручную с сайта");
+        Refresh();
+    }
+
+    private void Refresh()
+    {
+        _log = State.GetLog();
+    }
+}

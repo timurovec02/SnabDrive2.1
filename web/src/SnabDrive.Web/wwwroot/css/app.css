@@ -1095,3 +1095,13 @@ input:disabled {
 .app-shell.nav-collapsed .nav__footer {
     display: none;
 }
+
+/* --- страница планировщика Контур --- */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+.card h2 { margin: 0 0 12px; font-size: 16px; }
+.kv { width: 100%; border-collapse: collapse; }
+.kv td { padding: 6px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.kv td:first-child { color: var(--text-muted); width: 200px; }
+.log { max-height: 240px; overflow: auto; background: #0f172a; color: #cbd5e1; border-radius: 8px; padding: 10px; font-family: ui-monospace, monospace; font-size: 12px; }
+.chip-remove { margin-left: 6px; background: none; border: none; color: inherit; cursor: pointer; font-weight: 700; }
+.toolbar__spacer { flex: 1; }
