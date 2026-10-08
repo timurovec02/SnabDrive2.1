@@ -109,6 +109,9 @@
                         <label class="checkbox-label">
                             <input type="checkbox" @bind="_model.KonturEnabled" /> Доступ к Контур
                         </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" @bind="_model.SchedulerEnabled" /> Доступ к планировщику
+                        </label>
                     </div>
                 </div>
 
@@ -196,7 +199,7 @@
 
 @code {
     private sealed record UserRow(string Id, string UserName, string? DisplayName, string? Email,
-                                  bool IsAdmin, bool IsBlocked, bool IsOnline, DateTime? LastLoginUtc, bool KonturEnabled);
+                                  bool IsAdmin, bool IsBlocked, bool IsOnline, DateTime? LastLoginUtc, bool KonturEnabled, bool SchedulerEnabled);
 
     private sealed class UserModel
     {
@@ -207,6 +210,7 @@
         public bool IsAdmin { get; set; }
         public bool IsBlocked { get; set; }
         public bool KonturEnabled { get; set; }
+        public bool SchedulerEnabled { get; set; }
     }
 
     private List<UserRow> _users = new();
@@ -254,7 +258,8 @@
                 user.IsBlocked,
                 online.Contains(user.Id),
                 user.LastLoginUtc,
-                user.KonturEnabled));
+                user.KonturEnabled,
+                user.SchedulerEnabled));
         }
 
         _users = rows;
@@ -278,7 +283,8 @@
             Email = user.Email,
             IsAdmin = user.IsAdmin,
             IsBlocked = user.IsBlocked,
-            KonturEnabled = user.KonturEnabled
+            KonturEnabled = user.KonturEnabled,
+            SchedulerEnabled = user.SchedulerEnabled
         };
         _formError = null;
         _showForm = true;
@@ -339,7 +345,8 @@
             Email = string.IsNullOrWhiteSpace(_model.Email) ? null : _model.Email,
             EmailConfirmed = !string.IsNullOrWhiteSpace(_model.Email),
             IsBlocked = _model.IsBlocked,
-            KonturEnabled = _model.KonturEnabled
+            KonturEnabled = _model.KonturEnabled,
+            SchedulerEnabled = _model.SchedulerEnabled
         };
 
         var created = await UserManager.CreateAsync(user, _model.Password);
@@ -369,6 +376,7 @@
         user.DisplayName = _model.DisplayName;
         user.IsBlocked = _model.IsBlocked;
         user.KonturEnabled = _model.KonturEnabled;
+        user.SchedulerEnabled = _model.SchedulerEnabled;
 
         if (!string.IsNullOrWhiteSpace(_model.Email))
         {

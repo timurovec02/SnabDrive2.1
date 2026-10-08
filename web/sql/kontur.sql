@@ -63,3 +63,12 @@ END
 ELSE
     PRINT 'AspNetUsers.KonturEnabled уже существует.';
 GO
+
+IF COL_LENGTH('dbo.AspNetUsers', 'SchedulerEnabled') IS NULL
+BEGIN
+    ALTER TABLE dbo.AspNetUsers ADD SchedulerEnabled bit NOT NULL CONSTRAINT DF_AspNetUsers_SchedulerEnabled DEFAULT(0);
+    PRINT 'AspNetUsers.SchedulerEnabled добавлена.';
+END
+ELSE
+    PRINT 'AspNetUsers.SchedulerEnabled уже существует.';
+GO

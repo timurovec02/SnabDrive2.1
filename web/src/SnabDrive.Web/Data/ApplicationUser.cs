@@ -25,5 +25,8 @@ public class ApplicationUser : IdentityUser
     /// <summary>Доступ к выгрузке из Контур.Закупки (Избранное Контур).</summary>
     public bool KonturEnabled { get; set; }
 
+    /// <summary>Доступ к планировщику выгрузки Контур.</summary>
+    public bool SchedulerEnabled { get; set; }
+
     public string DisplayNameOrDefault => string.IsNullOrWhiteSpace(DisplayName) ? (UserName ?? string.Empty) : DisplayName;
 }

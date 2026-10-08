@@ -2,6 +2,8 @@
 @attribute [Authorize]
 @inject IKonturService Kontur
 @inject IToastService Toasts
+@inject KonturSchedulerService Scheduler
+@inject KonturSchedulerState SchedulerState
 
 <PageTitle>Избранное Контур — SnabDrive</PageTitle>
 
@@ -10,8 +12,8 @@
         <div>
             <h1>Избранное Контур</h1>
             <p class="page__hint">
-                Выгрузка из Контур.Закупки. Загрузите Excel-файл, отберите нужные закупки
-                и перенесите их в реестр.
+                Выгрузка из Контур.Закупки. Нажмите «Выгрузить сейчас», отберите нужные
+                закупки и перенесите их в реестр.
             </p>
         </div>
     </div>
@@ -23,10 +25,7 @@
     else
     {
         <div class="toolbar">
-            <label class="btn btn--primary">
-                Загрузить Excel
-                <InputFile OnChange="OnFileSelected" style="display:none" />
-            </label>
+            <button class="btn btn--primary" disabled="@_busy" @onclick="ExportNowAsync">Выгрузить сейчас</button>
             <button class="btn" @onclick="LoadAsync">Обновить</button>
             <label class="chk">
                 <input type="checkbox" @bind="_onlyNew" @bind:after="LoadAsync" /> только новые
@@ -154,32 +153,15 @@
         }
     }
 
-    private async Task OnFileSelected(InputFileChangeEventArgs e)
+    private async Task ExportNowAsync()
     {
         _busy = true;
         _message = null;
-        try
-        {
-            await using var stream = e.File.OpenReadStream(20 * 1024 * 1024);
-            var result = await Kontur.ImportFromExcelAsync(stream, _actor);
-            _messageOk = result.Success;
-            _message = result.Success
-                ? $"Добавлено строк в избранное: {result.Value}."
-                : result.Error;
-            if (result.Success)
-            {
-                await LoadAsync();
-            }
-        }
-        catch (Exception ex)
-        {
-            _messageOk = false;
-            _message = $"Ошибка загрузки: {ex.InnerException?.Message ?? ex.Message}";
-        }
-        finally
-        {
-            _busy = false;
-        }
+        await Scheduler.RunAsync("вручную со страницы Контур");
+        _messageOk = SchedulerState.LastSuccess;
+        _message = SchedulerState.LastMessage;
+        await LoadAsync();
+        _busy = false;
     }
 
     private async Task ImportSelectedAsync()

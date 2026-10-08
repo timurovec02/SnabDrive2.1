@@ -2,9 +2,6 @@
 @attribute [Authorize]
 @inject AuthenticationStateProvider AuthStateProvider
 @inject KonturScheduleStore Store
-@inject KonturSchedulerState State
-@inject KonturSchedulerService Scheduler
-@inject IConfiguration Config
 @inject IToastService Toasts
 
 <PageTitle>Планировщик Контур — SnabDrive</PageTitle>
@@ -20,9 +17,9 @@
         </div>
     </div>
 
-    @if (!_isAdmin)
+    @if (!_canUse)
     {
-        <div class="alert alert--warn">Доступно только администратору.</div>
+        <div class="alert alert--warn">Доступ к планировщику не выдан. Обратитесь к администратору.</div>
     }
     else
     {
@@ -47,62 +44,23 @@
                 <div class="toolbar__spacer"></div>
                 <button class="btn btn--primary" @onclick="SaveSchedule">Сохранить</button>
             </div>
-
-            <p class="page__hint" style="margin-top:12px">
-                Экспортер: <code>@(_exporterPath == "" ? "не задан (appsettings → Kontur:ExporterPath)" : _exporterPath)</code><br>
-                Папка Excel: <code>@(_outputDir == "" ? "~/Downloads/KonturExports" : _outputDir)</code>
-            </p>
-        </div>
-
-        <div class="card">
-            <h2>Состояние</h2>
-            <div class="toolbar">
-                <button class="btn btn--primary" disabled="@State.IsRunning" @onclick="RunNow">
-                    @(State.IsRunning ? "Выполняется…" : "▶ Запустить сейчас")
-                </button>
-                <button class="btn" @onclick="Refresh">Обновить</button>
-            </div>
-
-            <table class="kv">
-                <tr><td>Последний запуск</td><td>@(State.LastRunUtc?.ToLocalTime().ToString("dd.MM.yyyy HH:mm:ss") ?? "—")</td></tr>
-                <tr><td>Следующий запуск</td><td>@(State.NextRunUtc?.ToLocalTime().ToString("dd.MM.yyyy HH:mm") ?? "—")</td></tr>
-                <tr><td>Результат</td><td>@(State.LastSuccess ? "✔ " : "✖ ")@State.LastMessage</td></tr>
-                <tr><td>Добавлено строк</td><td>@State.LastAdded</td></tr>
-            </table>
-
-            <h3 style="margin-top:14px">Журнал</h3>
-            <div class="log">
-                @foreach (var line in _log)
-                {
-                    <div>@line</div>
-                }
-            </div>
         </div>
     }
 </div>
 
 @code {
-    private bool _isAdmin;
+    private bool _canUse;
     private bool _enabled = true;
     private List<string> _times = new();
     private string _newTime = "08:00";
-    private string _exporterPath = "";
-    private string _outputDir = "";
-    private IReadOnlyList<string> _log = new List<string>();
 
     protected override async Task OnInitializedAsync()
     {
         var state = await AuthStateProvider.GetAuthenticationStateAsync();
-        _isAdmin = state.User.IsInRole(SnabDrive.Web.Services.AppRoles.Admin);
+        _canUse = SnabDrive.Web.Data.SchedulerClaim.CanUse(state.User);
 
         _enabled = Store.Value.Enabled;
         _times = Store.Value.Times.ToList();
-
-        var section = Config.GetSection("Kontur");
-        _exporterPath = section["ExporterPath"] ?? "";
-        _outputDir = section["OutputDirectory"] ?? "";
-
-        _log = State.GetLog();
     }
 
     private void OnNewTimeChanged(ChangeEventArgs e) => _newTime = e.Value?.ToString() ?? string.Empty;
@@ -128,16 +86,5 @@
         Store.Value.Times = _times.ToList();
         Store.Save();
         Toasts.Show("Расписание сохранено", ToastKind.Success);
-    }
-
-    private async Task RunNow()
-    {
-        await Scheduler.RunAsync("вручную с сайта");
-        Refresh();
-    }
-
-    private void Refresh()
-    {
-        _log = State.GetLog();
     }
 }

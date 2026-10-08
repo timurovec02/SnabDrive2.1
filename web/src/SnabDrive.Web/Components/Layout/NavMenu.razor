@@ -22,6 +22,13 @@
         </NavLink>
     }
 
+    @if (IsAdmin || SchedulerEnabled)
+    {
+        <NavLink class="nav__item" href="kontur-scheduler" title="Планировщик Контур">
+            <span class="nav__icon">⏰</span><span class="nav__label">Планировщик</span>
+        </NavLink>
+    }
+
     <div class="nav__divider"></div>
 
     @if (IsAdmin)
@@ -35,9 +42,6 @@
         <NavLink class="nav__item" href="audit" title="Журнал">
             <span class="nav__icon">🕓</span><span class="nav__label">Журнал</span>
         </NavLink>
-        <NavLink class="nav__item" href="kontur-scheduler" title="Планировщик Контур">
-            <span class="nav__icon">⏰</span><span class="nav__label">Планировщик</span>
-        </NavLink>
     }
 
     <div class="nav__footer">
@@ -49,4 +53,5 @@
     [Parameter] public bool IsAdmin { get; set; }
     [Parameter] public bool Collapsed { get; set; }
     [Parameter] public bool KonturEnabled { get; set; }
+    [Parameter] public bool SchedulerEnabled { get; set; }
 }

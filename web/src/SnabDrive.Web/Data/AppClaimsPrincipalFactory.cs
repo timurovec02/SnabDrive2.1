@@ -24,6 +24,11 @@ public class AppClaimsPrincipalFactory : UserClaimsPrincipalFactory<ApplicationU
             identity.AddClaim(new Claim(KonturClaim.Type, "1"));
         }
 
+        if (user.SchedulerEnabled)
+        {
+            identity.AddClaim(new Claim(SchedulerClaim.Type, "1"));
+        }
+
         return identity;
     }
 }
@@ -31,6 +36,14 @@ public class AppClaimsPrincipalFactory : UserClaimsPrincipalFactory<ApplicationU
 public static class KonturClaim
 {
     public const string Type = "snabdrive.kontur";
+
+    public static bool CanUse(ClaimsPrincipal? user) =>
+        user is not null && (user.IsInRole(SnabDrive.Web.Services.AppRoles.Admin) || user.HasClaim(Type, "1"));
+}
+
+public static class SchedulerClaim
+{
+    public const string Type = "snabdrive.scheduler";
 
     public static bool CanUse(ClaimsPrincipal? user) =>
         user is not null && (user.IsInRole(SnabDrive.Web.Services.AppRoles.Admin) || user.HasClaim(Type, "1"));

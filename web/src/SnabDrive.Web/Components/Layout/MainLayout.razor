@@ -35,7 +35,7 @@
     </header>
 
     <div class="app-body">
-        <NavMenu IsAdmin="_isAdmin" Collapsed="_navCollapsed" KonturEnabled="_konturEnabled" />
+        <NavMenu IsAdmin="_isAdmin" Collapsed="_navCollapsed" KonturEnabled="_konturEnabled" SchedulerEnabled="_schedulerEnabled" />
 
         <main class="app-main">
             @Body
@@ -51,6 +51,7 @@
     private bool _isAdmin;
     private bool _navCollapsed;
     private bool _konturEnabled;
+    private bool _schedulerEnabled;
 
     private void ToggleNav() => _navCollapsed = !_navCollapsed;
 
@@ -67,6 +68,7 @@
             _email = user.FindFirstValue(ClaimTypes.Email) ?? string.Empty;
             _isAdmin = user.IsInRole(SnabDrive.Web.Services.AppRoles.Admin);
             _konturEnabled = SnabDrive.Web.Data.KonturClaim.CanUse(user);
+            _schedulerEnabled = SnabDrive.Web.Data.SchedulerClaim.CanUse(user);
         }
     }
 
