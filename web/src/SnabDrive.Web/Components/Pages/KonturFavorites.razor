@@ -1,4 +1,5 @@
 @page "/kontur"
+@using System.Globalization
 @attribute [Authorize]
 @inject IKonturService Kontur
 @inject IToastService Toasts
@@ -59,6 +60,20 @@
                         <th>Ссылка на ЕИС</th>
                         <th>Обработка</th>
                     </tr>
+                    <tr class="registry-grid__filters">
+                        <th></th>
+                        <th><input class="filter-input" placeholder="фильтр" value='@GetFilter("PurchaseNumber")' @onchange='e => SetFilter("PurchaseNumber", e)' /></th>
+                        <th><input class="filter-input" placeholder="фильтр" value='@GetFilter("NameLink")' @onchange='e => SetFilter("NameLink", e)' /></th>
+                        <th><input class="filter-input" placeholder="фильтр" value='@GetFilter("Customer")' @onchange='e => SetFilter("Customer", e)' /></th>
+                        <th><input class="filter-input" placeholder="фильтр" value='@GetFilter("NMCK")' @onchange='e => SetFilter("NMCK", e)' /></th>
+                        <th><input class="filter-input" placeholder="фильтр" value='@GetFilter("BiddingDate")' @onchange='e => SetFilter("BiddingDate", e)' /></th>
+                        <th><input class="filter-input" placeholder="фильтр" value='@GetFilter("PlaceOfDelivery")' @onchange='e => SetFilter("PlaceOfDelivery", e)' /></th>
+                        <th><input class="filter-input" placeholder="фильтр" value='@GetFilter("Winner")' @onchange='e => SetFilter("Winner", e)' /></th>
+                        <th><input class="filter-input" placeholder="фильтр" value='@GetFilter("ResultPrice")' @onchange='e => SetFilter("ResultPrice", e)' /></th>
+                        <th><input class="filter-input" placeholder="фильтр" value='@GetFilter("Label")' @onchange='e => SetFilter("Label", e)' /></th>
+                        <th><input class="filter-input" placeholder="фильтр" value='@GetFilter("EisLink")' @onchange='e => SetFilter("EisLink", e)' /></th>
+                        <th></th>
+                    </tr>
                 </thead>
                 <tbody>
                     @if (_favorites.Count == 0)
@@ -82,10 +97,10 @@
                                 <td>@f.Customer</td>
                                 <td class="money-cell">@f.NMCK.ToString("# ##0.00")</td>
                                 <td>@(f.BiddingDate?.ToString("dd.MM.yyyy HH:mm") ?? "—")</td>
-                                <td>@f.PlaceOfDelivery</td>
-                                <td>@f.Winner</td>
+                                <td>@(f.PlaceOfDelivery ?? "")</td>
+                                <td>@(f.Winner ?? "")</td>
                                 <td class="money-cell">@f.ResultPrice.ToString("# ##0.00")</td>
-                                <td>@f.Label</td>
+                                <td>@(f.Label ?? "")</td>
                                 <td>
                                     @if (!string.IsNullOrWhiteSpace(f.EisLink))
                                     {
@@ -124,6 +139,7 @@
 
     private List<KonturFavorite> _favorites = new();
     private readonly HashSet<int> _selected = new();
+    private readonly Dictionary<string, string> _filters = new();
     private ChangeActor _actor = new(string.Empty, "system");
     private bool _denied;
     private bool _onlyNew = true;
@@ -156,6 +172,59 @@
         _selected.Clear();
     }
 
+    private string GetFilter(string key) => _filters.TryGetValue(key, out var v) ? v : string.Empty;
+
+    private void SetFilter(string key, ChangeEventArgs e)
+    {
+        _filters[key] = e.Value?.ToString() ?? string.Empty;
+    }
+
+    private static bool Contains(string? s, string v) =>
+        (s ?? string.Empty).Contains(v, StringComparison.OrdinalIgnoreCase);
+
+    private IEnumerable<KonturFavorite> Filtered()
+    {
+        var q = _favorites.AsEnumerable();
+
+        foreach (var (key, value) in _filters)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                continue;
+            }
+
+            var v = value.Trim();
+            q = key switch
+            {
+                "PurchaseNumber" => q.Where(f => Contains(f.PurchaseNumber, v)),
+                "NameLink" => q.Where(f => Contains(f.NameLink, v)),
+                "Customer" => q.Where(f => Contains(f.Customer, v)),
+                "NMCK" => q.Where(f => f.NMCK.ToString(CultureInfo.InvariantCulture).Contains(v)),
+                "BiddingDate" => q.Where(f => (f.BiddingDate?.ToString("dd.MM.yyyy HH:mm") ?? "").Contains(v)),
+                "PlaceOfDelivery" => q.Where(f => Contains(f.PlaceOfDelivery, v)),
+                "Winner" => q.Where(f => Contains(f.Winner, v)),
+                "ResultPrice" => q.Where(f => f.ResultPrice.ToString(CultureInfo.InvariantCulture).Contains(v)),
+                "Label" => q.Where(f => Contains(f.Label, v)),
+                "EisLink" => q.Where(f => Contains(f.EisLink, v)),
+                _ => q
+            };
+        }
+
+        return q;
+    }
+
+    private void Toggle(int id, bool on)
+    {
+        if (on)
+        {
+            _selected.Add(id);
+        }
+        else
+        {
+            _selected.Remove(id);
+        }
+    }
+
     private bool AllSelected =>
         _favorites.Any(f => f.Status == KonturFavoriteStatus.New) &&
         _favorites.Where(f => f.Status == KonturFavoriteStatus.New).All(f => _selected.Contains(f.Id));
@@ -170,18 +239,6 @@
             {
                 _selected.Add(id);
             }
-        }
-    }
-
-    private void Toggle(int id, bool on)
-    {
-        if (on)
-        {
-            _selected.Add(id);
-        }
-        else
-        {
-            _selected.Remove(id);
         }
     }
 
@@ -211,7 +268,7 @@
     };
 
     private IEnumerable<KonturFavorite> Ord<T>(Func<KonturFavorite, T> key) =>
-        _sortDesc ? _favorites.OrderByDescending(key) : _favorites.OrderBy(key);
+        _sortDesc ? Filtered().OrderByDescending(key) : Filtered().OrderBy(key);
 
     private async Task ExportNowAsync()
     {
