@@ -1,0 +1,12 @@
+bin/
+obj/
+publish/
+*.user
+*.suo
+.vs/
+.auth/
+browser-profile/
+*.log
+*.part
+*.lock
+.env
