@@ -183,7 +183,21 @@ public sealed class KonturService : IKonturService
             return result;
         }
 
-        var headerRow = rows[0];
+        // Первая строка может быть титулом — ищем строку заголовков среди первых
+        // (та, где есть «Номер»/«Название»); обычно это 2-я строка.
+        var headerIndex = 0;
+        for (var r = 0; r < Math.Min(rows.Count, 6); r++)
+        {
+            var texts = rows[r].CellsUsed().Select(c => c.GetString().Trim()).ToList();
+            if (texts.Any(t => t.Contains("Номер", StringComparison.OrdinalIgnoreCase)) ||
+                texts.Any(t => t.Equals("Название", StringComparison.OrdinalIgnoreCase)))
+            {
+                headerIndex = r;
+                break;
+            }
+        }
+
+        var headerRow = rows[headerIndex];
         var cols = new List<(int Col, string Name)>();
         foreach (var cell in headerRow.CellsUsed())
         {
@@ -245,7 +259,7 @@ public sealed class KonturService : IKonturService
         colName ??= FindContains("наименован", "предмет", "объект");
         colNmck ??= FindContains("нмц", "цена", "бюджет");
 
-        for (var i = 1; i < rows.Count; i++)
+        for (var i = headerIndex + 1; i < rows.Count; i++)
         {
             var row = rows[i];
             var raw = new Dictionary<string, string>();

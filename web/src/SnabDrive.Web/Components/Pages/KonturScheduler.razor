@@ -42,7 +42,7 @@
             </div>
 
             <div class="toolbar">
-                <input type="time" class="input" @bind="_newTime" style="width:140px" />
+                <input type="time" class="input" value="@_newTime" @onchange="OnNewTimeChanged" style="width:140px" />
                 <button class="btn" @onclick="AddTime">＋ Добавить время</button>
                 <div class="toolbar__spacer"></div>
                 <button class="btn btn--primary" @onclick="SaveSchedule">Сохранить</button>
@@ -104,6 +104,8 @@
 
         _log = State.GetLog();
     }
+
+    private void OnNewTimeChanged(ChangeEventArgs e) => _newTime = e.Value?.ToString() ?? string.Empty;
 
     private void AddTime()
     {
