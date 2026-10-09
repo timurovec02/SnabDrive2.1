@@ -428,7 +428,7 @@ public sealed class KonturService : IKonturService
                 return hyperlink.ExternalAddress.AbsoluteUri;
             }
 
-            return hyperlink.ToString();
+            return hyperlink.ToString() ?? string.Empty;
         }
 
         return cell.GetString().Trim();

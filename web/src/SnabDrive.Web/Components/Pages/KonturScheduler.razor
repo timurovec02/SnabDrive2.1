@@ -39,7 +39,7 @@
             </div>
 
             <div class="toolbar">
-                <input type="time" class="input" value="@_newTime" @onchange="OnNewTimeChanged" style="width:140px" />
+                <input type="text" class="input" placeholder="ЧЧ:ММ" value="@_newTime" @onchange="OnNewTimeChanged" style="width:140px" />
                 <button class="btn" @onclick="AddTime">＋ Добавить время</button>
                 <div class="toolbar__spacer"></div>
                 <button class="btn btn--primary" @onclick="SaveSchedule">Сохранить</button>
@@ -55,7 +55,7 @@
                 }
             </div>
             <div class="toolbar">
-                <input type="time" class="input" value="@_newTemplateTime" @onchange="OnNewTemplateTimeChanged" style="width:140px" />
+                <input type="text" class="input" placeholder="ЧЧ:ММ" value="@_newTemplateTime" @onchange="OnNewTemplateTimeChanged" style="width:140px" />
                 <button class="btn" @onclick="AddTemplateTime">＋ Добавить время</button>
             </div>
         </div>
