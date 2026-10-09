@@ -38,7 +38,16 @@ public static class KonturClaim
     public const string Type = "snabdrive.kontur";
 
     public static bool CanUse(ClaimsPrincipal? user) =>
-        user is not null && (user.IsInRole(SnabDrive.Web.Services.AppRoles.Admin) || user.HasClaim(Type, "1"));
+        user is not null && (user.IsInRole(SnabDrive.Web.Services.AppRoles.Admin)
+            || user.IsInRole(SnabDrive.Web.Services.AppRoles.Director)
+            || user.HasClaim(Type, "1"));
+}
+
+public static class Access
+{
+    public static bool IsAdmin(ClaimsPrincipal? user) => user is not null && user.IsInRole(SnabDrive.Web.Services.AppRoles.Admin);
+    public static bool IsDirector(ClaimsPrincipal? user) => user is not null && user.IsInRole(SnabDrive.Web.Services.AppRoles.Director);
+    public static bool Full(ClaimsPrincipal? user) => IsAdmin(user) || IsDirector(user);
 }
 
 public static class SchedulerClaim
@@ -46,5 +55,7 @@ public static class SchedulerClaim
     public const string Type = "snabdrive.scheduler";
 
     public static bool CanUse(ClaimsPrincipal? user) =>
-        user is not null && (user.IsInRole(SnabDrive.Web.Services.AppRoles.Admin) || user.HasClaim(Type, "1"));
+        user is not null && (user.IsInRole(SnabDrive.Web.Services.AppRoles.Admin)
+            || user.IsInRole(SnabDrive.Web.Services.AppRoles.Director)
+            || user.HasClaim(Type, "1"));
 }

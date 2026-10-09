@@ -1,5 +1,5 @@
 @page "/home"
-@attribute [Authorize]
+@attribute [Authorize(Policy = AppPolicies.ManageSystem)]
 @implements IDisposable
 @inject IRegistryService RegistryService
 @inject IPresenceService Presence

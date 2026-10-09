@@ -45,7 +45,7 @@
                         <td>@user.UserName</td>
                         <td>@user.DisplayName</td>
                         <td>@user.Email</td>
-                        <td>@(user.IsAdmin ? "Admin" : "Operator")</td>
+                        <td>@user.Role</td>
                         <td>
                             @if (user.IsBlocked)
                             {
@@ -100,8 +100,13 @@
                         <input class="input" type="password" @bind="_model.Password" />
                     </div>
                     <div class="form-field form-field--checkbox">
-                        <label class="checkbox-label">
-                            <input type="checkbox" @bind="_model.IsAdmin" /> Роль Admin
+                        <label class="checkbox-label" style="display:flex;gap:8px;align-items:center">
+                            Роль:
+                            <select class="input" @bind="_model.Role" style="width:auto">
+                                <option value="@AppRoles.Operator">Пользователь</option>
+                                <option value="@AppRoles.Admin">Администратор</option>
+                                <option value="@AppRoles.Director">Директор</option>
+                            </select>
                         </label>
                         <label class="checkbox-label">
                             <input type="checkbox" @bind="_model.IsBlocked" /> Заблокирован
@@ -199,7 +204,7 @@
 
 @code {
     private sealed record UserRow(string Id, string UserName, string? DisplayName, string? Email,
-                                  bool IsAdmin, bool IsBlocked, bool IsOnline, DateTime? LastLoginUtc, bool KonturEnabled, bool SchedulerEnabled);
+                                  bool IsAdmin, bool IsBlocked, bool IsOnline, DateTime? LastLoginUtc, bool KonturEnabled, bool SchedulerEnabled, string Role);
 
     private sealed class UserModel
     {
@@ -208,6 +213,7 @@
         public string? Email { get; set; }
         public string? Password { get; set; }
         public bool IsAdmin { get; set; }
+        public string Role { get; set; } = SnabDrive.Web.Services.AppRoles.Operator;
         public bool IsBlocked { get; set; }
         public bool KonturEnabled { get; set; }
         public bool SchedulerEnabled { get; set; }
@@ -249,20 +255,29 @@
 
         foreach (var user in users)
         {
+            var role = await GetRole(user);
             rows.Add(new UserRow(
                 user.Id,
                 user.UserName ?? string.Empty,
                 user.DisplayName,
                 user.Email,
-                await UserManager.IsInRoleAsync(user, AppRoles.Admin),
+                role == AppRoles.Admin,
                 user.IsBlocked,
                 online.Contains(user.Id),
                 user.LastLoginUtc,
                 user.KonturEnabled,
-                user.SchedulerEnabled));
+                user.SchedulerEnabled,
+                role));
         }
 
         _users = rows;
+    }
+
+    private async Task<string> GetRole(SnabDrive.Web.Data.ApplicationUser user)
+    {
+        if (await UserManager.IsInRoleAsync(user, AppRoles.Admin)) return AppRoles.Admin;
+        if (await UserManager.IsInRoleAsync(user, AppRoles.Director)) return AppRoles.Director;
+        return AppRoles.Operator;
     }
 
     private void StartCreate()
@@ -282,6 +297,7 @@
             DisplayName = user.DisplayName,
             Email = user.Email,
             IsAdmin = user.IsAdmin,
+            Role = user.Role,
             IsBlocked = user.IsBlocked,
             KonturEnabled = user.KonturEnabled,
             SchedulerEnabled = user.SchedulerEnabled
@@ -356,7 +372,7 @@
             return;
         }
 
-        await UserManager.AddToRoleAsync(user, _model.IsAdmin ? AppRoles.Admin : AppRoles.Operator);
+        await UserManager.AddToRoleAsync(user, _model.Role);
         await WriteAuditAsync("Создан пользователь «" + user.UserName + "»");
 
         Toasts.Show("Пользователь создан", ToastKind.Success);
@@ -402,16 +418,18 @@
             return;
         }
 
-        var isAdmin = await UserManager.IsInRoleAsync(user, AppRoles.Admin);
-        if (_model.IsAdmin && !isAdmin)
+        var currentRole = await GetRole(user);
+        if (currentRole != _model.Role)
         {
-            await UserManager.RemoveFromRoleAsync(user, AppRoles.Operator);
-            await UserManager.AddToRoleAsync(user, AppRoles.Admin);
-        }
-        else if (!_model.IsAdmin && isAdmin)
-        {
-            await UserManager.RemoveFromRoleAsync(user, AppRoles.Admin);
-            await UserManager.AddToRoleAsync(user, AppRoles.Operator);
+            foreach (var r in AppRoles.All)
+            {
+                if (await UserManager.IsInRoleAsync(user, r))
+                {
+                    await UserManager.RemoveFromRoleAsync(user, r);
+                }
+            }
+
+            await UserManager.AddToRoleAsync(user, _model.Role);
         }
 
         // Обновляем stamp — активные сессии пользователя перечитают права.

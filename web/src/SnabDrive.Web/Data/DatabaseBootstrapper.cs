@@ -12,8 +12,9 @@ public static class AppRoles
 {
     public const string Admin = "Admin";
     public const string Operator = "Operator";
+    public const string Director = "Director";
 
-    public static readonly string[] All = { Admin, Operator };
+    public static readonly string[] All = { Admin, Operator, Director };
 }
 
 /// <summary>Политики авторизации.</summary>

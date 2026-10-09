@@ -78,3 +78,35 @@ END
 ELSE
     PRINT 'AspNetUsers.SchedulerEnabled уже существует.';
 GO
+
+-- ============================================================================
+-- Контур ловушка (--templates): отдельная таблица для директора с аналитикой по датам
+-- ============================================================================
+IF OBJECT_ID('dbo.KonturTemplates', 'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.KonturTemplates
+    (
+        Id              int IDENTITY(1,1) NOT NULL CONSTRAINT PK_KonturTemplates PRIMARY KEY,
+        PurchaseNumber  nvarchar(200)  NULL,
+        NameLink        nvarchar(1000) NOT NULL,
+        Customer        nvarchar(1000) NULL,
+        NMCK            decimal(18,2)  NOT NULL CONSTRAINT DF_KonturTemplates_NMCK DEFAULT(0),
+        PlaceOfDelivery nvarchar(1000) NULL,
+        Winner          nvarchar(500)  NULL,
+        ResultPrice     decimal(18,2)  NOT NULL CONSTRAINT DF_KonturTemplates_ResultPrice DEFAULT(0),
+        Label           nvarchar(500)  NULL,
+        EisLink         nvarchar(1000) NULL,
+        BiddingDate     datetime2(7)   NULL,
+        DateOfPlacement datetime2(7)   NULL,
+        RawJson         nvarchar(max)  NULL,
+        AddedAt         datetime2(7)   NOT NULL CONSTRAINT DF_KonturTemplates_AddedAt DEFAULT(GETDATE()),
+        UpdatedAt       datetime2(7)   NULL,
+        AddedBy         nvarchar(256)  NULL
+    );
+
+    CREATE INDEX IX_KonturTemplates_PurchaseNumber ON dbo.KonturTemplates (PurchaseNumber);
+    PRINT 'KonturTemplates создана.';
+END
+ELSE
+    PRINT 'KonturTemplates уже существует.';
+GO

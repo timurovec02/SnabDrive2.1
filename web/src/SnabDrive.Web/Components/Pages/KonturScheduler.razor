@@ -44,6 +44,20 @@
                 <div class="toolbar__spacer"></div>
                 <button class="btn btn--primary" @onclick="SaveSchedule">Сохранить</button>
             </div>
+
+            <h2 class="h5" style="margin:20px 0 8px">Контур ловушка (--templates)</h2>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+                @foreach (var t in _templatesTimes)
+                {
+                    <span class="badge badge--info">@t
+                        <button class="chip-remove" @onclick="() => RemoveTemplateTime(t)" title="Убрать">×</button>
+                    </span>
+                }
+            </div>
+            <div class="toolbar">
+                <input type="time" class="input" value="@_newTemplateTime" @onchange="OnNewTemplateTimeChanged" style="width:140px" />
+                <button class="btn" @onclick="AddTemplateTime">＋ Добавить время</button>
+            </div>
         </div>
     }
 </div>
@@ -53,6 +67,8 @@
     private bool _enabled = true;
     private List<string> _times = new();
     private string _newTime = "08:00";
+    private List<string> _templatesTimes = new();
+    private string _newTemplateTime = "09:00";
 
     protected override async Task OnInitializedAsync()
     {
@@ -61,6 +77,7 @@
 
         _enabled = Store.Value.Enabled;
         _times = Store.Value.Times.ToList();
+        _templatesTimes = Store.Value.TemplatesTimes.ToList();
     }
 
     private void OnNewTimeChanged(ChangeEventArgs e) => _newTime = e.Value?.ToString() ?? string.Empty;
@@ -80,10 +97,28 @@
 
     private void RemoveTime(string t) => _times.Remove(t);
 
+    private void OnNewTemplateTimeChanged(ChangeEventArgs e) => _newTemplateTime = e.Value?.ToString() ?? string.Empty;
+
+    private void AddTemplateTime()
+    {
+        if (TimeSpan.TryParse(_newTemplateTime, out var ts))
+        {
+            var value = ts.ToString(@"hh\:mm");
+            if (!_templatesTimes.Contains(value))
+            {
+                _templatesTimes.Add(value);
+                _templatesTimes = _templatesTimes.OrderBy(x => x).ToList();
+            }
+        }
+    }
+
+    private void RemoveTemplateTime(string t) => _templatesTimes.Remove(t);
+
     private void SaveSchedule()
     {
         Store.Value.Enabled = _enabled;
         Store.Value.Times = _times.ToList();
+        Store.Value.TemplatesTimes = _templatesTimes.ToList();
         Store.Save();
         Toasts.Show("Расписание сохранено", ToastKind.Success);
     }

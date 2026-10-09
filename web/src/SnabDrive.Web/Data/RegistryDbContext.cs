@@ -26,6 +26,7 @@ public class RegistryDbContext : DbContext
     public DbSet<CellColor> CellColors => Set<CellColor>();
     public DbSet<LegacyUser> LegacyUsers => Set<LegacyUser>();
     public DbSet<KonturFavorite> KonturFavorites => Set<KonturFavorite>();
+    public DbSet<KonturTemplate> KonturTemplates => Set<KonturTemplate>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -201,6 +202,28 @@ public class RegistryDbContext : DbContext
             entity.Property(x => x.AddedAt).HasColumnName("AddedAt");
             entity.Property(x => x.AddedBy).HasColumnName("AddedBy").HasMaxLength(256);
             entity.HasIndex(x => x.Status);
+        });
+
+        modelBuilder.Entity<KonturTemplate>(entity =>
+        {
+            entity.ToTable("KonturTemplates");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.PurchaseNumber).HasColumnName("PurchaseNumber").HasMaxLength(200);
+            entity.Property(x => x.NameLink).HasColumnName("NameLink").HasMaxLength(1000).IsRequired();
+            entity.Property(x => x.Customer).HasColumnName("Customer").HasMaxLength(1000);
+            entity.Property(x => x.NMCK).HasColumnName("NMCK").HasPrecision(18, 2);
+            entity.Property(x => x.PlaceOfDelivery).HasColumnName("PlaceOfDelivery").HasMaxLength(1000);
+            entity.Property(x => x.Winner).HasColumnName("Winner").HasMaxLength(500);
+            entity.Property(x => x.ResultPrice).HasColumnName("ResultPrice").HasPrecision(18, 2);
+            entity.Property(x => x.Label).HasColumnName("Label").HasMaxLength(500);
+            entity.Property(x => x.EisLink).HasColumnName("EisLink").HasMaxLength(1000);
+            entity.Property(x => x.BiddingDate).HasColumnName("BiddingDate");
+            entity.Property(x => x.DateOfPlacement).HasColumnName("DateOfPlacement");
+            entity.Property(x => x.RawJson).HasColumnName("RawJson");
+            entity.Property(x => x.AddedAt).HasColumnName("AddedAt");
+            entity.Property(x => x.UpdatedAt).HasColumnName("UpdatedAt");
+            entity.Property(x => x.AddedBy).HasColumnName("AddedBy").HasMaxLength(256);
+            entity.HasIndex(x => x.PurchaseNumber);
         });
     }
 }

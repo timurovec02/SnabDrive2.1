@@ -26,10 +26,20 @@ public sealed class KonturSchedule
 {
     public bool Enabled { get; set; } = true;
 
-    /// <summary>Список времён «ЧЧ:ММ» ежедневного запуска.</summary>
+    /// <summary>Времена «ЧЧ:ММ» ежедневного запуска Избранного (--favorites).</summary>
     public List<string> Times { get; set; } = new() { "08:00", "20:00" };
 
+    /// <summary>Времена «ЧЧ:ММ» запуска Контур ловушки (--templates): обычно начало и конец рабочего дня.</summary>
+    public List<string> TemplatesTimes { get; set; } = new() { "09:00", "18:00" };
+
     public string? LastImportedFile { get; set; }
+}
+
+/// <summary>Режим выгрузки: Избранное (--favorites) или Контур ловушка (--templates).</summary>
+public enum ExportMode
+{
+    Favorites,
+    Templates
 }
 
 /// <summary>Читает/пишет расписание в JSON рядом с приложением.</summary>
@@ -168,8 +178,13 @@ public sealed class KonturSchedulerService : BackgroundService
         }
 
         var now = DateTime.Now;
+        await RunDueAsync(schedule.Times, ExportMode.Favorites, now);
+        await RunDueAsync(schedule.TemplatesTimes, ExportMode.Templates, now);
+    }
 
-        foreach (var time in schedule.Times)
+    private async Task RunDueAsync(List<string> times, ExportMode mode, DateTime now)
+    {
+        foreach (var time in times)
         {
             if (!TimeSpan.TryParse(time, out var ts))
             {
@@ -177,17 +192,16 @@ public sealed class KonturSchedulerService : BackgroundService
             }
 
             var slot = now.Date + ts;
-            var slotKey = slot.ToString("yyyy-MM-ddTHH:mm");
+            var slotKey = $"{mode}:{slot:yyyy-MM-ddTHH:mm}";
 
-            // Запускаем, если время слота наступило и он ещё не выполнялся сегодня.
             if (now >= slot && (now - slot) < TimeSpan.FromMinutes(5) && _doneSlots.Add(slotKey))
             {
-                await RunAsync($"по расписанию {time}");
+                await RunAsync($"по расписанию {time}", mode);
             }
         }
     }
 
-    public async Task RunAsync(string reason)
+    public async Task RunAsync(string reason, ExportMode mode = ExportMode.Favorites)
     {
         if (_state.IsRunning)
         {
@@ -195,18 +209,19 @@ public sealed class KonturSchedulerService : BackgroundService
         }
 
         _state.IsRunning = true;
-        _state.AddLog($"Запуск: {reason}");
+        var label = mode == ExportMode.Templates ? "Контур ловушка" : "Избранное";
+        _state.AddLog($"Запуск ({label}): {reason}");
 
         try
         {
             var options = _config.GetSection("Kontur").Get<KonturExporterOptions>() ?? new KonturExporterOptions();
-            var outDir = ResolveOutputDirectory(options);
+            var outDir = ResolveOutputDirectory(options, mode);
             Directory.CreateDirectory(outDir);
             var start = DateTime.Now;
 
-            RunExporter(options, outDir);
+            RunExporter(options, outDir, mode);
 
-            await ImportNewestAsync(outDir, start);
+            await ImportNewestAsync(outDir, start, mode);
         }
         catch (Exception ex)
         {
@@ -221,17 +236,15 @@ public sealed class KonturSchedulerService : BackgroundService
         }
     }
 
-    private static string ResolveOutputDirectory(KonturExporterOptions options)
+    private static string ResolveOutputDirectory(KonturExporterOptions options, ExportMode mode)
     {
-        if (!string.IsNullOrWhiteSpace(options.OutputDirectory))
-        {
-            return options.OutputDirectory;
-        }
-
-        return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads", "KonturExports");
+        var baseDir = !string.IsNullOrWhiteSpace(options.OutputDirectory)
+            ? options.OutputDirectory
+            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads", "KonturExports");
+        return Path.Combine(baseDir, mode == ExportMode.Templates ? "templates" : "favorites");
     }
 
-    private void RunExporter(KonturExporterOptions options, string outDir)
+    private void RunExporter(KonturExporterOptions options, string outDir, ExportMode mode)
     {
         if (string.IsNullOrWhiteSpace(options.ExporterPath) || !File.Exists(options.ExporterPath))
         {
@@ -239,7 +252,8 @@ public sealed class KonturSchedulerService : BackgroundService
             return;
         }
 
-        var args = $"--headless --no-pause --output \"{outDir}\"";
+        var modeFlag = mode == ExportMode.Templates ? "--templates" : "--favorites";
+        var args = $"--headless --no-pause {modeFlag} --output \"{outDir}\"";
         _state.AddLog($"Команда: \"{options.ExporterPath}\" {args}");
 
         try
@@ -286,7 +300,7 @@ public sealed class KonturSchedulerService : BackgroundService
 
     private static string Tail(string value) => value.Length <= 1500 ? value : value[^1500..];
 
-    private async Task ImportNewestAsync(string outDir, DateTime start)
+    private async Task ImportNewestAsync(string outDir, DateTime start, ExportMode mode)
     {
         var file = new DirectoryInfo(outDir).GetFiles("*.xlsx")
             .OrderByDescending(f => f.LastWriteTime)
@@ -304,7 +318,9 @@ public sealed class KonturSchedulerService : BackgroundService
         var kontur = scope.ServiceProvider.GetRequiredService<IKonturService>();
 
         await using var stream = file.OpenRead();
-        var result = await kontur.ImportFromExcelAsync(stream, SystemActor);
+        var result = mode == ExportMode.Templates
+            ? await kontur.ImportToTemplatesAsync(stream, SystemActor)
+            : await kontur.ImportFromExcelAsync(stream, SystemActor);
 
         _state.LastSuccess = result.Success;
         _state.LastAdded = result.Success ? result.Value : 0;
@@ -330,7 +346,7 @@ public sealed class KonturSchedulerService : BackgroundService
         var now = DateTime.Now;
         DateTime? next = null;
 
-        foreach (var time in schedule.Times)
+        foreach (var time in schedule.Times.Concat(schedule.TemplatesTimes))
         {
             if (!TimeSpan.TryParse(time, out var ts))
             {

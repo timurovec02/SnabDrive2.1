@@ -20,6 +20,11 @@ public interface IKonturService
     Task<Result<int>> ImportToRegistryAsync(IEnumerable<int> favoriteIds, ChangeActor actor, CancellationToken cancellationToken = default);
 
     Task<Result> SetStatusAsync(IEnumerable<int> favoriteIds, KonturFavoriteStatus status, CancellationToken cancellationToken = default);
+
+    // ---- Контур ловушка (--templates) ----
+    Task<IReadOnlyList<KonturTemplate>> GetTemplatesAsync(CancellationToken cancellationToken = default);
+    Task<Result<int>> ImportToTemplatesAsync(Stream excelStream, ChangeActor actor, CancellationToken cancellationToken = default);
+    Task<Result> UpdateTemplateAsync(int id, string? label, ChangeActor actor, CancellationToken cancellationToken = default);
 }
 
 public sealed class KonturService : IKonturService
@@ -170,6 +175,112 @@ public sealed class KonturService : IKonturService
         return Result.Ok();
     }
 
+    public async Task<IReadOnlyList<KonturTemplate>> GetTemplatesAsync(CancellationToken cancellationToken = default)
+    {
+        await using var context = await _factory.CreateDbContextAsync(cancellationToken);
+        return await context.KonturTemplates.AsNoTracking()
+            .OrderByDescending(t => t.AddedAt).ThenByDescending(t => t.Id)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<Result<int>> ImportToTemplatesAsync(Stream excelStream, ChangeActor actor, CancellationToken cancellationToken = default)
+    {
+        await using var context = await _factory.CreateDbContextAsync(cancellationToken);
+
+        List<KonturFavorite> parsed;
+        try
+        {
+            using var buffer = new MemoryStream();
+            await excelStream.CopyToAsync(buffer, cancellationToken);
+            buffer.Position = 0;
+            parsed = ParseWorkbook(buffer, actor.UserName);
+        }
+        catch (Exception ex)
+        {
+            return Result<int>.Fail($"Не удалось разобрать файл: {ex.Message}");
+        }
+
+        var changed = 0;
+        foreach (var f in parsed)
+        {
+            KonturTemplate? existing = null;
+            if (!string.IsNullOrWhiteSpace(f.PurchaseNumber))
+            {
+                var num = f.PurchaseNumber;
+                existing = await context.KonturTemplates.FirstOrDefaultAsync(t => t.PurchaseNumber == num, cancellationToken);
+            }
+
+            if (existing is not null)
+            {
+                existing.NameLink = f.NameLink;
+                existing.Customer = f.Customer;
+                existing.NMCK = f.NMCK;
+                existing.PlaceOfDelivery = f.PlaceOfDelivery;
+                existing.Winner = f.Winner;
+                existing.ResultPrice = f.ResultPrice;
+                if (!string.IsNullOrWhiteSpace(f.Label)) existing.Label = f.Label;
+                if (!string.IsNullOrWhiteSpace(f.EisLink)) existing.EisLink = f.EisLink;
+                existing.BiddingDate = f.BiddingDate;
+                existing.DateOfPlacement = f.DateOfPlacement;
+                existing.RawJson = f.RawJson;
+                existing.UpdatedAt = DateTime.Now;
+            }
+            else
+            {
+                context.KonturTemplates.Add(new KonturTemplate
+                {
+                    PurchaseNumber = f.PurchaseNumber,
+                    NameLink = f.NameLink,
+                    Customer = f.Customer,
+                    NMCK = f.NMCK,
+                    PlaceOfDelivery = f.PlaceOfDelivery,
+                    Winner = f.Winner,
+                    ResultPrice = f.ResultPrice,
+                    Label = f.Label,
+                    EisLink = f.EisLink,
+                    BiddingDate = f.BiddingDate,
+                    DateOfPlacement = f.DateOfPlacement,
+                    RawJson = f.RawJson,
+                    AddedAt = DateTime.Now,
+                    AddedBy = actor.UserName
+                });
+            }
+
+            changed++;
+        }
+
+        if (changed == 0)
+        {
+            return Result<int>.Fail("В файле не найдено строк.");
+        }
+
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            return Result<int>.Fail($"Не удалось сохранить: {ex.InnerException?.Message ?? ex.Message}");
+        }
+
+        return Result<int>.Ok(changed);
+    }
+
+    public async Task<Result> UpdateTemplateAsync(int id, string? label, ChangeActor actor, CancellationToken cancellationToken = default)
+    {
+        await using var context = await _factory.CreateDbContextAsync(cancellationToken);
+        var template = await context.KonturTemplates.FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
+        if (template is null)
+        {
+            return Result.Fail("Запись не найдена.");
+        }
+
+        template.Label = label;
+        template.UpdatedAt = DateTime.Now;
+        await context.SaveChangesAsync(cancellationToken);
+        return Result.Ok();
+    }
+
     // ------------------------------------------------------------------ разбор Excel
 
     private static List<KonturFavorite> ParseWorkbook(Stream stream, string addedBy)
@@ -290,7 +401,7 @@ public sealed class KonturService : IKonturService
                 Winner = Clamp(Text(sheet, row.RowNumber(), colWinner), 500),
                 ResultPrice = Money(sheet, row.RowNumber(), colResult),
                 Label = Clamp(Text(sheet, row.RowNumber(), colLabel), 500),
-                EisLink = Clamp(Text(sheet, row.RowNumber(), colEis), 1000),
+                EisLink = Clamp(CellLink(sheet, row.RowNumber(), colEis), 1000),
                 Status = KonturFavoriteStatus.New,
                 RawJson = JsonSerializer.Serialize(raw),
                 AddedAt = DateTime.Now,
@@ -299,6 +410,28 @@ public sealed class KonturService : IKonturService
         }
 
         return result;
+    }
+
+    // Берём саму ссылку из гиперссылки в столбце ЕИС, а не видимый текст.
+    private static string CellLink(IXLWorksheet sheet, int row, int? col)
+    {
+        if (col is null)
+        {
+            return string.Empty;
+        }
+
+        var cell = sheet.Cell(row, col.Value);
+        if (cell.HasHyperlink)
+        {
+            if (cell.Hyperlink.ExternalAddress is not null)
+            {
+                return cell.Hyperlink.ExternalAddress.AbsoluteUri;
+            }
+
+            return cell.Hyperlink.ToString();
+        }
+
+        return cell.GetString().Trim();
     }
 
     private static string Clamp(string value, int max) =>

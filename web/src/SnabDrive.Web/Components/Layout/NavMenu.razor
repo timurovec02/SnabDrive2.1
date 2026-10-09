@@ -4,34 +4,49 @@
     <NavLink class="nav__item" href="" Match="NavLinkMatch.All" title="Реестр">
         <span class="nav__icon">▤</span><span class="nav__label">Реестр</span>
     </NavLink>
-    <NavLink class="nav__item" href="home" title="Обзор">
-        <span class="nav__icon">▦</span><span class="nav__label">Обзор</span>
-    </NavLink>
 
-    @if (IsAdmin)
+    @if (Full)
     {
-        <NavLink class="nav__item" href="archive" title="Архив">
-            <span class="nav__icon">🗄</span><span class="nav__label">Архив</span>
+        <NavLink class="nav__item" href="home" title="Обзор">
+            <span class="nav__icon">▦</span><span class="nav__label">Обзор</span>
         </NavLink>
     }
 
-    @if (IsAdmin || KonturEnabled)
+    <NavLink class="nav__item" href="archive" title="Архив">
+        <span class="nav__icon">🗄</span><span class="nav__label">Архив</span>
+    </NavLink>
+
+    @if (Full || KonturEnabled)
     {
         <NavLink class="nav__item" href="kontur" title="Избранное Контур">
             <span class="nav__icon">★</span><span class="nav__label">Контур</span>
         </NavLink>
     }
 
-    @if (IsAdmin || SchedulerEnabled)
+    @if (Full)
+    {
+        <NavLink class="nav__item" href="kontur-templates" title="Контур ловушка">
+            <span class="nav__icon">🎯</span><span class="nav__label">Контур ловушка</span>
+        </NavLink>
+    }
+
+    @if (Full || SchedulerEnabled)
     {
         <NavLink class="nav__item" href="kontur-scheduler" title="Планировщик Контур">
             <span class="nav__icon">⏰</span><span class="nav__label">Планировщик</span>
         </NavLink>
     }
 
+    @if (IsDirector)
+    {
+        <NavLink class="nav__item" href="director" title="Обзор директора">
+            <span class="nav__icon">📊</span><span class="nav__label">Обзор директора</span>
+        </NavLink>
+    }
+
     <div class="nav__divider"></div>
 
-    @if (IsAdmin)
+    @if (Full)
     {
         <NavLink class="nav__item" href="dictionaries" title="Справочники">
             <span class="nav__icon">☰</span><span class="nav__label">Справочники</span>
@@ -51,7 +66,10 @@
 
 @code {
     [Parameter] public bool IsAdmin { get; set; }
+    [Parameter] public bool IsDirector { get; set; }
     [Parameter] public bool Collapsed { get; set; }
     [Parameter] public bool KonturEnabled { get; set; }
     [Parameter] public bool SchedulerEnabled { get; set; }
+
+    private bool Full => IsAdmin || IsDirector;
 }
