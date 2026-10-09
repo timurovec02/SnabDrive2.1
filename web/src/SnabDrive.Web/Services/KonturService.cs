@@ -423,12 +423,13 @@ public sealed class KonturService : IKonturService
         var cell = sheet.Cell(row, col.Value);
         if (cell.HasHyperlink)
         {
-            if (cell.Hyperlink.ExternalAddress is not null)
+            var hyperlink = cell.GetHyperlink();
+            if (hyperlink.ExternalAddress is not null)
             {
-                return cell.Hyperlink.ExternalAddress.AbsoluteUri;
+                return hyperlink.ExternalAddress.AbsoluteUri;
             }
 
-            return cell.Hyperlink.ToString();
+            return hyperlink.ToString();
         }
 
         return cell.GetString().Trim();
