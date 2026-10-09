@@ -253,7 +253,7 @@ public sealed class KonturSchedulerService : BackgroundService
         }
 
         var modeFlag = mode == ExportMode.Templates ? "--templates" : "--favorites";
-        var args = $"--headless --no-pause {modeFlag} --output \"{outDir}\"";
+        var args = $"--no-pause {modeFlag} --output \"{outDir}\"";
         _state.AddLog($"Команда: \"{options.ExporterPath}\" {args}");
 
         try

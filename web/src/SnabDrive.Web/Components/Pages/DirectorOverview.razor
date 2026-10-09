@@ -1,13 +1,140 @@
 @page "/director"
+@using System.Linq
 @using System.Security.Claims
-@attribute [Authorize(Roles = "Директор")]
+@using SnabDrive.Web.Data
+@using SnabDrive.Web.Domain
+@using SnabDrive.Web.Services
+@attribute [Authorize(Policy = AppPolicies.ManageSystem)]
+@inject IRegistryService Registry
+@inject IKonturService Kontur
 
 <h1 class="page-title">Обзор директора</h1>
-<p class="page-subtitle">Общий визуал по всем пользователям.</p>
+<p class="page-subtitle">Сводная аналитика по закупкам и выгрузкам «Контур ловушка».</p>
 
-<div class="card">
-    <div class="card-body muted">
-        Раздел в разработке. Здесь появится общий визуал по всем пользователям
-        (активность, выгрузки, аналитика по датам/периодам).
+@if (_error is not null)
+{
+    <div class="alert alert-error">@_error</div>
+}
+
+@if (_loading)
+{
+    <p class="muted">Загрузка…</p>
+}
+else
+{
+    <div class="cards" style="display:flex;flex-wrap:wrap;gap:12px;margin:16px 0">
+        <div class="card" style="min-width:180px"><div class="card-body">
+            <div class="muted">Всего закупок</div><div style="font-size:24px;font-weight:600">@_total</div>
+        </div></div>
+        <div class="card" style="min-width:180px"><div class="card-body">
+            <div class="muted">Сумма НМЦК</div><div style="font-size:24px;font-weight:600">@_sumNmc.ToString("N0")</div>
+        </div></div>
+        <div class="card" style="min-width:180px"><div class="card-body">
+            <div class="muted">Сумма итоговых цен</div><div style="font-size:24px;font-weight:600">@_sumResult.ToString("N0")</div>
+        </div></div>
+        <div class="card" style="min-width:180px"><div class="card-body">
+            <div class="muted">Ловушка: записей</div><div style="font-size:24px;font-weight:600">@_templatesTotal</div>
+        </div></div>
+        <div class="card" style="min-width:180px"><div class="card-body">
+            <div class="muted">Ловушка: «Интересно»</div><div style="font-size:24px;font-weight:600">@_templatesInteresting</div>
+        </div></div>
     </div>
-</div>
+
+    <h2 class="h5" style="margin:20px 0 8px">По месяцам (дата торгов)</h2>
+    <table class="table table-sm">
+        <thead><tr><th>Месяц</th><th>Кол-во</th><th>Сумма НМЦК</th></tr></thead>
+        <tbody>
+            @if (!_byMonth.Any())
+            {
+                <tr><td colspan="3" class="muted">Нет данных.</td></tr>
+            }
+            @foreach (var m in _byMonth)
+            {
+                <tr><td>@m.Key</td><td>@m.Count</td><td>@m.Sum.ToString("N0")</td></tr>
+            }
+        </tbody>
+    </table>
+
+    <h2 class="h5" style="margin:20px 0 8px">Топ заказчиков</h2>
+    <table class="table table-sm">
+        <thead><tr><th>Заказчик</th><th>Кол-во</th><th>Сумма НМЦК</th></tr></thead>
+        <tbody>
+            @if (!_topCustomers.Any())
+            {
+                <tr><td colspan="3" class="muted">Нет данных.</td></tr>
+            }
+            @foreach (var c in _topCustomers)
+            {
+                <tr><td>@c.Name</td><td>@c.Count</td><td>@c.Sum.ToString("N0")</td></tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private bool _loading = true;
+    private string? _error;
+
+    private int _total;
+    private decimal _sumNmc;
+    private decimal _sumResult;
+    private int _templatesTotal;
+    private int _templatesInteresting;
+
+    private List<(string Key, int Count, decimal Sum)> _byMonth = new();
+    private List<(string Name, int Count, decimal Sum)> _topCustomers = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var all = new List<RegistryRowDto>();
+            var page = 1;
+            while (page <= 200)
+            {
+                var res = await Registry.QueryAsync(new RegistryQuery { Page = page, PageSize = RegistryQuery.MaxPageSize });
+                all.AddRange(res.Items);
+                if (res.Items.Count == 0 || all.Count >= res.TotalCount)
+                {
+                    break;
+                }
+                page++;
+            }
+
+            var templates = await Kontur.GetTemplatesAsync();
+
+            _total = all.Count;
+            _sumNmc = all.Sum(r => r.NMCK);
+            _sumResult = all.Sum(r => r.ResultPrice);
+
+            _templatesTotal = templates.Count;
+            _templatesInteresting = templates.Count(t =>
+                !string.IsNullOrWhiteSpace(t.Label) &&
+                t.Label.Contains("интересно", StringComparison.OrdinalIgnoreCase));
+
+            _byMonth = all
+                .Where(r => r.BiddingDate is not null)
+                .GroupBy(r => r.BiddingDate!.Value.ToString("yyyy-MM"))
+                .Select(g => (Key: g.Key, Count: g.Count(), Sum: g.Sum(x => x.NMCK)))
+                .OrderByDescending(x => x.Key)
+                .ToList();
+
+            _topCustomers = all
+                .Where(r => !string.IsNullOrWhiteSpace(r.Customer))
+                .GroupBy(r => r.Customer)
+                .Select(g => (Name: g.Key, Count: g.Count(), Sum: g.Sum(x => x.NMCK)))
+                .OrderByDescending(x => x.Count)
+                .ThenByDescending(x => x.Sum)
+                .Take(10)
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}

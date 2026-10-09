@@ -5,7 +5,7 @@
 @using SnabDrive.Web.Data.Entities
 @using SnabDrive.Web.Domain
 @using SnabDrive.Web.Services
-@attribute [Authorize(Roles = "Администратор,Директор")]
+@attribute [Authorize(Policy = AppPolicies.ManageSystem)]
 @inject IKonturService Kontur
 @inject KonturSchedulerService Scheduler
 @inject KonturSchedulerState SchedulerState
