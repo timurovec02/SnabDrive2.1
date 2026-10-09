@@ -24,7 +24,7 @@ public interface IKonturService
     // ---- Контур ловушка (--templates) ----
     Task<IReadOnlyList<KonturTemplate>> GetTemplatesAsync(CancellationToken cancellationToken = default);
     Task<Result<int>> ImportToTemplatesAsync(Stream excelStream, ChangeActor actor, CancellationToken cancellationToken = default);
-    Task<Result> UpdateTemplateAsync(int id, string? label, ChangeActor actor, CancellationToken cancellationToken = default);
+    Task<Result> DeleteTemplateAsync(int id, ChangeActor actor, CancellationToken cancellationToken = default);
 }
 
 public sealed class KonturService : IKonturService
@@ -266,7 +266,7 @@ public sealed class KonturService : IKonturService
         return Result<int>.Ok(changed);
     }
 
-    public async Task<Result> UpdateTemplateAsync(int id, string? label, ChangeActor actor, CancellationToken cancellationToken = default)
+    public async Task<Result> DeleteTemplateAsync(int id, ChangeActor actor, CancellationToken cancellationToken = default)
     {
         await using var context = await _factory.CreateDbContextAsync(cancellationToken);
         var template = await context.KonturTemplates.FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
@@ -275,8 +275,7 @@ public sealed class KonturService : IKonturService
             return Result.Fail("Запись не найдена.");
         }
 
-        template.Label = label;
-        template.UpdatedAt = DateTime.Now;
+        context.KonturTemplates.Remove(template);
         await context.SaveChangesAsync(cancellationToken);
         return Result.Ok();
     }

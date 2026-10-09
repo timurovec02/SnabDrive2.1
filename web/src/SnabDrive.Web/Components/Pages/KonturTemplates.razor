@@ -13,7 +13,7 @@
 @inject IJSRuntime JS
 
 <h1 class="page-title">Контур ловушка <span class="muted">(--templates)</span></h1>
-<p class="page-subtitle">Выгрузка в начале и конце рабочего дня; строки дообновляются, Метку можно править. Для анализа по датам.</p>
+<p class="page-subtitle">Выгрузка в начале и конце рабочего дня; метка проставляется автоматически при повторной выгрузке (вручную не редактируется).</p>
 
 @if (_error is not null)
 {
@@ -40,8 +40,10 @@
                 <th class="th-sort" @onclick='() => SortBy("Customer")'>Заказчик @Arrow("Customer")</th>
                 <th class="th-sort th-money" @onclick='() => SortBy("NmcK")'>НМЦК @Arrow("NmcK")</th>
                 <th class="th-sort" @onclick='() => SortBy("Date")'>Дата торгов @Arrow("Date")</th>
+                <th class="th-sort" @onclick='() => SortBy("Pub")'>Дата публикации @Arrow("Pub")</th>
                 <th class="th-sort" @onclick='() => SortBy("Label")'>Метка @Arrow("Label")</th>
                 <th class="th-sort" @onclick='() => SortBy("Added")'>Добавлено @Arrow("Added")</th>
+                <th>Действия</th>
             </tr>
             <tr class="registry-grid__filters">
                 <th><input class="filter-input" placeholder="фильтр" value='@GetFilter("Num")' @onchange='e => SetFilter("Num", e)' /></th>
@@ -49,18 +51,20 @@
                 <th><input class="filter-input" placeholder="фильтр" value='@GetFilter("Customer")' @onchange='e => SetFilter("Customer", e)' /></th>
                 <th></th>
                 <th></th>
+                <th></th>
                 <th><input class="filter-input" placeholder="фильтр" value='@GetFilter("Label")' @onchange='e => SetFilter("Label", e)' /></th>
+                <th></th>
                 <th></th>
             </tr>
         </thead>
         <tbody>
             @if (_rows is null)
             {
-                <tr><td colspan="7" class="muted">Загрузка…</td></tr>
+                <tr><td colspan="9" class="muted">Загрузка…</td></tr>
             }
             else if (!_rows.Any())
             {
-                <tr><td colspan="7" class="muted">Нет выгрузок ловушки.</td></tr>
+                <tr><td colspan="9" class="muted">Нет выгрузок ловушки.</td></tr>
             }
             else
             {
@@ -81,20 +85,12 @@
                         <td class="td-text">@t.Customer</td>
                         <td class="td-money">@t.NMCK.ToString("N2")</td>
                         <td>@t.BiddingDate?.ToString("dd.MM.yyyy")</td>
-                        <td class="td-text">
-                            @if (_editingId == t.Id)
-                            {
-                                <input class="input" value="@_editLabel" @onchange="e => _editLabel = e.Value?.ToString() ?? string.Empty" />
-                                <button class="btn btn-link" @onclick="() => SaveLabelAsync(t.Id)">Сохранить</button>
-                                <button class="btn btn-link" @onclick="() => CancelEdit()">Отмена</button>
-                            }
-                            else
-                            {
-                                <span>@(string.IsNullOrWhiteSpace(t.Label) ? "—" : t.Label)</span>
-                                <button class="btn btn-link" @onclick="() => StartEdit(t)">Изменить</button>
-                            }
-                        </td>
+                        <td>@t.DateOfPlacement?.ToString("dd.MM.yyyy")</td>
+                        <td class="td-text">@(string.IsNullOrWhiteSpace(t.Label) ? "—" : t.Label)</td>
                         <td>@t.AddedAt.ToString("dd.MM.yyyy HH:mm")</td>
+                        <td>
+                            <button class="btn btn-link btn-sm btn--danger" @onclick="() => DeleteAsync(t)">Удалить</button>
+                        </td>
                     </tr>
                 }
             }
@@ -109,8 +105,6 @@
     private string? _error;
     private string _sortKey = "Added";
     private bool _sortDesc = true;
-    private int _editingId;
-    private string _editLabel = string.Empty;
     private readonly Dictionary<string, string> _filters = new();
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
@@ -141,21 +135,13 @@
         finally { _busy = false; }
     }
 
-    private void StartEdit(KonturTemplate t)
+    private async Task DeleteAsync(KonturTemplate t)
     {
-        _editingId = t.Id;
-        _editLabel = t.Label ?? string.Empty;
-    }
-
-    private void CancelEdit() => _editingId = 0;
-
-    private async Task SaveLabelAsync(int id)
-    {
+        var ok = await JS.InvokeAsync<bool>("confirm", $"Удалить запись «{t.NameLink}»?");
+        if (!ok) return;
         _error = null;
-        var actor = new ChangeActor("director", "Директор");
-        var result = await Kontur.UpdateTemplateAsync(id, _editLabel, actor);
+        var result = await Kontur.DeleteTemplateAsync(t.Id, new ChangeActor("director", "Директор"));
         if (!result.Success) { _error = result.Error; return; }
-        _editingId = 0;
         await LoadAsync();
     }
 
@@ -202,6 +188,7 @@
             "Customer" => Ord(t => t.Customer),
             "NmcK" => Ord(t => t.NMCK),
             "Date" => Ord(t => t.BiddingDate),
+            "Pub" => Ord(t => t.DateOfPlacement),
             "Label" => Ord(t => t.Label),
             "Added" => Ord(t => t.AddedAt),
             _ => rows
