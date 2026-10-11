@@ -1,0 +1,143 @@
+@page "/workflow"
+@using System.Linq
+@using System.Security.Claims
+@using SnabDrive.Web.Domain
+@using SnabDrive.Web.Services
+@attribute [Authorize]
+@inject IWorkflowService Workflow
+@inject AuthenticationStateProvider AuthStateProvider
+
+<h1 class="page-title">Задачи по закупкам</h1>
+<p class="page-subtitle">Воркфлоу по стадиям: 1 — поиск и подготовка, 2 — участие в закупке, 3 — оформление документов.</p>
+
+@if (_error is not null)
+{
+    <div class="alert alert-error">@_error</div>
+}
+
+<div class="toolbar" style="flex-wrap:wrap;gap:6px;margin:12px 0">
+    <button class="btn @(_stage == 1 ? "btn-primary" : "")" @onclick="() => SetStage(1)">1. Подготовка (@Count(1))</button>
+    <button class="btn @(_stage == 2 ? "btn-primary" : "")" @onclick="() => SetStage(2)">2. Участие (@Count(2))</button>
+    <button class="btn @(_stage == 3 ? "btn-primary" : "")" @onclick="() => SetStage(3)">3. Оформление (@Count(3))</button>
+    <button class="btn @(_stage == 4 ? "btn-primary" : "")" @onclick="() => SetStage(4)">Завершённые (@Count(4))</button>
+    <button class="btn @(_stage == 0 ? "btn-primary" : "")" @onclick="() => SetStage(0)">Проигранные (@Count(0))</button>
+    <div class="toolbar-spacer"></div>
+    <button class="btn" disabled="@_busy" @onclick="LoadAsync">Обновить</button>
+</div>
+
+<div class="table-wrap">
+    <table class="registry-grid registry-grid--wide">
+        <thead>
+            <tr>
+                <th>Наименование</th>
+                <th>Заказчик</th>
+                <th class="th-money">НМЦК</th>
+                <th>Дата торгов</th>
+                @if (_stage == 1)
+                {
+                    <th>Резерв 1С</th>
+                }
+                @if (_stage == 2 || _stage == 3 || _stage == 4)
+                {
+                    <th class="th-money">Итог. цена</th>
+                }
+                @if (_stage == 3 || _stage == 4)
+                {
+                    <th>Победитель</th>
+                }
+                <th>Действие</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (_rows is null)
+            {
+                <tr><td colspan="8" class="muted">Загрузка…</td></tr>
+            }
+            else if (!Rows().Any())
+            {
+                <tr><td colspan="8" class="muted">Нет задач на этой стадии.</td></tr>
+            }
+            else
+            {
+                foreach (var r in Rows())
+                {
+                    <tr>
+                        <td class="td-text">@r.NameLink</td>
+                        <td class="td-text">@r.Customer</td>
+                        <td class="td-money">@r.NMCK.ToString("N2")</td>
+                        <td>@r.BiddingDate?.ToString("dd.MM.yyyy")</td>
+                        @if (_stage == 1)
+                        {
+                            <td>@r.ReserveNumber</td>
+                        }
+                        @if (_stage == 2 || _stage == 3 || _stage == 4)
+                        {
+                            <td class="td-money">@r.ResultPrice.ToString("N2")</td>
+                        }
+                        @if (_stage == 3 || _stage == 4)
+                        {
+                            <td>@r.Winner</td>
+                        }
+                        <td>
+                            @if (_stage == 1)
+                            {
+                                <button class="btn btn-link btn-sm" @onclick="() => Advance(r.Id, "to2")">Передать в закупку →</button>
+                            }
+                            else if (_stage == 2)
+                            {
+                                <button class="btn btn-link btn-sm" @onclick="() => Advance(r.Id, "won")">Выигран → оформить</button>
+                                <button class="btn btn-link btn-sm btn--danger" @onclick="() => Advance(r.Id, "lost")">Проигран</button>
+                            }
+                            else if (_stage == 3)
+                            {
+                                <button class="btn btn-link btn-sm" @onclick="() => Advance(r.Id, "finish")">Завершить</button>
+                            }
+                            else
+                            {
+                                <span class="muted">—</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    private List<WorkflowRow>? _rows;
+    private bool _busy;
+    private int _stage = 1;
+    private string? _error;
+    private ChangeActor _actor = new("user", "Пользователь");
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        var name = state.User.Identity?.Name ?? "Пользователь";
+        _actor = new ChangeActor(name, name);
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _busy = true;
+        try { _rows = (await Workflow.GetAsync()).ToList(); }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
+    }
+
+    private void SetStage(int stage) => _stage = stage;
+
+    private int Count(int stage) => _rows?.Count(r => r.Stage == stage) ?? 0;
+
+    private List<WorkflowRow> Rows() => (_rows ?? new()).Where(r => r.Stage == _stage).ToList();
+
+    private async Task Advance(int id, string action)
+    {
+        _error = null;
+        var result = await Workflow.AdvanceAsync(id, action, _actor);
+        if (!result.Success) { _error = result.Error; return; }
+        await LoadAsync();
+    }
+}

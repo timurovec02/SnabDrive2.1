@@ -130,6 +130,12 @@ builder.Services.AddSingleton<KonturScheduleStore>();
 builder.Services.AddSingleton<KonturSchedulerState>();
 builder.Services.AddSingleton<KonturSchedulerService>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<KonturSchedulerService>());
+
+// Воркфлоу по стадиям + уведомления в Битрикс24
+builder.Services.AddHttpClient();
+builder.Services.Configure<BitrixOptions>(builder.Configuration.GetSection("Bitrix"));
+builder.Services.AddScoped<BitrixNotifier>();
+builder.Services.AddScoped<IWorkflowService, WorkflowService>();
 builder.Services.AddScoped<IDictionaryService, DictionaryService>();
 builder.Services.AddScoped<IColumnAccessService, ColumnAccessService>();
 builder.Services.AddSingleton<ICellEditLockService, CellEditLockService>();

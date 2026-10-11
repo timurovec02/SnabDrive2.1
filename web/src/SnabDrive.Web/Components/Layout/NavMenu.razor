@@ -5,6 +5,10 @@
         <span class="nav__icon">▤</span><span class="nav__label">Реестр</span>
     </NavLink>
 
+    <NavLink class="nav__item" href="workflow" title="Задачи">
+        <span class="nav__icon">➤</span><span class="nav__label">Задачи</span>
+    </NavLink>
+
     @if (Full)
     {
         <NavLink class="nav__item" href="home" title="Обзор">
@@ -37,7 +41,7 @@
         </NavLink>
     }
 
-    @if (IsDirector)
+    @if (Full)
     {
         <NavLink class="nav__item" href="director" title="Обзор директора">
             <span class="nav__icon">📊</span><span class="nav__label">Обзор директора</span>

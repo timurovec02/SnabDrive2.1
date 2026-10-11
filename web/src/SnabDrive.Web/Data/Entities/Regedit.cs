@@ -36,6 +36,11 @@ public class Regedit
 
     public bool? IsFinished { get; set; }
 
+    // ---- Воркфлоу по стадиям (web): 1 = поиск/подготовка, 2 = участие, 3 = оформление, 4 = завершено; IsLost = проигран ----
+    public int Stage { get; set; } = 1;
+    public bool IsLost { get; set; }
+    public string? AssignedTo { get; set; }
+
     public virtual B2BStatus? B2BStatus { get; set; }
     public virtual TypeOfPurchase? TypeOfPurchase { get; set; }
     public virtual ExecutionStatus? ExecutionStatus { get; set; }

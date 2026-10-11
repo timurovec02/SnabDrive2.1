@@ -27,6 +27,7 @@ public class RegistryDbContext : DbContext
     public DbSet<LegacyUser> LegacyUsers => Set<LegacyUser>();
     public DbSet<KonturFavorite> KonturFavorites => Set<KonturFavorite>();
     public DbSet<KonturTemplate> KonturTemplates => Set<KonturTemplate>();
+    public DbSet<RegistryWorkflowLog> RegistryWorkflowLogs => Set<RegistryWorkflowLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -224,6 +225,20 @@ public class RegistryDbContext : DbContext
             entity.Property(x => x.UpdatedAt).HasColumnName("UpdatedAt");
             entity.Property(x => x.AddedBy).HasColumnName("AddedBy").HasMaxLength(256);
             entity.HasIndex(x => x.PurchaseNumber);
+        });
+
+        modelBuilder.Entity<RegistryWorkflowLog>(entity =>
+        {
+            entity.ToTable("RegistryWorkflowLog");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.RegeditId).HasColumnName("RegeditId");
+            entity.Property(x => x.FromStage).HasColumnName("FromStage");
+            entity.Property(x => x.ToStage).HasColumnName("ToStage");
+            entity.Property(x => x.Action).HasColumnName("Action").HasMaxLength(50);
+            entity.Property(x => x.Comment).HasColumnName("Comment");
+            entity.Property(x => x.AtUtc).HasColumnName("AtUtc");
+            entity.Property(x => x.ByUser).HasColumnName("ByUser").HasMaxLength(256);
+            entity.HasIndex(x => x.RegeditId);
         });
     }
 }
