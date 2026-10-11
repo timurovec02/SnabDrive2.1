@@ -4,7 +4,7 @@
 @using SnabDrive.Web.Domain
 @using SnabDrive.Web.Services
 @attribute [Authorize]
-@inject IWorkflowService Workflow
+@inject IWorkflowService WorkflowSvc
 @inject AuthenticationStateProvider AuthStateProvider
 
 <h1 class="page-title">Задачи по закупкам</h1>
@@ -122,7 +122,7 @@
     private async Task LoadAsync()
     {
         _busy = true;
-        try { _rows = (await Workflow.GetAsync()).ToList(); }
+        try { _rows = (await WorkflowSvc.GetAsync()).ToList(); }
         catch (Exception ex) { _error = ex.Message; }
         finally { _busy = false; }
     }
@@ -136,7 +136,7 @@
     private async Task Advance(int id, string action)
     {
         _error = null;
-        var result = await Workflow.AdvanceAsync(id, action, _actor);
+        var result = await WorkflowSvc.AdvanceAsync(id, action, _actor);
         if (!result.Success) { _error = result.Error; return; }
         await LoadAsync();
     }
