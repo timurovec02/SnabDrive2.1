@@ -81,16 +81,16 @@
                         <td>
                             @if (_stage == 1)
                             {
-                                <button class="btn btn-link btn-sm" @onclick='() => Advance(r.Id, "to2")'>Передать в закупку →</button>
+                                <button class="btn btn-link btn-sm" @onclick="() => AdvanceTo2(r.Id)">Передать в закупку →</button>
                             }
                             else if (_stage == 2)
                             {
-                                <button class="btn btn-link btn-sm" @onclick='() => Advance(r.Id, "won")'>Выигран → оформить</button>
-                                <button class="btn btn-link btn-sm btn--danger" @onclick='() => Advance(r.Id, "lost")'>Проигран</button>
+                                <button class="btn btn-link btn-sm" @onclick="() => AdvanceWon(r.Id)">Выигран → оформить</button>
+                                <button class="btn btn-link btn-sm btn--danger" @onclick="() => AdvanceLost(r.Id)">Проигран</button>
                             }
                             else if (_stage == 3)
                             {
-                                <button class="btn btn-link btn-sm" @onclick='() => Advance(r.Id, "finish")'>Завершить</button>
+                                <button class="btn btn-link btn-sm" @onclick="() => AdvanceFinish(r.Id)">Завершить</button>
                             }
                             else
                             {
@@ -140,4 +140,9 @@
         if (!result.Success) { _error = result.Error; return; }
         await LoadAsync();
     }
+
+    private Task AdvanceTo2(int id) => Advance(id, "to2");
+    private Task AdvanceWon(int id) => Advance(id, "won");
+    private Task AdvanceLost(int id) => Advance(id, "lost");
+    private Task AdvanceFinish(int id) => Advance(id, "finish");
 }
