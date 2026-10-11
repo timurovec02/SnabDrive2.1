@@ -81,16 +81,16 @@
                         <td>
                             @if (_stage == 1)
                             {
-                                <button class="btn btn-link btn-sm" @onclick="() => Advance(r.Id, "to2")">Передать в закупку →</button>
+                                <button class="btn btn-link btn-sm" @onclick='() => Advance(r.Id, "to2")'>Передать в закупку →</button>
                             }
                             else if (_stage == 2)
                             {
-                                <button class="btn btn-link btn-sm" @onclick="() => Advance(r.Id, "won")">Выигран → оформить</button>
-                                <button class="btn btn-link btn-sm btn--danger" @onclick="() => Advance(r.Id, "lost")">Проигран</button>
+                                <button class="btn btn-link btn-sm" @onclick='() => Advance(r.Id, "won")'>Выигран → оформить</button>
+                                <button class="btn btn-link btn-sm btn--danger" @onclick='() => Advance(r.Id, "lost")'>Проигран</button>
                             }
                             else if (_stage == 3)
                             {
-                                <button class="btn btn-link btn-sm" @onclick="() => Advance(r.Id, "finish")">Завершить</button>
+                                <button class="btn btn-link btn-sm" @onclick='() => Advance(r.Id, "finish")'>Завершить</button>
                             }
                             else
                             {
