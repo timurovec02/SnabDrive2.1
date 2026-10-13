@@ -8,7 +8,7 @@
 @inject AuthenticationStateProvider AuthStateProvider
 
 <h1 class="page-title">Задачи по закупкам</h1>
-<p class="page-subtitle">Воркфлоу по стадиям: 1 — поиск и подготовка, 2 — участие в закупке, 3 — оформление документов.</p>
+<p class="page-subtitle">Воркфлоу по стадиям. Поля редактируются, кнопка переводит закупку на следующую стадию.</p>
 
 @if (_error is not null)
 {
@@ -16,97 +16,111 @@
 }
 
 <div class="toolbar" style="flex-wrap:wrap;gap:6px;margin:12px 0">
-    <button class="@TabClass(1)" @onclick="() => SetStage(1)">1. Подготовка (@Count(1))</button>
-    <button class="@TabClass(2)" @onclick="() => SetStage(2)">2. Участие (@Count(2))</button>
-    <button class="@TabClass(3)" @onclick="() => SetStage(3)">3. Оформление (@Count(3))</button>
-    <button class="@TabClass(4)" @onclick="() => SetStage(4)">Завершённые (@Count(4))</button>
-    <button class="@TabClass(0)" @onclick="() => SetStage(0)">Проигранные (@Count(0))</button>
+    @foreach (var st in WorkflowStages.All)
+    {
+        <button class="@TabClass(st.Id)" @onclick="() => SetStage(st.Id)">@st.Name (@Count(st.Id))</button>
+    }
     <div class="toolbar-spacer"></div>
     <button class="btn" disabled="@_busy" @onclick="LoadAsync">Обновить</button>
 </div>
 
-<div class="table-wrap">
-    <table class="registry-grid registry-grid--wide">
-        <thead>
-            <tr>
-                <th>Наименование</th>
-                <th>Заказчик</th>
-                <th class="th-money">НМЦК</th>
-                <th>Дата торгов</th>
-                @if (_stage == 1)
-                {
-                    <th>Резерв 1С</th>
-                }
-                @if (_stage == 2 || _stage == 3 || _stage == 4)
-                {
-                    <th class="th-money">Итог. цена</th>
-                }
-                @if (_stage == 3 || _stage == 4)
-                {
-                    <th>Победитель</th>
-                }
-                <th>Действие</th>
-            </tr>
-        </thead>
-        <tbody>
-            @if (_rows is null)
-            {
-                <tr><td colspan="8" class="muted">Загрузка…</td></tr>
-            }
-            else if (!Rows().Any())
-            {
-                <tr><td colspan="8" class="muted">Нет задач на этой стадии.</td></tr>
-            }
-            else
-            {
-                foreach (var r in Rows())
-                {
-                    <tr>
-                        <td class="td-text">@r.NameLink</td>
-                        <td class="td-text">@r.Customer</td>
-                        <td class="td-money">@r.NMCK.ToString("N2")</td>
-                        <td>@r.BiddingDate?.ToString("dd.MM.yyyy")</td>
-                        @if (_stage == 1)
+@if (_loading)
+{
+    <p class="muted">Загрузка…</p>
+}
+else if (!Rows().Any())
+{
+    <p class="muted">Нет закупок на этой стадии.</p>
+}
+else
+{
+    @foreach (var r in Rows())
+    {
+        <div class="card" style="margin-bottom:12px">
+            <div class="card-body">
+                <div class="row g-2">
+                    <div class="col"><label class="form-label">Наименование</label><input class="form-control" @bind="_edits[r.Id].NameLink" /></div>
+                    <div class="col"><label class="form-label">Заказчик</label><input class="form-control" @bind="_edits[r.Id].Customer" /></div>
+                    <div class="col"><label class="form-label">НМЦК</label><input type="number" class="form-control" @bind="_edits[r.Id].NMCK" /></div>
+                    <div class="col"><label class="form-label">Дата торгов</label><input class="form-control" value="@Fmt(r.BiddingDate)" disabled /></div>
+                </div>
+                <div class="row g-2">
+                    <div class="col"><label class="form-label">Резерв 1С</label><input class="form-control" @bind="_edits[r.Id].ReserveNumber" /></div>
+                    <div class="col"><label class="form-label">Место</label><input class="form-control" @bind="_edits[r.Id].Place" /></div>
+                    <div class="col"><label class="form-label">Место поставки</label><input class="form-control" @bind="_edits[r.Id].PlaceOfDelivery" /></div>
+                    <div class="col"><label class="form-label">Итог. цена</label><input type="number" class="form-control" @bind="_edits[r.Id].ResultPrice" /></div>
+                </div>
+                <div class="row g-2">
+                    <div class="col"><label class="form-label">Победитель</label><input class="form-control" @bind="_edits[r.Id].Winner" /></div>
+                    <div class="col"><label class="form-label">Примечание</label><input class="form-control" @bind="_edits[r.Id].Note" /></div>
+                </div>
+
+                <div style="margin-top:8px">
+                    <label class="form-label">Вложения</label>
+                    <div>
+                        @foreach (var a in SplitAttachments(_edits[r.Id].Attachments))
                         {
-                            <td>@r.ReserveNumber</td>
+                            <a href="@a" target="_blank" rel="noopener" class="badge badge--info" style="margin-right:6px">@System.IO.Path.GetFileName(a)</a>
                         }
-                        @if (_stage == 2 || _stage == 3 || _stage == 4)
-                        {
-                            <td class="td-money">@r.ResultPrice.ToString("N2")</td>
-                        }
-                        @if (_stage == 3 || _stage == 4)
-                        {
-                            <td>@r.Winner</td>
-                        }
-                        <td>
-                            @if (_stage == 1)
-                            {
-                                <button class="btn btn-link btn-sm" @onclick="() => AdvanceTo2(r.Id)">Передать в закупку →</button>
-                            }
-                            else if (_stage == 2)
-                            {
-                                <button class="btn btn-link btn-sm" @onclick="() => AdvanceWon(r.Id)">Выигран → оформить</button>
-                                <button class="btn btn-link btn-sm btn--danger" @onclick="() => AdvanceLost(r.Id)">Проигран</button>
-                            }
-                            else if (_stage == 3)
-                            {
-                                <button class="btn btn-link btn-sm" @onclick="() => AdvanceFinish(r.Id)">Завершить</button>
-                            }
-                            else
-                            {
-                                <span class="muted">—</span>
-                            }
-                        </td>
-                    </tr>
-                }
-            }
-        </tbody>
-    </table>
-</div>
+                    </div>
+                    <InputFile OnChange="ev => OnFileAsync(ev, r.Id)" class="form-control" style="max-width:360px;margin-top:4px" />
+                </div>
+
+                <div class="toolbar" style="margin-top:10px;flex-wrap:wrap;gap:6px">
+                    <button class="btn btn-primary" @onclick="() => SaveAsync(r.Id)">Сохранить</button>
+                    @if (_stage == 1)
+                    {
+                        <button class="btn" @onclick="() => Advance(r.Id, 1)">→ Подача заявки</button>
+                        <button class="btn" @onclick="() => Advance(r.Id, 2)">Дозаполнить резерв</button>
+                    }
+                    else if (_stage == 2)
+                    {
+                        <button class="btn" @onclick="() => Advance(r.Id, 3)">Передать →</button>
+                    }
+                    else if (_stage == 3)
+                    {
+                        <button class="btn" @onclick="() => Advance(r.Id, 4)">Подана →</button>
+                    }
+                    else if (_stage == 4)
+                    {
+                        <button class="btn" @onclick="() => Advance(r.Id, 5)">Выиграл →</button>
+                        <button class="btn btn--danger" @onclick="() => Advance(r.Id, 6)">Проиграл</button>
+                    }
+                    else if (_stage == 5)
+                    {
+                        <button class="btn" @onclick="() => Advance(r.Id, 7)">Подписан →</button>
+                    }
+                    else if (_stage == 6)
+                    {
+                        <button class="btn" @onclick="() => Advance(r.Id, 8)">→ Логистика</button>
+                    }
+                    else if (_stage == 7)
+                    {
+                        <button class="btn" @onclick="() => Advance(r.Id, 9)">→ Ожидание доставки</button>
+                    }
+                    else if (_stage == 8)
+                    {
+                        <button class="btn" @onclick="() => Advance(r.Id, 10)">→ Приемка</button>
+                    }
+                    else if (_stage == 9)
+                    {
+                        <button class="btn" @onclick="() => Advance(r.Id, 11)">→ Оплата</button>
+                    }
+                    else if (_stage == 10)
+                    {
+                        <button class="btn" @onclick="() => Advance(r.Id, 12)">Завершить</button>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+}
 
 @code {
-    private List<WorkflowRow>? _rows;
+    private List<WorkflowRow> _rows = new();
+    private readonly Dictionary<int, WorkflowEdit> _edits = new();
     private bool _busy;
+    private bool _loading = true;
     private int _stage = 1;
     private string? _error;
     private ChangeActor _actor = new("user", "Пользователь");
@@ -122,29 +136,73 @@
     private async Task LoadAsync()
     {
         _busy = true;
-        try { _rows = (await WorkflowSvc.GetAsync()).ToList(); }
+        try
+        {
+            _rows = (await WorkflowSvc.GetAsync()).ToList();
+            _edits.Clear();
+            foreach (var r in _rows)
+            {
+                _edits[r.Id] = new WorkflowEdit
+                {
+                    NameLink = r.NameLink,
+                    Customer = r.Customer,
+                    NMCK = r.NMCK,
+                    ReserveNumber = r.ReserveNumber,
+                    Place = r.Place ?? string.Empty,
+                    PlaceOfDelivery = r.PlaceOfDelivery,
+                    ResultPrice = r.ResultPrice,
+                    Winner = r.Winner,
+                    Note = r.Note,
+                    Attachments = r.Attachments ?? string.Empty
+                };
+            }
+        }
         catch (Exception ex) { _error = ex.Message; }
-        finally { _busy = false; }
+        finally { _busy = false; _loading = false; }
     }
 
     private void SetStage(int stage) => _stage = stage;
 
     private string TabClass(int stage) => _stage == stage ? "btn btn-primary" : "btn";
 
-    private int Count(int stage) => _rows?.Count(r => r.Stage == stage) ?? 0;
+    private int Count(int stage) => _rows.Count(r => r.Stage == stage);
 
-    private List<WorkflowRow> Rows() => (_rows ?? new()).Where(r => r.Stage == _stage).ToList();
+    private List<WorkflowRow> Rows() => _rows.Where(r => r.Stage == _stage).ToList();
 
-    private async Task Advance(int id, string action)
+    private static string Fmt(DateTime? d) => d?.ToString("dd.MM.yyyy") ?? string.Empty;
+
+    private static string[] SplitAttachments(string value) =>
+        string.IsNullOrWhiteSpace(value) ? Array.Empty<string>() : value.Split(';', StringSplitOptions.RemoveEmptyEntries);
+
+    private async Task SaveAsync(int id)
     {
         _error = null;
-        var result = await WorkflowSvc.AdvanceAsync(id, action, _actor);
+        var result = await WorkflowSvc.UpdateAsync(id, _edits[id]);
         if (!result.Success) { _error = result.Error; return; }
         await LoadAsync();
     }
 
-    private Task AdvanceTo2(int id) => Advance(id, "to2");
-    private Task AdvanceWon(int id) => Advance(id, "won");
-    private Task AdvanceLost(int id) => Advance(id, "lost");
-    private Task AdvanceFinish(int id) => Advance(id, "finish");
+    private async Task Advance(int id, int code)
+    {
+        _error = null;
+        var result = await WorkflowSvc.AdvanceAsync(id, code, _actor);
+        if (!result.Success) { _error = result.Error; return; }
+        await LoadAsync();
+    }
+
+    private async Task OnFileAsync(InputFileChangeEventArgs ev, int id)
+    {
+        _error = null;
+        try
+        {
+            foreach (var file in ev.GetMultipleFiles(10))
+            {
+                await using var stream = file.OpenReadStream(20 * 1024 * 1024);
+                var result = await WorkflowSvc.SaveAttachmentAsync(id, file.Name, stream);
+                if (!result.Success) { _error = result.Error; }
+            }
+            await LoadAsync();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+    }
 }

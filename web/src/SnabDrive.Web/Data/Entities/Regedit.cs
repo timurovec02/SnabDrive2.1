@@ -41,6 +41,10 @@ public class Regedit
     public bool IsLost { get; set; }
     public string? AssignedTo { get; set; }
 
+    // Дополнительные поля воркфлоу
+    public string? Place { get; set; }          // «Место» (стадия торгов)
+    public string? Attachments { get; set; }    // имена сохранённых файлов (через ;)
+
     public virtual B2BStatus? B2BStatus { get; set; }
     public virtual TypeOfPurchase? TypeOfPurchase { get; set; }
     public virtual ExecutionStatus? ExecutionStatus { get; set; }

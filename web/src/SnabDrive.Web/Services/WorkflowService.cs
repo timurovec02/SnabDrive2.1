@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SnabDrive.Web.Data;
@@ -6,7 +7,29 @@ using SnabDrive.Web.Domain;
 
 namespace SnabDrive.Web.Services;
 
-/// <summary>Строка воркфлоу: данные закупки + текущая стадия.</summary>
+/// <summary>Стадии воркфлоу (Id, название). Порядок в списке = порядок отображения.</summary>
+public static class WorkflowStages
+{
+    public static readonly (int Id, string Name)[] All =
+    {
+        (1, "1. Контур и подготовка"),
+        (2, "1.2 Резерв: дозаполнение"),
+        (3, "2. Подача заявки на площадку"),
+        (4, "3. Торги"),
+        (5, "4. Перемещение товара"),
+        (6, "5. Контракт подписан"),
+        (7, "6. Логистические документы"),
+        (8, "7. Ожидание доставки"),
+        (9, "8. Приемка заказчиком"),
+        (10, "9. Оплата заказчиком"),
+        (11, "Завершена"),
+        (0, "Проиграна")
+    };
+
+    public static string Name(int id) => All.FirstOrDefault(x => x.Id == id).Name ?? "—";
+}
+
+/// <summary>Данные закупки для вкладки «Задачи» (читаемые + редактируемые поля).</summary>
 public sealed record WorkflowRow(
     int Id,
     string NameLink,
@@ -14,29 +37,73 @@ public sealed record WorkflowRow(
     decimal NMCK,
     DateTime? BiddingDate,
     string ReserveNumber,
+    string? Place,
+    string PlaceOfDelivery,
     decimal ResultPrice,
     string Winner,
+    string Note,
+    string? Attachments,
     int Stage,
     bool IsLost);
+
+/// <summary>Модель редактирования строки воркфлоу.</summary>
+public sealed class WorkflowEdit
+{
+    public string NameLink { get; set; } = string.Empty;
+    public string Customer { get; set; } = string.Empty;
+    public decimal NMCK { get; set; }
+    public string ReserveNumber { get; set; } = string.Empty;
+    public string Place { get; set; } = string.Empty;
+    public string PlaceOfDelivery { get; set; } = string.Empty;
+    public decimal ResultPrice { get; set; }
+    public string Winner { get; set; } = string.Empty;
+    public string Note { get; set; } = string.Empty;
+    public string Attachments { get; set; } = string.Empty;
+}
 
 public interface IWorkflowService
 {
     Task<IReadOnlyList<WorkflowRow>> GetAsync(CancellationToken cancellationToken = default);
 
-    /// <summary>Передать задачу: to2 (1→2), won (2→3), lost (проигран), finish (3→4).</summary>
-    Task<Result> AdvanceAsync(int regeditId, string action, ChangeActor actor, CancellationToken cancellationToken = default);
+    Task<Result> UpdateAsync(int regeditId, WorkflowEdit edit, CancellationToken cancellationToken = default);
+
+    /// <summary>Перевести на стадию по коду перехода (см. WorkflowService.Transitions).</summary>
+    Task<Result> AdvanceAsync(int regeditId, int code, ChangeActor actor, CancellationToken cancellationToken = default);
+
+    /// <summary>Сохранить файл во вложения закупки; возвращает обновлённый список имён.</summary>
+    Task<Result<string>> SaveAttachmentAsync(int regeditId, string fileName, Stream content, CancellationToken cancellationToken = default);
 }
 
 public sealed class WorkflowService : IWorkflowService
 {
+    // код перехода -> (целевая стадия, проиграна)
+    private static readonly Dictionary<int, (int To, bool Lost)> Transitions = new()
+    {
+        [1] = (3, false),   // подготовка -> подача заявки
+        [2] = (2, false),   // подготовка -> дозаполнить резерв
+        [3] = (3, false),   // резерв -> подача заявки
+        [4] = (4, false),   // подача -> торги
+        [5] = (5, false),   // торги -> выиграл (перемещение)
+        [6] = (0, true),    // торги -> проигран
+        [7] = (6, false),   // перемещение -> подписан
+        [8] = (7, false),   // подписан -> логистика
+        [9] = (8, false),   // логистика -> ожидание доставки
+        [10] = (9, false),  // доставка -> приемка
+        [11] = (10, false), // приемка -> оплата
+        [12] = (11, false)  // оплата -> завершена
+    };
+
     private readonly IDbContextFactory<RegistryDbContext> _factory;
     private readonly BitrixNotifier _bitrix;
+    private readonly IWebHostEnvironment _env;
     private readonly ILogger<WorkflowService> _logger;
 
-    public WorkflowService(IDbContextFactory<RegistryDbContext> factory, BitrixNotifier bitrix, ILogger<WorkflowService> logger)
+    public WorkflowService(IDbContextFactory<RegistryDbContext> factory, BitrixNotifier bitrix,
+        IWebHostEnvironment env, ILogger<WorkflowService> logger)
     {
         _factory = factory;
         _bitrix = bitrix;
+        _env = env;
         _logger = logger;
     }
 
@@ -46,11 +113,12 @@ public sealed class WorkflowService : IWorkflowService
         return await context.Regedit.AsNoTracking()
             .OrderBy(r => r.Stage).ThenByDescending(r => r.Id)
             .Select(r => new WorkflowRow(r.Id, r.NameLink, r.Customer, r.NMCK, r.BiddingDate,
-                r.ReserveNumber, r.ResultPrice, r.Winner, r.Stage, r.IsLost))
+                r.ReserveNumber, r.Place, r.PlaceOfDelivery, r.ResultPrice, r.Winner, r.Note,
+                r.Attachments, r.Stage, r.IsLost))
             .ToListAsync(cancellationToken);
     }
 
-    public async Task<Result> AdvanceAsync(int regeditId, string action, ChangeActor actor, CancellationToken cancellationToken = default)
+    public async Task<Result> UpdateAsync(int regeditId, WorkflowEdit edit, CancellationToken cancellationToken = default)
     {
         await using var context = await _factory.CreateDbContextAsync(cancellationToken);
         var item = await context.Regedit.FirstOrDefaultAsync(r => r.Id == regeditId, cancellationToken);
@@ -59,48 +127,84 @@ public sealed class WorkflowService : IWorkflowService
             return Result.Fail("Запись не найдена.");
         }
 
-        var from = item.Stage;
-        int to;
-        string act;
-        var lost = false;
+        item.NameLink = edit.NameLink;
+        item.Customer = edit.Customer;
+        item.NMCK = edit.NMCK;
+        item.ReserveNumber = edit.ReserveNumber;
+        item.Place = edit.Place;
+        item.PlaceOfDelivery = edit.PlaceOfDelivery;
+        item.ResultPrice = edit.ResultPrice;
+        item.Winner = edit.Winner;
+        item.Note = edit.Note;
+        item.Attachments = edit.Attachments;
 
-        switch (action)
+        await context.SaveChangesAsync(cancellationToken);
+        return Result.Ok();
+    }
+
+    public async Task<Result> AdvanceAsync(int regeditId, int code, ChangeActor actor, CancellationToken cancellationToken = default)
+    {
+        if (!Transitions.TryGetValue(code, out var tr))
         {
-            case "to2": to = 2; act = "Передано в закупку"; break;
-            case "won": to = 3; act = "Выиграно — на оформление"; break;
-            case "lost": to = 0; lost = true; act = "Проиграно"; break;
-            case "finish": to = 4; act = "Завершено"; break;
-            default: return Result.Fail("Неизвестное действие.");
+            return Result.Fail("Неизвестный переход.");
         }
 
-        item.Stage = to;
-        item.IsLost = lost;
+        await using var context = await _factory.CreateDbContextAsync(cancellationToken);
+        var item = await context.Regedit.FirstOrDefaultAsync(r => r.Id == regeditId, cancellationToken);
+        if (item is null)
+        {
+            return Result.Fail("Запись не найдена.");
+        }
+
+        var from = item.Stage;
+        item.Stage = tr.To;
+        item.IsLost = tr.Lost;
 
         context.RegistryWorkflowLogs.Add(new RegistryWorkflowLog
         {
             RegeditId = regeditId,
             FromStage = from,
-            ToStage = to,
-            Action = act,
+            ToStage = tr.To,
+            Action = WorkflowStages.Name(tr.To),
             ByUser = actor.UserName,
             AtUtc = DateTime.UtcNow
         });
 
         await context.SaveChangesAsync(cancellationToken);
 
-        var title = to switch
-        {
-            2 => "Новая задача: участие в закупке",
-            3 => "Новая задача: оформление документов",
-            4 => "Закупка завершена",
-            0 => "Закупка проиграна",
-            _ => "Задача обновлена"
-        };
-        await _bitrix.NotifyAsync(title, $"{item.NameLink}\nЗаказчик: {item.Customer}", cancellationToken);
+        await _bitrix.NotifyAsync($"Задача: {WorkflowStages.Name(tr.To)}",
+            $"{item.NameLink}\nЗаказчик: {item.Customer}", cancellationToken);
 
-        _logger.LogInformation("Воркфлоу: закупка {Id} {From}->{To} ({Action}) пользователем {User}",
-            regeditId, from, to, act, actor.UserName);
-
+        _logger.LogInformation("Воркфлоу: закупка {Id} {From}->{To} ({User})", regeditId, from, tr.To, actor.UserName);
         return Result.Ok();
+    }
+
+    public async Task<Result<string>> SaveAttachmentAsync(int regeditId, string fileName, Stream content, CancellationToken cancellationToken = default)
+    {
+        await using var context = await _factory.CreateDbContextAsync(cancellationToken);
+        var item = await context.Regedit.FirstOrDefaultAsync(r => r.Id == regeditId, cancellationToken);
+        if (item is null)
+        {
+            return Result<string>.Fail("Запись не найдена.");
+        }
+
+        var dir = Path.Combine(_env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot"), "uploads", regeditId.ToString());
+        Directory.CreateDirectory(dir);
+
+        var safeName = Path.GetFileName(fileName);
+        var stored = $"{Guid.NewGuid():N}_{safeName}";
+        await using (var fs = new FileStream(Path.Combine(dir, stored), FileMode.Create, FileAccess.Write))
+        {
+            await content.CopyToAsync(fs, cancellationToken);
+        }
+
+        var relative = $"/uploads/{regeditId}/{stored}";
+        var list = string.IsNullOrWhiteSpace(item.Attachments)
+            ? relative
+            : item.Attachments + ";" + relative;
+        item.Attachments = list;
+        await context.SaveChangesAsync(cancellationToken);
+
+        return Result<string>.Ok(list);
     }
 }

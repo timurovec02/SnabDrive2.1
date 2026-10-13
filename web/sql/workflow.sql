@@ -57,3 +57,21 @@ END
 ELSE
     PRINT 'RegistryWorkflowLog уже существует.';
 GO
+
+IF COL_LENGTH('Regedit', 'Place') IS NULL
+BEGIN
+    ALTER TABLE [Regedit] ADD [Place] nvarchar(1000) NULL;
+    PRINT 'Добавлен Regedit.Place.';
+END
+ELSE
+    PRINT 'Regedit.Place уже существует.';
+GO
+
+IF COL_LENGTH('Regedit', 'Attachments') IS NULL
+BEGIN
+    ALTER TABLE [Regedit] ADD [Attachments] nvarchar(max) NULL;
+    PRINT 'Добавлен Regedit.Attachments.';
+END
+ELSE
+    PRINT 'Regedit.Attachments уже существует.';
+GO
