@@ -16,11 +16,11 @@
 }
 
 <div class="toolbar" style="flex-wrap:wrap;gap:6px;margin:12px 0">
-    <button class="btn @(_stage == 1 ? "btn-primary" : "")" @onclick="() => SetStage(1)">1. Подготовка (@Count(1))</button>
-    <button class="btn @(_stage == 2 ? "btn-primary" : "")" @onclick="() => SetStage(2)">2. Участие (@Count(2))</button>
-    <button class="btn @(_stage == 3 ? "btn-primary" : "")" @onclick="() => SetStage(3)">3. Оформление (@Count(3))</button>
-    <button class="btn @(_stage == 4 ? "btn-primary" : "")" @onclick="() => SetStage(4)">Завершённые (@Count(4))</button>
-    <button class="btn @(_stage == 0 ? "btn-primary" : "")" @onclick="() => SetStage(0)">Проигранные (@Count(0))</button>
+    <button class="@TabClass(1)" @onclick="() => SetStage(1)">1. Подготовка (@Count(1))</button>
+    <button class="@TabClass(2)" @onclick="() => SetStage(2)">2. Участие (@Count(2))</button>
+    <button class="@TabClass(3)" @onclick="() => SetStage(3)">3. Оформление (@Count(3))</button>
+    <button class="@TabClass(4)" @onclick="() => SetStage(4)">Завершённые (@Count(4))</button>
+    <button class="@TabClass(0)" @onclick="() => SetStage(0)">Проигранные (@Count(0))</button>
     <div class="toolbar-spacer"></div>
     <button class="btn" disabled="@_busy" @onclick="LoadAsync">Обновить</button>
 </div>
@@ -128,6 +128,8 @@
     }
 
     private void SetStage(int stage) => _stage = stage;
+
+    private string TabClass(int stage) => _stage == stage ? "btn btn-primary" : "btn";
 
     private int Count(int stage) => _rows?.Count(r => r.Stage == stage) ?? 0;
 

@@ -82,7 +82,7 @@ public sealed class WorkflowService : IWorkflowService
             FromStage = from,
             ToStage = to,
             Action = act,
-            ByUser = actor.DisplayName,
+            ByUser = actor.UserName,
             AtUtc = DateTime.UtcNow
         });
 
@@ -99,7 +99,7 @@ public sealed class WorkflowService : IWorkflowService
         await _bitrix.NotifyAsync(title, $"{item.NameLink}\nЗаказчик: {item.Customer}", cancellationToken);
 
         _logger.LogInformation("Воркфлоу: закупка {Id} {From}->{To} ({Action}) пользователем {User}",
-            regeditId, from, to, act, actor.DisplayName);
+            regeditId, from, to, act, actor.UserName);
 
         return Result.Ok();
     }
