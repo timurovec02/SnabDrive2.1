@@ -38,21 +38,17 @@ else
     {
         <div class="card" style="margin-bottom:12px">
             <div class="card-body">
-                <div class="row g-2">
-                    <div class="col"><label class="form-label">Наименование</label><input class="form-control" @bind="_edits[r.Id].NameLink" /></div>
-                    <div class="col"><label class="form-label">Заказчик</label><input class="form-control" @bind="_edits[r.Id].Customer" /></div>
-                    <div class="col"><label class="form-label">НМЦК</label><input type="number" class="form-control" @bind="_edits[r.Id].NMCK" /></div>
-                    <div class="col"><label class="form-label">Дата торгов</label><input class="form-control" value="@Fmt(r.BiddingDate)" disabled /></div>
-                </div>
-                <div class="row g-2">
-                    <div class="col"><label class="form-label">Резерв 1С</label><input class="form-control" @bind="_edits[r.Id].ReserveNumber" /></div>
-                    <div class="col"><label class="form-label">Место на торгах</label><input class="form-control" @bind="_edits[r.Id].Place" /></div>
-                    <div class="col"><label class="form-label">Место поставки</label><input class="form-control" @bind="_edits[r.Id].PlaceOfDelivery" /></div>
-                    <div class="col"><label class="form-label">Итог. цена</label><input type="number" class="form-control" @bind="_edits[r.Id].ResultPrice" /></div>
-                </div>
-                <div class="row g-2">
-                    <div class="col"><label class="form-label">Победитель</label><input class="form-control" @bind="_edits[r.Id].Winner" /></div>
-                    <div class="col"><label class="form-label">Примечание</label><input class="form-control" @bind="_edits[r.Id].Note" /></div>
+                <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px">
+                    <div><label style="display:block;font-size:12px;color:#666;margin-bottom:2px">Наименование</label><input class="input" style="width:100%;box-sizing:border-box" @bind="_edits[r.Id].NameLink" /></div>
+                    <div><label style="display:block;font-size:12px;color:#666;margin-bottom:2px">Заказчик</label><input class="input" style="width:100%;box-sizing:border-box" @bind="_edits[r.Id].Customer" /></div>
+                    <div><label style="display:block;font-size:12px;color:#666;margin-bottom:2px">НМЦК</label><input type="number" class="input" style="width:100%;box-sizing:border-box" @bind="_edits[r.Id].NMCK" /></div>
+                    <div><label style="display:block;font-size:12px;color:#666;margin-bottom:2px">Дата торгов</label><input class="input" style="width:100%;box-sizing:border-box" value="@Fmt(r.BiddingDate)" disabled /></div>
+                    <div><label style="display:block;font-size:12px;color:#666;margin-bottom:2px">Резерв 1С</label><input class="input" style="width:100%;box-sizing:border-box" @bind="_edits[r.Id].ReserveNumber" /></div>
+                    <div><label style="display:block;font-size:12px;color:#666;margin-bottom:2px">Место на торгах</label><input class="input" style="width:100%;box-sizing:border-box" @bind="_edits[r.Id].Place" /></div>
+                    <div><label style="display:block;font-size:12px;color:#666;margin-bottom:2px">Место поставки</label><input class="input" style="width:100%;box-sizing:border-box" @bind="_edits[r.Id].PlaceOfDelivery" /></div>
+                    <div><label style="display:block;font-size:12px;color:#666;margin-bottom:2px">Итог. цена</label><input type="number" class="input" style="width:100%;box-sizing:border-box" @bind="_edits[r.Id].ResultPrice" /></div>
+                    <div><label style="display:block;font-size:12px;color:#666;margin-bottom:2px">Победитель</label><input class="input" style="width:100%;box-sizing:border-box" @bind="_edits[r.Id].Winner" /></div>
+                    <div><label style="display:block;font-size:12px;color:#666;margin-bottom:2px">Примечание</label><input class="input" style="width:100%;box-sizing:border-box" @bind="_edits[r.Id].Note" /></div>
                 </div>
 
                 <div style="margin-top:8px">
@@ -60,7 +56,10 @@ else
                     <div>
                         @foreach (var a in SplitAttachments(_edits[r.Id].Attachments))
                         {
-                            <a href="@a" target="_blank" rel="noopener" class="badge badge--info" style="margin-right:6px">@System.IO.Path.GetFileName(a)</a>
+                            <span style="display:inline-flex;align-items:center;gap:4px;margin:0 8px 4px 0">
+                                <a href="@a" target="_blank" rel="noopener">@System.IO.Path.GetFileName(a)</a>
+                                <button class="btn btn-link btn--danger" style="padding:0 4px;line-height:1" @onclick="() => DeleteAttachment(r.Id, a)" title="Удалить">×</button>
+                            </span>
                         }
                     </div>
                     <InputFile OnChange="ev => OnFileAsync(ev, r.Id)" class="form-control" style="max-width:360px;margin-top:4px" />
@@ -75,7 +74,11 @@ else
                     }
                     else if (_stage == 2)
                     {
-                        <button class="btn" @onclick="() => Advance(r.Id, 3)">Передать →</button>
+                        <button class="btn" @onclick="() => Advance(r.Id, 3)">→ Согласование</button>
+                    }
+                    else if (_stage == 12)
+                    {
+                        <button class="btn" @onclick="() => Advance(r.Id, 13)">Согласовано → Подача</button>
                     }
                     else if (_stage == 3)
                     {
@@ -178,6 +181,14 @@ else
     {
         _error = null;
         var result = await WorkflowSvc.UpdateAsync(id, _edits[id]);
+        if (!result.Success) { _error = result.Error; return; }
+        await LoadAsync();
+    }
+
+    private async Task DeleteAttachment(int id, string path)
+    {
+        _error = null;
+        var result = await WorkflowSvc.DeleteAttachmentAsync(id, path);
         if (!result.Success) { _error = result.Error; return; }
         await LoadAsync();
     }

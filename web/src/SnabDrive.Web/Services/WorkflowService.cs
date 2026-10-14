@@ -14,6 +14,7 @@ public static class WorkflowStages
     {
         (1, "1. Контур и подготовка"),
         (2, "1.2 Резерв: дозаполнение"),
+        (12, "1.5 Согласование"),
         (3, "2. Подача заявки на площадку"),
         (4, "3. Торги"),
         (5, "4. Перемещение товара"),
@@ -72,6 +73,8 @@ public interface IWorkflowService
 
     /// <summary>Сохранить файл во вложения закупки; возвращает обновлённый список имён.</summary>
     Task<Result<string>> SaveAttachmentAsync(int regeditId, string fileName, Stream content, CancellationToken cancellationToken = default);
+
+    Task<Result> DeleteAttachmentAsync(int regeditId, string attachmentPath, CancellationToken cancellationToken = default);
 }
 
 public sealed class WorkflowService : IWorkflowService
@@ -81,7 +84,8 @@ public sealed class WorkflowService : IWorkflowService
     {
         [1] = (3, false),   // подготовка -> подача заявки
         [2] = (2, false),   // подготовка -> дозаполнить резерв
-        [3] = (3, false),   // резерв -> подача заявки
+        [3] = (12, false),  // резерв -> согласование
+        [13] = (3, false),  // согласование -> подача заявки
         [4] = (4, false),   // подача -> торги
         [5] = (5, false),   // торги -> выиграл (перемещение)
         [6] = (0, true),    // торги -> проигран
@@ -206,5 +210,39 @@ public sealed class WorkflowService : IWorkflowService
         await context.SaveChangesAsync(cancellationToken);
 
         return Result<string>.Ok(list);
+    }
+
+    public async Task<Result> DeleteAttachmentAsync(int regeditId, string attachmentPath, CancellationToken cancellationToken = default)
+    {
+        await using var context = await _factory.CreateDbContextAsync(cancellationToken);
+        var item = await context.Regedit.FirstOrDefaultAsync(r => r.Id == regeditId, cancellationToken);
+        if (item is null)
+        {
+            return Result.Fail("Запись не найдена.");
+        }
+
+        var parts = (item.Attachments ?? string.Empty)
+            .Split(';', StringSplitOptions.RemoveEmptyEntries)
+            .Where(p => p != attachmentPath)
+            .ToList();
+        item.Attachments = string.Join(";", parts);
+
+        try
+        {
+            var root = _env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot");
+            var rel = attachmentPath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar);
+            var full = Path.Combine(root, rel);
+            if (File.Exists(full))
+            {
+                File.Delete(full);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Не удалось удалить файл вложения {Path}", attachmentPath);
+        }
+
+        await context.SaveChangesAsync(cancellationToken);
+        return Result.Ok();
     }
 }
