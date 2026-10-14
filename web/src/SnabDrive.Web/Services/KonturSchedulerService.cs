@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text.Json;
+using System.Threading;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -19,6 +20,18 @@ public sealed class KonturExporterOptions
 
     /// <summary>Таймаут одного запуска экспортера, минут.</summary>
     public int TimeoutMinutes { get; set; } = 15;
+
+    /// <summary>
+    /// Имя задачи Планировщика заданий Windows, которая запускает экспортёр в интерактивной сессии.
+    /// Если задано — сайт не запускает .exe сам (под IIS это Session 0, браузер не откроется),
+    /// а триггерит задачу через `schtasks /run` и ждёт появления файла выгрузки.
+    /// Пусто — прямой запуск экспортёра (только для среды с рабочим столом, например разработка).
+    /// </summary>
+    public string TaskName { get; set; } = string.Empty;
+
+    /// <summary>Файл, куда сайт пишет аргументы для экспортёра (читает обёртка задачи планировщика).
+    /// Пусто — export-request.txt рядом с экспортёром.</summary>
+    public string RequestFile { get; set; } = string.Empty;
 }
 
 /// <summary>Редактируемое на сайте расписание (хранится в kontur-schedule.json).</summary>
@@ -219,7 +232,7 @@ public sealed class KonturSchedulerService : BackgroundService
             Directory.CreateDirectory(outDir);
             var start = DateTime.Now;
 
-            RunExporter(options, outDir, mode);
+            RunExporter(options, outDir, mode, start);
 
             await ImportNewestAsync(outDir, start, mode);
         }
@@ -244,7 +257,89 @@ public sealed class KonturSchedulerService : BackgroundService
         return Path.Combine(baseDir, mode == ExportMode.Templates ? "templates" : "favorites");
     }
 
-    private void RunExporter(KonturExporterOptions options, string outDir, ExportMode mode)
+    private void RunExporter(KonturExporterOptions options, string outDir, ExportMode mode, DateTime start)
+    {
+        var modeFlag = mode == ExportMode.Templates ? "--templates" : "--favorites";
+        var timeout = TimeSpan.FromMinutes(options.TimeoutMinutes <= 0 ? 15 : options.TimeoutMinutes);
+
+        // headed-браузер под IIS (Session 0) не открывается, а headless Контур не пускает.
+        // Поэтому на сервере экспортёр запускается отдельной задачей Планировщика заданий
+        // в интерактивной сессии; сайт лишь триггерит её и ждёт файл выгрузки.
+        if (!string.IsNullOrWhiteSpace(options.TaskName))
+        {
+            RunViaScheduledTask(options, outDir, modeFlag, timeout);
+            return;
+        }
+
+        RunDirect(options, outDir, modeFlag, timeout);
+    }
+
+    private void RunViaScheduledTask(KonturExporterOptions options, string outDir, string modeFlag, TimeSpan timeout)
+    {
+        var args = $"--no-pause {modeFlag} --output \"{outDir}\"";
+        var reqFile = !string.IsNullOrWhiteSpace(options.RequestFile)
+            ? options.RequestFile
+            : Path.Combine(Path.GetDirectoryName(Path.GetFullPath(options.ExporterPath)) ?? outDir, "export-request.txt");
+
+        try
+        {
+            var reqDir = Path.GetDirectoryName(Path.GetFullPath(reqFile));
+            if (!string.IsNullOrEmpty(reqDir)) Directory.CreateDirectory(reqDir);
+            File.WriteAllText(reqFile, args);
+            _state.AddLog($"Аргументы для задачи записаны в «{reqFile}»: {args}");
+        }
+        catch (Exception ex)
+        {
+            _state.AddLog("Не удалось записать файл запроса: " + ex.Message);
+            return;
+        }
+
+        // Фиксируем самый свежий файл ДО запуска, чтобы дождаться именно нового.
+        var dir = new DirectoryInfo(outDir);
+        var beforeNewest = dir.Exists
+            ? dir.GetFiles("*.xlsx").OrderByDescending(f => f.LastWriteTime).FirstOrDefault()?.LastWriteTime ?? DateTime.MinValue
+            : DateTime.MinValue;
+
+        try
+        {
+            var psi = new ProcessStartInfo("schtasks", $"/run /tn \"{options.TaskName}\"")
+            {
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            };
+            using var p = Process.Start(psi);
+            if (p is null) { _state.AddLog("Не удалось запустить schtasks."); return; }
+            var so = p.StandardOutput.ReadToEnd().Trim();
+            var se = p.StandardError.ReadToEnd().Trim();
+            p.WaitForExit(20000);
+            _state.AddLog($"schtasks /run «{options.TaskName}»: {(so + " " + se).Trim()}");
+        }
+        catch (Exception ex)
+        {
+            _state.AddLog("Ошибка запуска задачи планировщика: " + ex.Message);
+            return;
+        }
+
+        // Ждём, пока в папке появится НОВЫЙ файл выгрузки.
+        var deadline = DateTime.Now + timeout;
+        while (DateTime.Now < deadline)
+        {
+            Thread.Sleep(3000);
+            var file = dir.Exists ? dir.GetFiles("*.xlsx").OrderByDescending(f => f.LastWriteTime).FirstOrDefault() : null;
+            if (file is not null && file.LastWriteTime > beforeNewest)
+            {
+                Thread.Sleep(3000); // дать файлу дописаться
+                _state.AddLog($"Задача выполнилась, появился файл: {file.Name}");
+                return;
+            }
+        }
+
+        _state.AddLog("Файл выгрузки не появился за отведённое время. Проверьте задачу планировщика, вход в Контур (Login.cmd) и что сессия пользователя активна.");
+    }
+
+    private void RunDirect(KonturExporterOptions options, string outDir, string modeFlag, TimeSpan timeout)
     {
         if (string.IsNullOrWhiteSpace(options.ExporterPath) || !File.Exists(options.ExporterPath))
         {
@@ -252,8 +347,7 @@ public sealed class KonturSchedulerService : BackgroundService
             return;
         }
 
-        var modeFlag = mode == ExportMode.Templates ? "--templates" : "--favorites";
-        var args = $"--headless --no-pause {modeFlag} --output \"{outDir}\"";
+        var args = $"--no-pause {modeFlag} --output \"{outDir}\"";
         _state.AddLog($"Команда: \"{options.ExporterPath}\" {args}");
 
         try
@@ -276,7 +370,6 @@ public sealed class KonturSchedulerService : BackgroundService
             var stdoutTask = process.StandardOutput.ReadToEndAsync();
             var stderrTask = process.StandardError.ReadToEndAsync();
 
-            var timeout = TimeSpan.FromMinutes(options.TimeoutMinutes <= 0 ? 15 : options.TimeoutMinutes);
             if (!process.WaitForExit((int)timeout.TotalMilliseconds))
             {
                 try { process.Kill(true); } catch { }
