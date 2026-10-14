@@ -68,8 +68,8 @@ public static class DatabaseBootstrapper
                     // EF бросит PendingModelChangesWarning как исключение. Это не ошибка:
                     // схема на месте, просто пропускаем миграции и идём дальше.
                     if (await TableExistsAsync(context, "AspNetUsers") &&
-                        await TableExistsAsync(context, "UserColumnPermission") &&
-                        await TableExistsAsync(context, "AuditLog"))
+                        await TableExistsAsync(context, "UserColumnPermissions") &&
+                        await TableExistsAsync(context, "AuditLogs"))
                     {
                         logger.LogWarning(
                             "Миграции не применились ({Message}), но веб-таблицы уже существуют " +
@@ -122,7 +122,7 @@ public static class DatabaseBootstrapper
 
         if (options.EnsureLegacySchema && options.IsSqlite)
         {
-            await EnsureModelTablesAsync(context, "Regedit", logger, "реестра (dev SQLite)");
+            await EnsureModelTablesAsync(context, "RegistryItems", logger, "реестра (dev SQLite)");
 
             if (options.SeedDictionaries)
             {
@@ -140,8 +140,8 @@ public static class DatabaseBootstrapper
 
         // Для существующей SQL Server-базы ничего не создаём — только проверяем наличие ключевых таблиц.
         var missing = new List<string>();
-        if (!await TableExistsAsync(context, "Regedit")) missing.Add("Regedit");
-        if (!await TableExistsAsync(context, "ArchiveRegedit")) missing.Add("ArchiveRegedit");
+        if (!await TableExistsAsync(context, "RegistryItems")) missing.Add("RegistryItems");
+        if (!await TableExistsAsync(context, "ArchiveRegistryItems")) missing.Add("ArchiveRegistryItems");
         if (!await TableExistsAsync(context, "CellColors")) missing.Add("CellColors");
 
         if (missing.Count > 0)

@@ -1,12 +1,12 @@
 /* ============================================================================
-   SnabDriveDB — тестовые данные.
+   snabdrive_db — тестовые данные.
 
    Заполняет:
      - справочники (если пусты);
-     - dbo.Regedit        ~16 реалистичных закупок (разные даты, суммы, статусы);
-     - dbo.ArchiveRegedit несколько архивных записей;
+     - dbo.RegistryItems        ~16 реалистичных закупок (разные даты, суммы, статусы);
+     - dbo.ArchiveRegistryItems несколько архивных записей;
      - dbo.CellColors     ручная подсветка пары ячеек;
-     - dbo.[User]         пара старых пользователей WPF (для импорта в Identity).
+     - dbo.[LegacyUsers]         пара старых пользователей WPF (для импорта в Identity).
 
    Безопасен к повторному запуску: каждый блок выполняется только если
    соответствующая таблица пуста.
@@ -15,34 +15,34 @@
    (см. create_SnabDriveDB.sql).
    ========================================================================== */
 
-USE [SnabDriveDB];
+USE [snabdrive_db];
 GO
 
 /* ----------------------------------------------------------------------------
    1. Справочники (если пусты)
 ---------------------------------------------------------------------------- */
-IF NOT EXISTS (SELECT 1 FROM dbo.B2BStatus)
-    INSERT INTO dbo.B2BStatus (NameB2B) VALUES
+IF NOT EXISTS (SELECT 1 FROM dbo.B2BStatuses)
+    INSERT INTO dbo.B2BStatuses (NameB2B) VALUES
         (N'Не подан'), (N'Подан'), (N'Отклонён'), (N'Победа');
 
-IF NOT EXISTS (SELECT 1 FROM dbo.TypeOfPurchase)
-    INSERT INTO dbo.TypeOfPurchase (NameOfPurchase, ColorCode) VALUES
+IF NOT EXISTS (SELECT 1 FROM dbo.PurchaseTypes)
+    INSERT INTO dbo.PurchaseTypes (NameOfPurchase, ColorCode) VALUES
         (N'Электронный аукцион', N'#FF4CAF50'),
         (N'Запрос котировок',    N'#FF2196F3'),
         (N'Открытый конкурс',    N'#FFFFC107'),
         (N'Единственный поставщик', N'#FF9C27B0');
 
-IF NOT EXISTS (SELECT 1 FROM dbo.ExecutionStatus)
-    INSERT INTO dbo.ExecutionStatus (NameExecution) VALUES
+IF NOT EXISTS (SELECT 1 FROM dbo.ExecutionStatuses)
+    INSERT INTO dbo.ExecutionStatuses (NameExecution) VALUES
         (N'Не начато'), (N'В работе'), (N'Завершено');
 GO
 
 /* ----------------------------------------------------------------------------
    2. Реестр (если пуст)
 ---------------------------------------------------------------------------- */
-IF NOT EXISTS (SELECT 1 FROM dbo.Regedit)
+IF NOT EXISTS (SELECT 1 FROM dbo.RegistryItems)
 BEGIN
-    INSERT INTO dbo.Regedit
+    INSERT INTO dbo.RegistryItems
     (
         NameLink, Customer, PlaceOfDelivery, ReserveNumber, NationalMode,
         DateOfTransferForPlacement, DateOfPlacement, BiddingDate, DateResults, DateOfConclusionOfTheContract,
@@ -52,9 +52,9 @@ BEGIN
     SELECT v.NameLink, v.Customer, v.PlaceOfDelivery, v.ReserveNumber, v.NationalMode,
            v.DateOfTransferForPlacement, v.DateOfPlacement, v.BiddingDate, v.DateResults, v.DateOfConclusionOfTheContract,
            v.NMCK, v.MinPrice, v.ResultPrice, v.Winner, v.DeliveryTime, v.Description, v.Note,
-           (SELECT TOP 1 ID FROM dbo.TypeOfPurchase WHERE NameOfPurchase = v.Purchase),
-           (SELECT TOP 1 ID FROM dbo.B2BStatus      WHERE NameB2B      = v.B2B),
-           (SELECT TOP 1 ID FROM dbo.ExecutionStatus WHERE NameExecution = v.Exec),
+           (SELECT TOP 1 ID FROM dbo.PurchaseTypes WHERE NameOfPurchase = v.Purchase),
+           (SELECT TOP 1 ID FROM dbo.B2BStatuses      WHERE NameB2B      = v.B2B),
+           (SELECT TOP 1 ID FROM dbo.ExecutionStatuses WHERE NameExecution = v.Exec),
            v.IsFinished
     FROM
     (
@@ -100,9 +100,9 @@ GO
 /* ----------------------------------------------------------------------------
    3. Архив (если пуст)
 ---------------------------------------------------------------------------- */
-IF NOT EXISTS (SELECT 1 FROM dbo.ArchiveRegedit)
+IF NOT EXISTS (SELECT 1 FROM dbo.ArchiveRegistryItems)
 BEGIN
-    INSERT INTO dbo.ArchiveRegedit
+    INSERT INTO dbo.ArchiveRegistryItems
     (
         IdOld, NameLink, Customer, PlaceOfDelivery, ReserveNumber, NationalMode,
         BiddingDate, NMCK, MinPrice, ResultPrice, Winner, Description,
@@ -110,16 +110,16 @@ BEGIN
     )
     SELECT 9001, N'Поставка оргтехники (2024)', N'ГКУ КК «Центр закупок»', N'г. Краснодар', N'Р-090', N'Нет',
            '20241115', 1200000.00, 1150000.00, 1130000.00, N'ООО «Компьютер-Сервис»', N'Архив 2024',
-           (SELECT TOP 1 ID FROM dbo.TypeOfPurchase WHERE NameOfPurchase = N'Электронный аукцион'),
-           (SELECT TOP 1 ID FROM dbo.B2BStatus WHERE NameB2B = N'Победа'),
-           (SELECT TOP 1 ID FROM dbo.ExecutionStatus WHERE NameExecution = N'Завершено'),
+           (SELECT TOP 1 ID FROM dbo.PurchaseTypes WHERE NameOfPurchase = N'Электронный аукцион'),
+           (SELECT TOP 1 ID FROM dbo.B2BStatuses WHERE NameB2B = N'Победа'),
+           (SELECT TOP 1 ID FROM dbo.ExecutionStatuses WHERE NameExecution = N'Завершено'),
            '20250110'
     UNION ALL
     SELECT 9002, N'Поставка бумаги (2024)', N'МБУ «Управление образования»', N'г. Сочи', N'Р-091', N'Нет',
            '20241201', 280000.00, 270000.00, 265000.00, N'ООО «Офис-Маркет»', N'Архив 2024',
-           (SELECT TOP 1 ID FROM dbo.TypeOfPurchase WHERE NameOfPurchase = N'Запрос котировок'),
-           (SELECT TOP 1 ID FROM dbo.B2BStatus WHERE NameB2B = N'Победа'),
-           (SELECT TOP 1 ID FROM dbo.ExecutionStatus WHERE NameExecution = N'Завершено'),
+           (SELECT TOP 1 ID FROM dbo.PurchaseTypes WHERE NameOfPurchase = N'Запрос котировок'),
+           (SELECT TOP 1 ID FROM dbo.B2BStatuses WHERE NameB2B = N'Победа'),
+           (SELECT TOP 1 ID FROM dbo.ExecutionStatuses WHERE NameExecution = N'Завершено'),
            '20250112';
 END
 GO
@@ -131,24 +131,24 @@ IF NOT EXISTS (SELECT 1 FROM dbo.CellColors)
 BEGIN
     INSERT INTO dbo.CellColors (RegeditId, ColumnName, ColorCode)
     SELECT r.Id, N'Customer', N'#FFFFEB3B'
-    FROM dbo.Regedit r WHERE r.ReserveNumber = N'Р-103';
+    FROM dbo.RegistryItems r WHERE r.ReserveNumber = N'Р-103';
 
     INSERT INTO dbo.CellColors (RegeditId, ColumnName, ColorCode)
     SELECT r.Id, N'BiddingDate', N'#FFC8E6C9'
-    FROM dbo.Regedit r WHERE r.ReserveNumber = N'Р-107';
+    FROM dbo.RegistryItems r WHERE r.ReserveNumber = N'Р-107';
 
     INSERT INTO dbo.CellColors (RegeditId, ColumnName, ColorCode)
     SELECT r.Id, N'NMCK', N'#FFFFCDD2'
-    FROM dbo.Regedit r WHERE r.ReserveNumber = N'Р-112';
+    FROM dbo.RegistryItems r WHERE r.ReserveNumber = N'Р-112';
 END
 GO
 
 /* ----------------------------------------------------------------------------
    5. Старые пользователи WPF (для импорта в Identity при ImportLegacyUsers=true)
 ---------------------------------------------------------------------------- */
-IF NOT EXISTS (SELECT 1 FROM dbo.[User])
+IF NOT EXISTS (SELECT 1 FROM dbo.[LegacyUsers])
 BEGIN
-    INSERT INTO dbo.[User] (Login, Password, Email, IsAdmin) VALUES
+    INSERT INTO dbo.[LegacyUsers] (Login, Password, Email, IsAdmin) VALUES
         (N'ivanov',  N'ivanov123',  N'ivanov@snabdrive.ru',  0),
         (N'petrova', N'petrova123', N'petrova@snabdrive.ru', 0),
         (N'sidorov', N'sidorov123', N'sidorov@snabdrive.ru', 1);
@@ -156,6 +156,6 @@ END
 GO
 
 PRINT N'Тестовые данные загружены: '
-      + CAST((SELECT COUNT(*) FROM dbo.Regedit) AS NVARCHAR(10)) + N' записей реестра, '
-      + CAST((SELECT COUNT(*) FROM dbo.ArchiveRegedit) AS NVARCHAR(10)) + N' в архиве.';
+      + CAST((SELECT COUNT(*) FROM dbo.RegistryItems) AS NVARCHAR(10)) + N' записей реестра, '
+      + CAST((SELECT COUNT(*) FROM dbo.ArchiveRegistryItems) AS NVARCHAR(10)) + N' в архиве.';
 GO

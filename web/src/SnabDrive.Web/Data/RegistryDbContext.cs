@@ -35,7 +35,7 @@ public class RegistryDbContext : DbContext
 
         modelBuilder.Entity<Regedit>(entity =>
         {
-            entity.ToTable("Regedit");
+            entity.ToTable("RegistryItems");
             entity.HasKey(x => x.Id);
 
             entity.Property(x => x.NameLink).HasColumnName("NameLink").HasMaxLength(1000).IsRequired();
@@ -86,7 +86,7 @@ public class RegistryDbContext : DbContext
 
         modelBuilder.Entity<ArchiveRegedit>(entity =>
         {
-            entity.ToTable("ArchiveRegedit");
+            entity.ToTable("ArchiveRegistryItems");
             entity.HasKey(x => x.Id);
             entity.Property(x => x.IdOld).HasColumnName("IdOld");
 
@@ -134,7 +134,7 @@ public class RegistryDbContext : DbContext
 
         modelBuilder.Entity<B2BStatus>(entity =>
         {
-            entity.ToTable("B2BStatus");
+            entity.ToTable("B2BStatuses");
             entity.HasKey(x => x.Id);
             entity.Property(x => x.Id).HasColumnName("ID");
             entity.Property(x => x.NameB2B).HasColumnName("NameB2B").IsRequired();
@@ -142,7 +142,7 @@ public class RegistryDbContext : DbContext
 
         modelBuilder.Entity<TypeOfPurchase>(entity =>
         {
-            entity.ToTable("TypeOfPurchase");
+            entity.ToTable("PurchaseTypes");
             entity.HasKey(x => x.Id);
             entity.Property(x => x.Id).HasColumnName("ID");
             entity.Property(x => x.NameOfPurchase).HasColumnName("NameOfPurchase").IsRequired();
@@ -151,7 +151,7 @@ public class RegistryDbContext : DbContext
 
         modelBuilder.Entity<ExecutionStatus>(entity =>
         {
-            entity.ToTable("ExecutionStatus");
+            entity.ToTable("ExecutionStatuses");
             entity.HasKey(x => x.Id);
             entity.Property(x => x.Id).HasColumnName("ID");
             entity.Property(x => x.NameExecution).HasColumnName("NameExecution").IsRequired();
@@ -174,7 +174,7 @@ public class RegistryDbContext : DbContext
 
         modelBuilder.Entity<LegacyUser>(entity =>
         {
-            entity.ToTable("User");
+            entity.ToTable("LegacyUsers");
             entity.HasKey(x => x.Id);
             entity.Property(x => x.Login).HasColumnName("Login").IsRequired();
             entity.Property(x => x.Password).HasColumnName("Password");
@@ -229,7 +229,7 @@ public class RegistryDbContext : DbContext
 
         modelBuilder.Entity<RegistryWorkflowLog>(entity =>
         {
-            entity.ToTable("RegistryWorkflowLog");
+            entity.ToTable("WorkflowLogs");
             entity.HasKey(x => x.Id);
             entity.Property(x => x.RegeditId).HasColumnName("RegeditId");
             entity.Property(x => x.FromStage).HasColumnName("FromStage");

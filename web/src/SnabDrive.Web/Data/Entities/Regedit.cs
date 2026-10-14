@@ -2,8 +2,7 @@ namespace SnabDrive.Web.Data.Entities;
 
 /// <summary>
 /// Основная запись реестра закупок. Соответствует существующей таблице [Regedit] в SnabDriveDB.
-/// Структура повторяет модель WPF-клиента (SnabDrive2._0.Regedit) один-в-один,
-/// поэтому веб-приложение работает с той же базой без изменения её схемы.
+/// Соответствует таблице [RegistryItems] в snabdrive_db.
 /// </summary>
 public class Regedit
 {

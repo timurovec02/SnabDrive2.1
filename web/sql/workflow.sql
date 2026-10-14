@@ -1,4 +1,4 @@
-USE [SnabDriveDB]
+USE [snabdrive_db]
 GO
 
 -- ============================================================================
@@ -7,39 +7,39 @@ GO
 --         4 = завершено; IsLost = 1 — закупка проиграна (задача прервана).
 -- ============================================================================
 
-IF COL_LENGTH('Regedit', 'Stage') IS NULL
+IF COL_LENGTH('RegistryItems', 'Stage') IS NULL
 BEGIN
-    ALTER TABLE [Regedit] ADD [Stage] int NOT NULL CONSTRAINT [DF_Regedit_Stage] DEFAULT(1);
-    PRINT 'Добавлен Regedit.Stage.';
+    ALTER TABLE [RegistryItems] ADD [Stage] int NOT NULL CONSTRAINT [DF_Regedit_Stage] DEFAULT(1);
+    PRINT 'Добавлен RegistryItems.Stage.';
 END
 ELSE
-    PRINT 'Regedit.Stage уже существует.';
+    PRINT 'RegistryItems.Stage уже существует.';
 GO
 
-IF COL_LENGTH('Regedit', 'IsLost') IS NULL
+IF COL_LENGTH('RegistryItems', 'IsLost') IS NULL
 BEGIN
-    ALTER TABLE [Regedit] ADD [IsLost] bit NOT NULL CONSTRAINT [DF_Regedit_IsLost] DEFAULT(0);
-    PRINT 'Добавлен Regedit.IsLost.';
+    ALTER TABLE [RegistryItems] ADD [IsLost] bit NOT NULL CONSTRAINT [DF_Regedit_IsLost] DEFAULT(0);
+    PRINT 'Добавлен RegistryItems.IsLost.';
 END
 ELSE
-    PRINT 'Regedit.IsLost уже существует.';
+    PRINT 'RegistryItems.IsLost уже существует.';
 GO
 
-IF COL_LENGTH('Regedit', 'AssignedTo') IS NULL
+IF COL_LENGTH('RegistryItems', 'AssignedTo') IS NULL
 BEGIN
-    ALTER TABLE [Regedit] ADD [AssignedTo] nvarchar(256) NULL;
-    PRINT 'Добавлен Regedit.AssignedTo.';
+    ALTER TABLE [RegistryItems] ADD [AssignedTo] nvarchar(256) NULL;
+    PRINT 'Добавлен RegistryItems.AssignedTo.';
 END
 ELSE
-    PRINT 'Regedit.AssignedTo уже существует.';
+    PRINT 'RegistryItems.AssignedTo уже существует.';
 GO
 
 -- ----------------------------------------------------------------------------
 -- Журнал передач задачи между стадиями
 -- ----------------------------------------------------------------------------
-IF OBJECT_ID('dbo.RegistryWorkflowLog', 'U') IS NULL
+IF OBJECT_ID('dbo.WorkflowLogs', 'U') IS NULL
 BEGIN
-    CREATE TABLE dbo.RegistryWorkflowLog
+    CREATE TABLE dbo.WorkflowLogs
     (
         Id        int IDENTITY(1,1) NOT NULL CONSTRAINT PK_RegistryWorkflowLog PRIMARY KEY,
         RegeditId int            NOT NULL,
@@ -51,27 +51,27 @@ BEGIN
         ByUser    nvarchar(256)  NULL
     );
 
-    CREATE INDEX IX_RegistryWorkflowLog_RegeditId ON dbo.RegistryWorkflowLog (RegeditId);
-    PRINT 'RegistryWorkflowLog создана.';
+    CREATE INDEX IX_RegistryWorkflowLog_RegeditId ON dbo.WorkflowLogs (RegeditId);
+    PRINT 'WorkflowLogs создана.';
 END
 ELSE
-    PRINT 'RegistryWorkflowLog уже существует.';
+    PRINT 'WorkflowLogs уже существует.';
 GO
 
-IF COL_LENGTH('Regedit', 'Place') IS NULL
+IF COL_LENGTH('RegistryItems', 'Place') IS NULL
 BEGIN
-    ALTER TABLE [Regedit] ADD [Place] nvarchar(1000) NULL;
-    PRINT 'Добавлен Regedit.Place.';
+    ALTER TABLE [RegistryItems] ADD [Place] nvarchar(1000) NULL;
+    PRINT 'Добавлен RegistryItems.Place.';
 END
 ELSE
-    PRINT 'Regedit.Place уже существует.';
+    PRINT 'RegistryItems.Place уже существует.';
 GO
 
-IF COL_LENGTH('Regedit', 'Attachments') IS NULL
+IF COL_LENGTH('RegistryItems', 'Attachments') IS NULL
 BEGIN
-    ALTER TABLE [Regedit] ADD [Attachments] nvarchar(max) NULL;
-    PRINT 'Добавлен Regedit.Attachments.';
+    ALTER TABLE [RegistryItems] ADD [Attachments] nvarchar(max) NULL;
+    PRINT 'Добавлен RegistryItems.Attachments.';
 END
 ELSE
-    PRINT 'Regedit.Attachments уже существует.';
+    PRINT 'RegistryItems.Attachments уже существует.';
 GO

@@ -31,7 +31,7 @@ public class AppIdentityDbContext : IdentityDbContext<ApplicationUser>
 
         builder.Entity<UserColumnPermission>(entity =>
         {
-            entity.ToTable("UserColumnPermission");
+            entity.ToTable("UserColumnPermissions");
             entity.HasKey(x => x.Id);
             entity.Property(x => x.UserId).HasColumnName("UserId").HasMaxLength(450).IsRequired();
             entity.Property(x => x.ColumnKey).HasColumnName("ColumnKey").HasMaxLength(100).IsRequired();
@@ -48,7 +48,7 @@ public class AppIdentityDbContext : IdentityDbContext<ApplicationUser>
 
         builder.Entity<AuditLogEntry>(entity =>
         {
-            entity.ToTable("AuditLog");
+            entity.ToTable("AuditLogs");
             entity.HasKey(x => x.Id);
             entity.Property(x => x.Id).ValueGeneratedOnAdd();
             entity.Property(x => x.CreatedAtUtc).HasColumnName("CreatedAtUtc");

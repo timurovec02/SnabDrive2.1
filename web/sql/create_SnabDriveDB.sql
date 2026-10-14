@@ -1,11 +1,11 @@
 /* ============================================================================
-   SnabDriveDB — создание базы целиком одним скриптом.
+   snabdrive_db — создание базы целиком одним скриптом.
 
    Что создаёт:
-     1) саму базу SnabDriveDB (если её нет);
-     2) существующие таблицы реестра (Regedit, ArchiveRegedit, User, справочники,
+     1) саму базу snabdrive_db (если её нет);
+     2) существующие таблицы реестра (RegistryItems, ArchiveRegistryItems, User, справочники,
         CellColors) — один-в-один со схемой WPF-клиента;
-     3) веб-таблицы (ASP.NET Core Identity + AuditLog + UserColumnPermission),
+     3) веб-таблицы (ASP.NET Core Identity + AuditLogs + UserColumnPermissions),
         которые обычно создаёт EF-миграция.
 
    Как использовать:
@@ -20,21 +20,21 @@
      всё равно создадутся при первом старте приложения (SeedRolesAndAdmin = true).
    ========================================================================== */
 
-IF DB_ID(N'SnabDriveDB') IS NULL
+IF DB_ID(N'snabdrive_db') IS NULL
 BEGIN
-    CREATE DATABASE [SnabDriveDB];
+    CREATE DATABASE [snabdrive_db];
 END
 GO
 
-USE [SnabDriveDB];
+USE [snabdrive_db];
 GO
 
 /* ----------------------------------------------------------------------------
    1. Справочники
 ---------------------------------------------------------------------------- */
-IF OBJECT_ID(N'dbo.B2BStatus', N'U') IS NULL
+IF OBJECT_ID(N'dbo.B2BStatuses', N'U') IS NULL
 BEGIN
-    CREATE TABLE dbo.B2BStatus
+    CREATE TABLE dbo.B2BStatuses
     (
         ID      INT IDENTITY(1,1) NOT NULL,
         NameB2B NVARCHAR(MAX)     NOT NULL,
@@ -43,9 +43,9 @@ BEGIN
 END
 GO
 
-IF OBJECT_ID(N'dbo.TypeOfPurchase', N'U') IS NULL
+IF OBJECT_ID(N'dbo.PurchaseTypes', N'U') IS NULL
 BEGIN
-    CREATE TABLE dbo.TypeOfPurchase
+    CREATE TABLE dbo.PurchaseTypes
     (
         ID             INT IDENTITY(1,1) NOT NULL,
         NameOfPurchase NVARCHAR(MAX)     NOT NULL,
@@ -55,9 +55,9 @@ BEGIN
 END
 GO
 
-IF OBJECT_ID(N'dbo.ExecutionStatus', N'U') IS NULL
+IF OBJECT_ID(N'dbo.ExecutionStatuses', N'U') IS NULL
 BEGIN
-    CREATE TABLE dbo.ExecutionStatus
+    CREATE TABLE dbo.ExecutionStatuses
     (
         ID            INT IDENTITY(1,1) NOT NULL,
         NameExecution NVARCHAR(MAX)     NOT NULL,
@@ -69,9 +69,9 @@ GO
 /* ----------------------------------------------------------------------------
    2. Реестр и архив
 ---------------------------------------------------------------------------- */
-IF OBJECT_ID(N'dbo.Regedit', N'U') IS NULL
+IF OBJECT_ID(N'dbo.RegistryItems', N'U') IS NULL
 BEGIN
-    CREATE TABLE dbo.Regedit
+    CREATE TABLE dbo.RegistryItems
     (
         Id                            INT IDENTITY(1,1)  NOT NULL,
         NameLink                      NVARCHAR(1000)     NOT NULL,
@@ -97,21 +97,21 @@ BEGIN
         IsFinished                    BIT                NULL,
         CONSTRAINT PK_Regedit PRIMARY KEY (Id),
         CONSTRAINT FK_Regedit_TypeOfPurchase FOREIGN KEY (TypeOfPurchaseId)
-            REFERENCES dbo.TypeOfPurchase (ID),
+            REFERENCES dbo.PurchaseTypes (ID),
         CONSTRAINT FK_Regedit_B2BStatus FOREIGN KEY (B2BStatusId)
-            REFERENCES dbo.B2BStatus (ID),
+            REFERENCES dbo.B2BStatuses (ID),
         CONSTRAINT FK_Regedit_ExecutionStatus FOREIGN KEY (ExecutionStatusId)
-            REFERENCES dbo.ExecutionStatus (ID)
+            REFERENCES dbo.ExecutionStatuses (ID)
     );
 
-    CREATE INDEX IX_Regedit_Customer    ON dbo.Regedit (Customer);
-    CREATE INDEX IX_Regedit_BiddingDate ON dbo.Regedit (BiddingDate);
+    CREATE INDEX IX_Regedit_Customer    ON dbo.RegistryItems (Customer);
+    CREATE INDEX IX_Regedit_BiddingDate ON dbo.RegistryItems (BiddingDate);
 END
 GO
 
-IF OBJECT_ID(N'dbo.ArchiveRegedit', N'U') IS NULL
+IF OBJECT_ID(N'dbo.ArchiveRegistryItems', N'U') IS NULL
 BEGIN
-    CREATE TABLE dbo.ArchiveRegedit
+    CREATE TABLE dbo.ArchiveRegistryItems
     (
         Id                            INT IDENTITY(1,1)  NOT NULL,
         IdOld                         INT                NOT NULL,
@@ -138,11 +138,11 @@ BEGIN
         ArchivateDate                 DATETIME2(7)       NULL,
         CONSTRAINT PK_ArchiveRegedit PRIMARY KEY (Id),
         CONSTRAINT FK_Archive_TypeOfPurchase FOREIGN KEY (TypeOfPurchaseId)
-            REFERENCES dbo.TypeOfPurchase (ID),
+            REFERENCES dbo.PurchaseTypes (ID),
         CONSTRAINT FK_Archive_B2BStatus FOREIGN KEY (B2BStatusId)
-            REFERENCES dbo.B2BStatus (ID),
+            REFERENCES dbo.B2BStatuses (ID),
         CONSTRAINT FK_Archive_ExecutionStatus FOREIGN KEY (ExecutionStatusId)
-            REFERENCES dbo.ExecutionStatus (ID)
+            REFERENCES dbo.ExecutionStatuses (ID)
     );
 END
 GO
@@ -160,16 +160,16 @@ BEGIN
         ColorCode  NVARCHAR(MAX)     NOT NULL,
         CONSTRAINT PK_CellColors PRIMARY KEY (Id),
         CONSTRAINT FK_CellColors_Regedit FOREIGN KEY (RegeditId)
-            REFERENCES dbo.Regedit (Id) ON DELETE CASCADE
+            REFERENCES dbo.RegistryItems (Id) ON DELETE CASCADE
     );
 
     CREATE INDEX IX_CellColors_RegeditId ON dbo.CellColors (RegeditId);
 END
 GO
 
-IF OBJECT_ID(N'dbo.[User]', N'U') IS NULL
+IF OBJECT_ID(N'dbo.[LegacyUsers]', N'U') IS NULL
 BEGIN
-    CREATE TABLE dbo.[User]
+    CREATE TABLE dbo.[LegacyUsers]
     (
         Id       INT IDENTITY(1,1) NOT NULL,
         Login    NVARCHAR(MAX)     NOT NULL,
@@ -313,9 +313,9 @@ GO
 /* ----------------------------------------------------------------------------
    5. Журнал аудита и права на колонки
 ---------------------------------------------------------------------------- */
-IF OBJECT_ID(N'dbo.AuditLog', N'U') IS NULL
+IF OBJECT_ID(N'dbo.AuditLogs', N'U') IS NULL
 BEGIN
-    CREATE TABLE dbo.AuditLog
+    CREATE TABLE dbo.AuditLogs
     (
         Id          BIGINT IDENTITY(1,1) NOT NULL,
         CreatedAtUtc DATETIME2(7)        NOT NULL,
@@ -329,14 +329,14 @@ BEGIN
         CONSTRAINT PK_AuditLog PRIMARY KEY (Id)
     );
 
-    CREATE INDEX IX_AuditLog_Entity    ON dbo.AuditLog (EntityName, EntityId);
-    CREATE INDEX IX_AuditLog_CreatedAt ON dbo.AuditLog (CreatedAtUtc);
+    CREATE INDEX IX_AuditLog_Entity    ON dbo.AuditLogs (EntityName, EntityId);
+    CREATE INDEX IX_AuditLog_CreatedAt ON dbo.AuditLogs (CreatedAtUtc);
 END
 GO
 
-IF OBJECT_ID(N'dbo.UserColumnPermission', N'U') IS NULL
+IF OBJECT_ID(N'dbo.UserColumnPermissions', N'U') IS NULL
 BEGIN
-    CREATE TABLE dbo.UserColumnPermission
+    CREATE TABLE dbo.UserColumnPermissions
     (
         Id        INT IDENTITY(1,1) NOT NULL,
         UserId    NVARCHAR(450)     NOT NULL,
@@ -349,7 +349,7 @@ BEGIN
     );
 
     CREATE UNIQUE INDEX IX_UserColumnPermission_Unique
-        ON dbo.UserColumnPermission (UserId, ColumnKey);
+        ON dbo.UserColumnPermissions (UserId, ColumnKey);
 END
 GO
 
@@ -370,28 +370,28 @@ GO
 /* ----------------------------------------------------------------------------
    7. Стартовые значения справочников (по желанию — удалите блок, если не нужны)
 ---------------------------------------------------------------------------- */
-IF NOT EXISTS (SELECT 1 FROM dbo.B2BStatus)
+IF NOT EXISTS (SELECT 1 FROM dbo.B2BStatuses)
 BEGIN
-    INSERT INTO dbo.B2BStatus (NameB2B) VALUES
+    INSERT INTO dbo.B2BStatuses (NameB2B) VALUES
         (N'Не подан'), (N'Подан'), (N'Отклонён'), (N'Победа');
 END
 GO
 
-IF NOT EXISTS (SELECT 1 FROM dbo.TypeOfPurchase)
+IF NOT EXISTS (SELECT 1 FROM dbo.PurchaseTypes)
 BEGIN
-    INSERT INTO dbo.TypeOfPurchase (NameOfPurchase, ColorCode) VALUES
+    INSERT INTO dbo.PurchaseTypes (NameOfPurchase, ColorCode) VALUES
         (N'Электронный аукцион', N'#FF4CAF50'),
         (N'Запрос котировок',    N'#FF2196F3'),
         (N'Открытый конкурс',    N'#FFFFC107');
 END
 GO
 
-IF NOT EXISTS (SELECT 1 FROM dbo.ExecutionStatus)
+IF NOT EXISTS (SELECT 1 FROM dbo.ExecutionStatuses)
 BEGIN
-    INSERT INTO dbo.ExecutionStatus (NameExecution) VALUES
+    INSERT INTO dbo.ExecutionStatuses (NameExecution) VALUES
         (N'Не начато'), (N'В работе'), (N'Завершено');
 END
 GO
 
-PRINT N'База SnabDriveDB готова.';
+PRINT N'База snabdrive_db готова.';
 GO

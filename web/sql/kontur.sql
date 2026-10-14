@@ -1,9 +1,9 @@
 /* =============================================================================
    SnabDrive Web — «Избранное Контур»
    Создаёт таблицу KonturFavorites и добавляет колонку KonturEnabled в AspNetUsers.
-   Выполнить один раз в SSMS на базе SnabDriveDB.
+   Выполнить один раз в SSMS на базе snabdrive_db.
    ============================================================================= */
-USE [SnabDriveDB];
+USE [snabdrive_db];
 GO
 
 IF OBJECT_ID('dbo.KonturFavorites', 'U') IS NULL
