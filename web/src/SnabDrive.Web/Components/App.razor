@@ -1,11 +1,12 @@
 @using Microsoft.AspNetCore.Components.Web
+@inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
 <!DOCTYPE html>
 <html lang="ru">
 
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <base href="/" />
+    <base href="@BaseHref" />
     <link rel="stylesheet" href="css/app.css" />
     <title>SnabDrive — реестр закупок</title>
     <HeadOutlet />
@@ -22,3 +23,22 @@
 </body>
 
 </html>
+
+@code {
+    // Базовый путь приложения: "/" при размещении в корне сайта и "/snabdrive/" при
+    // размещении в под-приложении IIS. Без этого blazor.web.js, css и SignalR в подпапке
+    // запрашивались бы от корня и отдавали 404 (страница входа есть, а интерактив нет).
+    private string BaseHref
+    {
+        get
+        {
+            var pathBase = HttpContextAccessor.HttpContext?.Request.PathBase.Value;
+            if (string.IsNullOrEmpty(pathBase))
+            {
+                return "/";
+            }
+
+            return pathBase.EndsWith("/") ? pathBase : pathBase + "/";
+        }
+    }
+}
