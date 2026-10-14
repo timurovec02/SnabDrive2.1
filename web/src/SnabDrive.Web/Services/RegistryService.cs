@@ -994,7 +994,7 @@ public sealed class RegistryService : IRegistryService
     }
 
     // В WPF-версии «нет значения» хранилось как 0 — сохраняем то же поведение, чтобы не ломать данные.
-    private static int? Normalize(int? value) => value is > 0 ? value : 0;
+    private static int? Normalize(int? value) => value is > 0 ? value : null;
 
     private static RegeditUpsertRequest ToRequest(Regedit entity) => new()
     {

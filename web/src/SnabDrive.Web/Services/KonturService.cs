@@ -113,7 +113,9 @@ public sealed class KonturService : IKonturService
             query = query.Where(f => f.Status == KonturFavoriteStatus.New);
         }
 
-        return await query.OrderByDescending(f => f.AddedAt).ThenByDescending(f => f.Id).ToListAsync(cancellationToken);
+        // Показываем только последние 100 строк (самые свежие по дате добавления),
+        // чтобы таблица «Избранное Контур» не росла бесконечно и быстро грузилась.
+        return await query.OrderByDescending(f => f.AddedAt).ThenByDescending(f => f.Id).Take(100).ToListAsync(cancellationToken);
     }
 
     public async Task<Result<int>> ImportToRegistryAsync(IEnumerable<int> favoriteIds, ChangeActor actor, CancellationToken cancellationToken = default)
