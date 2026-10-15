@@ -403,6 +403,7 @@ public sealed class KonturSchedulerService : BackgroundService
 
     private async Task ImportNewestAsync(string outDir, DateTime start, ExportMode mode)
     {
+        var modeLabel = mode == ExportMode.Templates ? "Контур ловушка" : "Избранное Контур";
         var file = new DirectoryInfo(outDir).GetFiles("*.xlsx")
             .OrderByDescending(f => f.LastWriteTime)
             .FirstOrDefault();
@@ -412,6 +413,7 @@ public sealed class KonturSchedulerService : BackgroundService
             _state.LastSuccess = true;
             _state.LastMessage = "Новый файл выгрузки не найден.";
             _state.AddLog(_state.LastMessage);
+            await WriteAuditAsync($"Выгрузка «{modeLabel}»: новый файл не найден");
             return;
         }
 
@@ -432,6 +434,26 @@ public sealed class KonturSchedulerService : BackgroundService
         {
             _store.Value.LastImportedFile = file.FullName;
             _store.Save();
+        }
+
+        var summary = result.Success
+            ? $"Выгрузка «{modeLabel}»: импортировано строк {result.Value}, файл «{file.Name}»"
+            : $"Выгрузка «{modeLabel}»: ошибка импорта — {result.Error}";
+        await WriteAuditAsync(summary);
+    }
+
+    /// <summary>Записать событие выгрузки Контура в журнал аудита (ошибки аудита не роняют выгрузку).</summary>
+    private async Task WriteAuditAsync(string summary)
+    {
+        try
+        {
+            using var scope = _services.CreateScope();
+            var audit = scope.ServiceProvider.GetRequiredService<IAuditService>();
+            await audit.WriteAsync("KonturExport", "Kontur", 0, SystemActor, null, summary);
+        }
+        catch
+        {
+            // аудит не должен прерывать выгрузку
         }
     }
 
