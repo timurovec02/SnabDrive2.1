@@ -10,11 +10,33 @@ namespace SnabDrive.Web.Services;
 /// <summary>Имена ролей веб-приложения.</summary>
 public static class AppRoles
 {
-    public const string Admin = "Admin";
-    public const string Operator = "Operator";
-    public const string Director = "Director";
+    public const string Admin = "Admin";                 // техобслуживание: пользователи, справочники, аудит
+    public const string TenderManager = "TenderManager"; // Тендерный менеджер
+    public const string TenderHead = "TenderHead";       // Руководитель тендерного отдела
+    public const string Accountant = "Accountant";       // Бухгалтер
+    public const string Director = "Director";           // Директор
 
-    public static readonly string[] All = { Admin, Operator, Director };
+    /// <summary>Устаревшая роль (была в ранних версиях). Оставлена, чтобы не ломать существующие учётки.</summary>
+    public const string Operator = "Operator";
+
+    /// <summary>Бизнес-роли в порядке отображения.</summary>
+    public static readonly string[] Business = { TenderManager, TenderHead, Accountant, Director };
+
+    /// <summary>Все роли, которые создаются при старте.</summary>
+    public static readonly string[] All = { Admin, TenderManager, TenderHead, Accountant, Director, Operator };
+
+    /// <summary>Отображаемые названия ролей.</summary>
+    public static readonly IReadOnlyDictionary<string, string> DisplayNames = new Dictionary<string, string>
+    {
+        [Admin] = "Администратор",
+        [TenderManager] = "Тендерный менеджер",
+        [TenderHead] = "Руководитель тендерного отдела",
+        [Accountant] = "Бухгалтер",
+        [Director] = "Директор",
+        [Operator] = "Оператор"
+    };
+
+    public static string DisplayName(string role) => DisplayNames.TryGetValue(role, out var n) ? n : role;
 }
 
 /// <summary>Политики авторизации.</summary>
