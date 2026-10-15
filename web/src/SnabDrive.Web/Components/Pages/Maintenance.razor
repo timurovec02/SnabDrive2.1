@@ -2,7 +2,7 @@
 @using System.Security.Claims
 @using SnabDrive.Web.Domain
 @using SnabDrive.Web.Services
-@inject IMaintenanceService Maintenance
+@inject IMaintenanceService MaintenanceSvc
 @inject IToastService Toasts
 @inject IJSRuntime JS
 @inject AuthenticationStateProvider AuthStateProvider
@@ -42,7 +42,7 @@
             var user = state.User;
             var actor = new ChangeActor(user.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty,
                                         user.Identity?.Name ?? "admin");
-            var result = await Maintenance.ClearAsync(dataset, actor);
+            var result = await MaintenanceSvc.ClearAsync(dataset, actor);
             _message = result.Success
                 ? $"«{label}» очищено. Удалено записей: {result.Value}."
                 : $"Ошибка: {result.Error}";
