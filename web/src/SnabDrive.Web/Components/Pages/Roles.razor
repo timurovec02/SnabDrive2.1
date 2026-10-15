@@ -110,7 +110,7 @@
     {
         if (_set is null) return;
         await RolePerms.SetAsync(SelectedRole, _set);
-        Toasts.Success($"Права роли «{AppRoles.DisplayName(SelectedRole)}» сохранены");
+        Toasts.Show($"Права роли «{AppRoles.DisplayName(SelectedRole)}» сохранены", ToastKind.Success);
     }
 
     private async Task ResetAsync()
