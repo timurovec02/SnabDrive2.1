@@ -19,6 +19,8 @@ public class AppIdentityDbContext : IdentityDbContext<ApplicationUser>
 
     public DbSet<UserColumnPermission> UserColumnPermissions => Set<UserColumnPermission>();
 
+    public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -62,6 +64,16 @@ public class AppIdentityDbContext : IdentityDbContext<ApplicationUser>
 
             entity.HasIndex(x => new { x.EntityName, x.EntityId });
             entity.HasIndex(x => x.CreatedAtUtc);
+        });
+
+        builder.Entity<RolePermission>(entity =>
+        {
+            entity.ToTable("RolePermissions");
+            entity.HasKey(x => x.RoleName);
+            entity.Property(x => x.RoleName).HasColumnName("RoleName").HasMaxLength(64).IsRequired();
+            entity.Property(x => x.FeaturesJson).HasColumnName("FeaturesJson");
+            entity.Property(x => x.ColumnsJson).HasColumnName("ColumnsJson");
+            entity.Property(x => x.UpdatedAtUtc).HasColumnName("UpdatedAtUtc");
         });
     }
 }

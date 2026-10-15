@@ -278,6 +278,31 @@ public static class DatabaseBootstrapper
                 logger.LogInformation("Создана роль {Role}", role);
             }
         }
+
+        // Права ролей по умолчанию (только если для роли ещё ничего не сохранено).
+        var factory = services.GetRequiredService<IDbContextFactory<AppIdentityDbContext>>();
+        await using var ctx = await factory.CreateDbContextAsync();
+        var existing = (await ctx.RolePermissions.Select(r => r.RoleName).ToListAsync())
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var added = false;
+        foreach (var role in AppRoles.All)
+        {
+            if (existing.Contains(role)) continue;
+            var set = RolePermissionDefaults.For(role);
+            ctx.RolePermissions.Add(new RolePermission
+            {
+                RoleName = role,
+                FeaturesJson = System.Text.Json.JsonSerializer.Serialize(set.Features),
+                ColumnsJson = System.Text.Json.JsonSerializer.Serialize(set.Columns),
+                UpdatedAtUtc = DateTime.UtcNow
+            });
+            added = true;
+        }
+        if (added)
+        {
+            await ctx.SaveChangesAsync();
+            logger.LogInformation("Сохранены права ролей по умолчанию");
+        }
     }
 
     private static async Task SeedAdminAsync(IServiceProvider services, DatabaseOptions options, ILogger logger)

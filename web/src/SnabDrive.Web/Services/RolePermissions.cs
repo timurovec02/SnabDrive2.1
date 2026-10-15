@@ -66,7 +66,7 @@ public static class RolePermissionDefaults
                     or AppFeatures.Scheduler or AppFeatures.Workflow or AppFeatures.Director or AppFeatures.Audit,
                 AppRoles.TenderManager => key is AppFeatures.Registry or AppFeatures.Archive or AppFeatures.Kontur
                     or AppFeatures.Scheduler or AppFeatures.Workflow,
-                AppRoles.Accountant => key is AppFeatures.Registry or AppFeatures.Archive,
+                AppRoles.Accountant => key is AppFeatures.Registry or AppFeatures.Archive or AppFeatures.Workflow,
                 _ => key is AppFeatures.Registry // прочим (в т.ч. Operator) — минимум
             };
         }

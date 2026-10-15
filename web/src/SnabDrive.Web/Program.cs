@@ -138,6 +138,7 @@ builder.Services.AddScoped<BitrixNotifier>();
 builder.Services.AddScoped<IWorkflowService, WorkflowService>();
 builder.Services.AddScoped<IDictionaryService, DictionaryService>();
 builder.Services.AddScoped<IColumnAccessService, ColumnAccessService>();
+builder.Services.AddScoped<IRolePermissionService, RolePermissionService>();
 builder.Services.AddSingleton<ICellEditLockService, CellEditLockService>();
 builder.Services.AddScoped<UserSessionState>();
 builder.Services.AddScoped<IToastService, ToastService>();
