@@ -1,0 +1,121 @@
+@page "/roles"
+@using SnabDrive.Web.Domain
+@using SnabDrive.Web.Services
+@inject IRolePermissionService RolePerms
+@inject IToastService Toasts
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = AppRoles.Admin)]
+
+<PageTitle>Настройка ролей</PageTitle>
+<h1 class="page__title">Настройка ролей</h1>
+<p class="muted">Права задаются для роли: доступ к вкладкам и к колонкам реестра. Все пользователи роли получают эти права (личный override настраивается на странице «Пользователи»).</p>
+
+<div class="mb-3" style="max-width:420px">
+    <label class="form-label">Роль</label>
+    <select class="form-select" @bind="SelectedRole" @bind:after="LoadRoleAsync">
+        @foreach (var r in _roles)
+        {
+            <option value="@r">@AppRoles.DisplayName(r)</option>
+        }
+    </select>
+</div>
+
+@if (_set is not null)
+{
+    <h3>Доступ к вкладкам</h3>
+    <div class="d-flex flex-wrap gap-3 mb-3">
+        @foreach (var f in AppFeatures.All)
+        {
+            var key = f.Key;
+            <label class="form-check">
+                <input type="checkbox" class="form-check-input" checked="@_set.FeatureEnabled(key)"
+                       @onchange="@(e => ToggleFeature(key, e.Value is bool b && b))" />
+                <span class="form-check-label">@f.Title</span>
+            </label>
+        }
+    </div>
+
+    <h3>Колонки реестра</h3>
+    <p class="muted">Если ничего не отмечено — роль видит все колонки. Отметьте нужные: «Видна» и/или «Правка».</p>
+    <div style="max-height:420px;overflow:auto;border:1px solid #ddd;border-radius:6px">
+        <table class="table table-sm mb-0">
+            <thead style="position:sticky;top:0;background:#fff">
+                <tr><th>Колонка</th><th style="width:90px">Видна</th><th style="width:90px">Правка</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var col in RegistryColumns.All)
+                {
+                    var p = _set.Columns.FirstOrDefault(c => c.Key == col.Key);
+                    var canView = p?.CanView ?? false;
+                    var canEdit = p?.CanEdit ?? false;
+                    var k = col.Key;
+                    <tr>
+                        <td>@col.Title</td>
+                        <td><input type="checkbox" checked="@canView" @onchange="@(e => SetCol(k, e.Value is bool b && b, canEdit))" /></td>
+                        <td><input type="checkbox" checked="@canEdit" @onchange="@(e => SetCol(k, canView, e.Value is bool b && b))" /></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="mt-3">
+        <button class="btn btn--primary" @onclick="SaveAsync">Сохранить</button>
+        <button class="btn" @onclick="ResetAsync">Сбросить к значениям по умолчанию</button>
+    </div>
+}
+
+@code {
+    private List<string> _roles = new();
+    private string SelectedRole = string.Empty;
+    private RolePermissionSet? _set;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var all = await RolePerms.GetAllRoleNamesAsync();
+        _roles = all.Where(r => r != AppRoles.Operator)
+                    .OrderBy(r => Array.IndexOf(new[] { AppRoles.Admin, AppRoles.Director, AppRoles.TenderHead, AppRoles.TenderManager, AppRoles.Accountant }, r) is var i && i >= 0 ? i : 99)
+                    .ToList();
+        SelectedRole = _roles.FirstOrDefault() ?? string.Empty;
+        await LoadRoleAsync();
+    }
+
+    private async Task LoadRoleAsync()
+    {
+        _set = string.IsNullOrEmpty(SelectedRole) ? null : await RolePerms.GetAsync(SelectedRole);
+    }
+
+    private void ToggleFeature(string key, bool value)
+    {
+        if (_set is null) return;
+        _set.Features[key] = value;
+    }
+
+    private void SetCol(string key, bool canView, bool canEdit)
+    {
+        if (_set is null) return;
+        canEdit = canView && canEdit; // правка возможна только если колонка видна
+        var i = _set.Columns.FindIndex(c => c.Key == key);
+        if (i >= 0)
+        {
+            if (canView || canEdit) _set.Columns[i] = new ColumnPermission(key, canView, canEdit);
+            else _set.Columns.RemoveAt(i);
+        }
+        else if (canView || canEdit)
+        {
+            _set.Columns.Add(new ColumnPermission(key, canView, canEdit));
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_set is null) return;
+        await RolePerms.SetAsync(SelectedRole, _set);
+        Toasts.Success($"Права роли «{AppRoles.DisplayName(SelectedRole)}» сохранены");
+    }
+
+    private async Task ResetAsync()
+    {
+        _set = RolePermissionDefaults.For(SelectedRole);
+        await SaveAsync();
+    }
+}
