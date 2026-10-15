@@ -5,16 +5,22 @@
 @using SnabDrive.Web.Data.Entities
 @using SnabDrive.Web.Domain
 @using SnabDrive.Web.Services
-@attribute [Authorize(Policy = AppPolicies.ManageSystem)]
+@attribute [Authorize]
 @inject IKonturService Kontur
 @inject KonturSchedulerService Scheduler
 @inject KonturSchedulerState SchedulerState
 @inject NavigationManager Nav
 @inject IJSRuntime JS
+@inject AuthenticationStateProvider AuthStateProvider
+@inject SnabDrive.Web.Services.IRolePermissionService RolePerms
 
 <h1 class="page-title">Контур ловушка <span class="muted">(--templates)</span></h1>
 <p class="page-subtitle">Выгрузка в начале и конце рабочего дня; метка проставляется автоматически при повторной выгрузке (вручную не редактируется).</p>
 
+@if (_denied)
+{
+    <div class="alert alert-error">Нет доступа к «Контур ловушка». Обратитесь к администратору.</div>
+}
 @if (_error is not null)
 {
     <div class="alert alert-error">@_error</div>
@@ -25,7 +31,7 @@
 }
 
 <div class="toolbar">
-    <button class="btn btn-primary" disabled="@(_busy || SchedulerState.IsRunning)" @onclick="ExportNow">Выгрузить ловушку сейчас</button>
+    <button class="btn btn-primary" disabled="@(_busy || _denied || SchedulerState.IsRunning)" @onclick="ExportNow">Выгрузить ловушку сейчас</button>
     <button class="btn" disabled="@_busy" @onclick="LoadAsync">Обновить</button>
     <span class="toolbar-spacer"></span>
     <span class="muted">Записей: @(_rows?.Count ?? 0)</span>
@@ -101,13 +107,24 @@
 @code {
     private List<KonturTemplate>? _rows;
     private bool _busy;
+    private bool _denied;
     private string? _statusMessage;
     private string? _error;
     private string _sortKey = "Added";
     private bool _sortDesc = true;
     private readonly Dictionary<string, string> _filters = new();
 
-    protected override async Task OnInitializedAsync() => await LoadAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        var uid = state.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+        var feats = await RolePerms.GetEffectiveFeaturesAsync(uid);
+        _denied = !(feats.TryGetValue(SnabDrive.Web.Services.AppFeatures.Kontur, out var kf) && kf);
+        if (!_denied)
+        {
+            await LoadAsync();
+        }
+    }
 
     private async Task LoadAsync()
     {

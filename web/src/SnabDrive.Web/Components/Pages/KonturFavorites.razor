@@ -5,6 +5,7 @@
 @inject IToastService Toasts
 @inject KonturSchedulerService Scheduler
 @inject KonturSchedulerState SchedulerState
+@inject SnabDrive.Web.Services.IRolePermissionService RolePerms
 
 <PageTitle>Избранное Контур — SnabDrive</PageTitle>
 
@@ -155,9 +156,10 @@
         {
             var state = await AuthState;
             var user = state.User;
-            _denied = !KonturClaim.CanUse(user);
-            _actor = new ChangeActor(user.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty,
-                                     user.Identity?.Name ?? "system");
+            var uid = user.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+            var feats = await RolePerms.GetEffectiveFeaturesAsync(uid);
+            _denied = !(feats.TryGetValue(SnabDrive.Web.Services.AppFeatures.Kontur, out var kf) && kf);
+            _actor = new ChangeActor(uid, user.Identity?.Name ?? "system");
         }
 
         if (!_denied)

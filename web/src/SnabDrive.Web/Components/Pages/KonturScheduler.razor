@@ -3,6 +3,7 @@
 @inject AuthenticationStateProvider AuthStateProvider
 @inject KonturScheduleStore Store
 @inject IToastService Toasts
+@inject SnabDrive.Web.Services.IRolePermissionService RolePerms
 
 <PageTitle>Планировщик Контур — SnabDrive</PageTitle>
 
@@ -73,7 +74,9 @@
     protected override async Task OnInitializedAsync()
     {
         var state = await AuthStateProvider.GetAuthenticationStateAsync();
-        _canUse = SnabDrive.Web.Data.SchedulerClaim.CanUse(state.User);
+        var uid = state.User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier) ?? string.Empty;
+        var feats = await RolePerms.GetEffectiveFeaturesAsync(uid);
+        _canUse = feats.TryGetValue(SnabDrive.Web.Services.AppFeatures.Scheduler, out var sf) && sf;
 
         _enabled = Store.Value.Enabled;
         _times = Store.Value.Times.ToList();
