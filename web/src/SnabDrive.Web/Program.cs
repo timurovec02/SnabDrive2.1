@@ -139,6 +139,7 @@ builder.Services.AddScoped<IWorkflowService, WorkflowService>();
 builder.Services.AddScoped<IDictionaryService, DictionaryService>();
 builder.Services.AddScoped<IColumnAccessService, ColumnAccessService>();
 builder.Services.AddScoped<IRolePermissionService, RolePermissionService>();
+builder.Services.AddScoped<IMaintenanceService, MaintenanceService>();
 builder.Services.AddSingleton<ICellEditLockService, CellEditLockService>();
 builder.Services.AddScoped<UserSessionState>();
 builder.Services.AddScoped<IToastService, ToastService>();

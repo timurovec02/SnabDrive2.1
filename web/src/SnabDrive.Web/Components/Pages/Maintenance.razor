@@ -1,0 +1,56 @@
+@page "/maintenance"
+@using System.Security.Claims
+@using SnabDrive.Web.Domain
+@using SnabDrive.Web.Services
+@inject IMaintenanceService Maintenance
+@inject IToastService Toasts
+@inject IJSRuntime JS
+@inject AuthenticationStateProvider AuthStateProvider
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = AppRoles.Admin)]
+
+<PageTitle>Очистка данных</PageTitle>
+<h1 class="page__title">Очистка данных</h1>
+<p class="muted">Полное удаление всех записей выбранного набора из базы данных. Действие необратимо.</p>
+
+@if (_message is not null)
+{
+    <div class="alert alert-info">@_message</div>
+}
+
+<div class="d-flex flex-column gap-2" style="max-width:520px">
+    <button class="btn btn--danger" disabled="@_busy" @onclick='() => Clear("registry", "Реестр")'>Очистить реестр</button>
+    <button class="btn btn--danger" disabled="@_busy" @onclick='() => Clear("archive", "Архив")'>Очистить архив</button>
+    <button class="btn btn--danger" disabled="@_busy" @onclick='() => Clear("kontur", "Контур — избранное")'>Очистить Контур (избранное)</button>
+    <button class="btn btn--danger" disabled="@_busy" @onclick='() => Clear("templates", "Контур — ловушка")'>Очистить Контур (ловушка)</button>
+</div>
+
+@code {
+    private bool _busy;
+    private string? _message;
+
+    private async Task Clear(string dataset, string label)
+    {
+        var ok = await JS.InvokeAsync<bool>("confirm",
+            $"ВНИМАНИЕ: все записи «{label}» будут безвозвратно удалены из базы данных. Продолжить?");
+        if (!ok) return;
+
+        _busy = true;
+        _message = null;
+        try
+        {
+            var state = await AuthStateProvider.GetAuthenticationStateAsync();
+            var user = state.User;
+            var actor = new ChangeActor(user.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty,
+                                        user.Identity?.Name ?? "admin");
+            var result = await Maintenance.ClearAsync(dataset, actor);
+            _message = result.Success
+                ? $"«{label}» очищено. Удалено записей: {result.Value}."
+                : $"Ошибка: {result.Error}";
+            Toasts.Show(_message, result.Success ? ToastKind.Success : ToastKind.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}
