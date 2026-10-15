@@ -29,6 +29,11 @@ public sealed class KonturExporterOptions
     /// </summary>
     public string TaskName { get; set; } = string.Empty;
 
+    /// <summary>Отдельная задача планировщика для режима «Контур ловушка» (--templates).
+    /// Если пусто — для шаблонов используется TaskName. У каждой задачи в действии должны быть
+    /// свои аргументы: --no-pause --favorites/--templates --output "&lt;папка&gt;".</summary>
+    public string TaskNameTemplates { get; set; } = string.Empty;
+
     /// <summary>Файл, куда сайт пишет аргументы для экспортёра (читает обёртка задачи планировщика).
     /// Пусто — export-request.txt рядом с экспортёром.</summary>
     public string RequestFile { get; set; } = string.Empty;
@@ -265,16 +270,19 @@ public sealed class KonturSchedulerService : BackgroundService
         // headed-браузер под IIS (Session 0) не открывается, а headless Контур не пускает.
         // Поэтому на сервере экспортёр запускается отдельной задачей Планировщика заданий
         // в интерактивной сессии; сайт лишь триггерит её и ждёт файл выгрузки.
-        if (!string.IsNullOrWhiteSpace(options.TaskName))
+        var taskName = mode == ExportMode.Templates && !string.IsNullOrWhiteSpace(options.TaskNameTemplates)
+            ? options.TaskNameTemplates
+            : options.TaskName;
+        if (!string.IsNullOrWhiteSpace(taskName))
         {
-            RunViaScheduledTask(options, outDir, modeFlag, timeout);
+            RunViaScheduledTask(options, outDir, modeFlag, taskName, timeout);
             return;
         }
 
         RunDirect(options, outDir, modeFlag, timeout);
     }
 
-    private void RunViaScheduledTask(KonturExporterOptions options, string outDir, string modeFlag, TimeSpan timeout)
+    private void RunViaScheduledTask(KonturExporterOptions options, string outDir, string modeFlag, string taskName, TimeSpan timeout)
     {
         var args = $"--no-pause {modeFlag} --output \"{outDir}\"";
         var reqFile = !string.IsNullOrWhiteSpace(options.RequestFile)
@@ -302,7 +310,7 @@ public sealed class KonturSchedulerService : BackgroundService
 
         try
         {
-            var psi = new ProcessStartInfo("schtasks", $"/run /tn \"{options.TaskName}\"")
+            var psi = new ProcessStartInfo("schtasks", $"/run /tn \"{taskName}\"")
             {
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
@@ -314,7 +322,7 @@ public sealed class KonturSchedulerService : BackgroundService
             var so = p.StandardOutput.ReadToEnd().Trim();
             var se = p.StandardError.ReadToEnd().Trim();
             p.WaitForExit(20000);
-            _state.AddLog($"schtasks /run «{options.TaskName}»: {(so + " " + se).Trim()}");
+            _state.AddLog($"schtasks /run «{taskName}»: {(so + " " + se).Trim()}");
         }
         catch (Exception ex)
         {

@@ -28,16 +28,32 @@ IIS работает в **Session 0** без интерактивного раб
 и укажите в нём путь к `KonturExport.exe` (строка `set "EXE=..."`).
 Файл запроса `export-request.txt` обёртка ищет рядом с `.exe`.
 
-### 3. Создать задачу Планировщика
-`taskschd.msc` → **Create Task** (не Basic Task):
-- **General**: имя `SnabDriveKontur`; «Run only when user is logged on»; учётка — тот самый
-  интерактивный пользователь; галочка «Run with highest privileges».
-- **Actions**: New → Program/script: `C:\KonturExport\run-export.cmd` (без аргументов).
-- **Triggers**: НЕ добавлять (задача запускается по требованию из сайта).
-- **Conditions**: снять «Start the task only if the computer is on AC power».
-- **Settings**: «If the task is already running, do not start a new instance».
+### 3. Создать задачи Планировщика (запуск .exe напрямую, с аргументами)
+Создайте **две задачи** — для избранного и для ловушки. В действии каждой укажите
+**сам .exe и полные аргументы** (обязательно `--output` в ту папку, куда смотрит сайт!).
 
-Проверить вручную: `schtasks /run /tn "SnabDriveKontur"` — должно открыться окно браузера.
+`taskschd.msc` → **Create Task**:
+
+**Задача «Избранное»** — имя `SnabDriveKontur`:
+- General: «Run only when user is logged on», интерактивный пользователь, «Run with highest privileges».
+- Actions → New:
+  - Program/script: `C:\KonturExport\KonturExport.exe`
+  - Add arguments: `--no-pause --favorites --output "C:\KonturExport\out\favorites"`
+  - Start in: `C:\KonturExport`
+- Triggers: не добавлять. Conditions: снять «only if on AC power».
+
+**Задача «Контур ловушка»** — имя `SnabDriveKonturTemplates`:
+- То же, но аргументы: `--no-pause --templates --output "C:\KonturExport\out\templates"`
+
+⚠️ Папки в `--output` должны **точно совпадать** с тем, куда смотрит сайт:
+сайт ищет файл в `OutputDirectory\favorites` и `OutputDirectory\templates`.
+При `OutputDirectory = C:\KonturExport\out` это `C:\KonturExport\out\favorites` и `...\templates`.
+
+Проверить вручную: `schtasks /run /tn "SnabDriveKontur"` — откроется браузер и Excel
+ляжет в `C:\KonturExport\out\favorites`.
+
+> Обёртка `run-export.cmd` (вариант с файлом запроса) — альтернатива; если используете
+> .exe напрямую с аргументами, обёртка и `RequestFile` не нужны.
 
 ### 4. Дать пулу IIS право запускать задачу
 Учётка пула (`IIS AppPool\snabdrive`) должна иметь право выполнять задачу. Проще всего —
@@ -57,12 +73,14 @@ User Rights Assignment).
   "OutputDirectory": "C:\\KonturExport\\out",
   "TimeoutMinutes": 15,
   "TaskName": "SnabDriveKontur",
+  "TaskNameTemplates": "SnabDriveKonturTemplates",
   "RequestFile": "C:\\KonturExport\\export-request.txt"
 }
 ```
-- `TaskName` — имя задачи из п.3. Если пусто — сайт запускает `.exe` напрямую
-  (подходит только для среды с рабочим столом, например разработка).
-- `RequestFile` — должен совпадать с тем, что читает обёртка (по умолчанию рядом с `.exe`).
+- `TaskName` — задача для избранного, `TaskNameTemplates` — для ловушки (п.3).
+  Если `TaskNameTemplates` пусто — для шаблонов используется `TaskName`.
+- `OutputDirectory` — база; сайт ищет файлы в `OutputDirectory\favorites` и `\templates`
+  (должно совпадать с `--output` в задачах).
 
 ### 6. Вход в Контур
 Выполните `Login.cmd` **под тем же интерактивным пользователем** (от которого работает задача),
