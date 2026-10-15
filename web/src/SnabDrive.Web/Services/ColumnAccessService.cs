@@ -28,12 +28,15 @@ public sealed class ColumnAccessService : IColumnAccessService
     private readonly IDbContextFactory<AppIdentityDbContext> _factory;
     private readonly IAuditService _audit;
     private readonly IRegistryNotifier _notifier;
+    private readonly IRolePermissionService _rolePerms;
 
-    public ColumnAccessService(IDbContextFactory<AppIdentityDbContext> factory, IAuditService audit, IRegistryNotifier notifier)
+    public ColumnAccessService(IDbContextFactory<AppIdentityDbContext> factory, IAuditService audit,
+        IRegistryNotifier notifier, IRolePermissionService rolePerms)
     {
         _factory = factory;
         _audit = audit;
         _notifier = notifier;
+        _rolePerms = rolePerms;
     }
 
     public async Task<ColumnAccessMap> GetAsync(string userId, CancellationToken cancellationToken = default)
@@ -45,24 +48,26 @@ public sealed class ColumnAccessService : IColumnAccessService
 
         await using var context = await _factory.CreateDbContextAsync(cancellationToken);
 
-        var mode = await context.Users
-            .Where(u => u.Id == userId)
-            .Select(u => (ColumnAccessMode?)u.ColumnAccessMode)
-            .FirstOrDefaultAsync(cancellationToken);
-
-        if (mode is null || mode == ColumnAccessMode.AllColumns)
-        {
-            return ColumnAccessMap.Full;
-        }
-
         if (await IsAdminAsync(context, userId, cancellationToken))
         {
             // Администратора нельзя «запереть» — иначе он потеряет доступ к настройке прав.
             return ColumnAccessMap.Full;
         }
 
-        var permissions = await LoadPermissionsAsync(context, userId, cancellationToken);
-        return ColumnAccessMap.Build(permissions);
+        var mode = await context.Users
+            .Where(u => u.Id == userId)
+            .Select(u => (ColumnAccessMode?)u.ColumnAccessMode)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (mode == ColumnAccessMode.CustomColumns)
+        {
+            // Личный override на пользователя — имеет приоритет над правами роли.
+            var permissions = await LoadPermissionsAsync(context, userId, cancellationToken);
+            return ColumnAccessMap.Build(permissions);
+        }
+
+        // Иначе — права на колонки из роли пользователя.
+        return await _rolePerms.GetEffectiveColumnMapAsync(userId, cancellationToken);
     }
 
     public async Task<ColumnAccessMode> GetModeAsync(string userId, CancellationToken cancellationToken = default)

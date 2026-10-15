@@ -1,6 +1,7 @@
 @inherits LayoutComponentBase
 @implements IAsyncDisposable
 @inject AuthenticationStateProvider AuthStateProvider
+@inject SnabDrive.Web.Services.IRolePermissionService RolePerms
 @inject IPresenceService Presence
 @inject UserSessionState Session
 @inject IToastService Toasts
@@ -35,7 +36,7 @@
     </header>
 
     <div class="app-body">
-        <NavMenu IsAdmin="_isAdmin" IsDirector="_isDirector" Collapsed="_navCollapsed" KonturEnabled="_konturEnabled" SchedulerEnabled="_schedulerEnabled" />
+        <NavMenu Collapsed="_navCollapsed" Features="_features" />
 
         <main class="app-main">
             @Body
@@ -53,6 +54,7 @@
     private bool _konturEnabled;
     private bool _schedulerEnabled;
     private bool _isDirector;
+    private Dictionary<string, bool> _features = new();
 
     private void ToggleNav() => _navCollapsed = !_navCollapsed;
 
@@ -71,6 +73,7 @@
             _isDirector = user.IsInRole(SnabDrive.Web.Services.AppRoles.Director);
             _konturEnabled = SnabDrive.Web.Data.KonturClaim.CanUse(user);
             _schedulerEnabled = SnabDrive.Web.Data.SchedulerClaim.CanUse(user);
+            _features = await RolePerms.GetEffectiveFeaturesAsync(user.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty);
         }
     }
 

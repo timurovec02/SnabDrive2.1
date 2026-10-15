@@ -95,8 +95,8 @@ builder.Services.AddAuthorization(options =>
     options.FallbackPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build();
 
     options.AddPolicy(AppPolicies.ManageSystem, policy => policy.RequireRole(AppRoles.Admin, AppRoles.Director));
-    options.AddPolicy(AppPolicies.ManageArchive, policy => policy.RequireRole(AppRoles.Admin, AppRoles.Operator, AppRoles.Director));
-    options.AddPolicy(AppPolicies.WriteRegistry, policy => policy.RequireRole(AppRoles.Admin, AppRoles.Operator, AppRoles.Director));
+    options.AddPolicy(AppPolicies.ManageArchive, policy => policy.RequireRole(AppRoles.Admin, AppRoles.Director, AppRoles.TenderHead, AppRoles.TenderManager, AppRoles.Accountant));
+    options.AddPolicy(AppPolicies.WriteRegistry, policy => policy.RequireRole(AppRoles.Admin, AppRoles.Director, AppRoles.TenderHead, AppRoles.TenderManager, AppRoles.Accountant));
 });
 
 // ------------------------------------------------------------------ UI / API / realtime

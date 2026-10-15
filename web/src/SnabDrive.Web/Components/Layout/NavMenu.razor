@@ -1,47 +1,53 @@
+@using SnabDrive.Web.Services
 @inject NavigationManager Navigation
 
 <nav class="nav" title="@(Collapsed ? "Меню свёрнуто" : null)">
-    <NavLink class="nav__item" href="" Match="NavLinkMatch.All" title="Реестр">
-        <span class="nav__icon">▤</span><span class="nav__label">Реестр</span>
-    </NavLink>
+    @if (Feat(AppFeatures.Registry))
+    {
+        <NavLink class="nav__item" href="" Match="NavLinkMatch.All" title="Реестр">
+            <span class="nav__icon">▤</span><span class="nav__label">Реестр</span>
+        </NavLink>
+    }
 
-    <NavLink class="nav__item" href="workflow" title="Задачи">
-        <span class="nav__icon">➤</span><span class="nav__label">Задачи</span>
-    </NavLink>
+    @if (Feat(AppFeatures.Workflow))
+    {
+        <NavLink class="nav__item" href="workflow" title="Задачи">
+            <span class="nav__icon">➤</span><span class="nav__label">Задачи</span>
+        </NavLink>
+    }
 
-    @if (Full)
+    @if (Feat(AppFeatures.Registry))
     {
         <NavLink class="nav__item" href="home" title="Обзор">
             <span class="nav__icon">▦</span><span class="nav__label">Обзор</span>
         </NavLink>
     }
 
-    <NavLink class="nav__item" href="archive" title="Архив">
-        <span class="nav__icon">🗄</span><span class="nav__label">Архив</span>
-    </NavLink>
+    @if (Feat(AppFeatures.Archive))
+    {
+        <NavLink class="nav__item" href="archive" title="Архив">
+            <span class="nav__icon">🗄</span><span class="nav__label">Архив</span>
+        </NavLink>
+    }
 
-    @if (Full || KonturEnabled)
+    @if (Feat(AppFeatures.Kontur))
     {
         <NavLink class="nav__item" href="kontur" title="Избранное Контур">
             <span class="nav__icon">★</span><span class="nav__label">Контур</span>
         </NavLink>
-    }
-
-    @if (Full)
-    {
         <NavLink class="nav__item" href="kontur-templates" title="Контур ловушка">
             <span class="nav__icon">🎯</span><span class="nav__label">Контур ловушка</span>
         </NavLink>
     }
 
-    @if (Full || SchedulerEnabled)
+    @if (Feat(AppFeatures.Scheduler))
     {
         <NavLink class="nav__item" href="kontur-scheduler" title="Планировщик Контур">
             <span class="nav__icon">⏰</span><span class="nav__label">Планировщик</span>
         </NavLink>
     }
 
-    @if (Full)
+    @if (Feat(AppFeatures.Director))
     {
         <NavLink class="nav__item" href="director" title="Обзор директора">
             <span class="nav__icon">📊</span><span class="nav__label">Обзор директора</span>
@@ -50,14 +56,20 @@
 
     <div class="nav__divider"></div>
 
-    @if (Full)
+    @if (Feat(AppFeatures.Dictionaries))
     {
         <NavLink class="nav__item" href="dictionaries" title="Справочники">
             <span class="nav__icon">☰</span><span class="nav__label">Справочники</span>
         </NavLink>
+    }
+    @if (Feat(AppFeatures.Users))
+    {
         <NavLink class="nav__item" href="users" title="Пользователи">
             <span class="nav__icon">👤</span><span class="nav__label">Пользователи</span>
         </NavLink>
+    }
+    @if (Feat(AppFeatures.Audit))
+    {
         <NavLink class="nav__item" href="audit" title="Журнал">
             <span class="nav__icon">🕓</span><span class="nav__label">Журнал</span>
         </NavLink>
@@ -69,11 +81,10 @@
 </nav>
 
 @code {
-    [Parameter] public bool IsAdmin { get; set; }
-    [Parameter] public bool IsDirector { get; set; }
     [Parameter] public bool Collapsed { get; set; }
-    [Parameter] public bool KonturEnabled { get; set; }
-    [Parameter] public bool SchedulerEnabled { get; set; }
 
-    private bool Full => IsAdmin || IsDirector;
+    /// <summary>Доступ к вкладкам (ключ AppFeatures → разрешено) — из прав роли пользователя.</summary>
+    [Parameter] public Dictionary<string, bool> Features { get; set; } = new();
+
+    private bool Feat(string key) => Features.TryGetValue(key, out var v) && v;
 }
