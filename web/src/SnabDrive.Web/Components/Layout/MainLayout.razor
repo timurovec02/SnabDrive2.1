@@ -5,8 +5,19 @@
 @inject IPresenceService Presence
 @inject UserSessionState Session
 @inject IToastService Toasts
+@inject SnabDrive.Web.Services.KonturSchedulerState SchedulerState
 
 <div class="app-shell @(_navCollapsed ? "nav-collapsed" : "")">
+    @if (_exportRunning)
+    {
+        <div class="export-lock" style="position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:3000;display:flex;align-items:center;justify-content:center">
+            <div style="background:#fff;padding:28px 36px;border-radius:10px;text-align:center;max-width:440px;box-shadow:0 10px 40px rgba(0,0,0,.3)">
+                <div style="font-size:34px">⏳</div>
+                <h3 style="margin:.4rem 0">Идёт выгрузка Контура…</h3>
+                <p class="muted" style="margin:0">Действия на сайте временно заблокированы до завершения выгрузки.</p>
+            </div>
+        </div>
+    }
     <header class="app-header">
         <button class="btn btn--ghost nav-toggle" @onclick="ToggleNav" title="@(_navCollapsed ? "Развернуть меню" : "Свернуть меню")">@(_navCollapsed ? "»" : "«")</button>
         <div class="app-header__brand">
@@ -55,6 +66,8 @@
     private bool _schedulerEnabled;
     private bool _isDirector;
     private Dictionary<string, bool> _features = new();
+    private bool _exportRunning;
+    private CancellationTokenSource? _exportCts;
 
     private void ToggleNav() => _navCollapsed = !_navCollapsed;
 
@@ -79,6 +92,11 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (firstRender && _exportCts is null)
+        {
+            StartExportWatcher();
+        }
+
         if (!firstRender || Session.PresenceRegistered)
         {
             return;
@@ -98,8 +116,32 @@
 
     private void OnToastsChanged() => InvokeAsync(StateHasChanged);
 
+    private void StartExportWatcher()
+    {
+        _exportCts = new CancellationTokenSource();
+        var token = _exportCts.Token;
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                while (!token.IsCancellationRequested)
+                {
+                    await Task.Delay(2000, token);
+                    var running = SchedulerState.IsRunning;
+                    if (running != _exportRunning)
+                    {
+                        _exportRunning = running;
+                        await InvokeAsync(StateHasChanged);
+                    }
+                }
+            }
+            catch (OperationCanceledException) { }
+        }, token);
+    }
+
     public ValueTask DisposeAsync()
     {
+        _exportCts?.Cancel();
         Toasts.Changed -= OnToastsChanged;
 
         if (Session.PresenceRegistered)
