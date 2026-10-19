@@ -6,6 +6,7 @@
 @inject KonturSchedulerService Scheduler
 @inject KonturSchedulerState SchedulerState
 @inject SnabDrive.Web.Services.IRolePermissionService RolePerms
+@inject IJSRuntime JS
 
 <PageTitle>Избранное Контур — SnabDrive</PageTitle>
 
@@ -37,6 +38,7 @@
                 Перенести в реестр (@_selected.Count)
             </button>
             <button class="btn" disabled="@(_selected.Count == 0 || _busy)" @onclick="RejectSelectedAsync">Отклонить</button>
+            <button class="btn btn--danger" disabled="@(_selected.Count == 0 || _busy)" @onclick="DeleteSelectedAsync">Удалить (@_selected.Count)</button>
         </div>
 
         @if (_message is not null)
@@ -298,6 +300,22 @@
     {
         _busy = true;
         await Kontur.SetStatusAsync(_selected, KonturFavoriteStatus.Rejected);
+        await LoadAsync();
+        _busy = false;
+    }
+
+    private async Task DeleteSelectedAsync()
+    {
+        if (_selected.Count == 0) return;
+        var ok = await JS.InvokeAsync<bool>("confirm",
+            $"Удалить выбранные строки ({_selected.Count}) из базы безвозвратно?");
+        if (!ok) return;
+
+        _busy = true;
+        var result = await Kontur.DeleteFavoritesAsync(_selected, _actor);
+        Toasts.Show(result.Success ? $"Удалено строк: {result.Value}" : (result.Error ?? "Ошибка удаления"),
+            result.Success ? ToastKind.Success : ToastKind.Error);
+        _selected.Clear();
         await LoadAsync();
         _busy = false;
     }
