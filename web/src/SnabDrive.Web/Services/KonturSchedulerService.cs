@@ -334,7 +334,7 @@ public sealed class KonturSchedulerService : BackgroundService
             return;
         }
 
-        // Ждём, пока в папке появится НОВЫЙ файл выгрузки.
+        // Ждём завершения экспортёра: появится файл выгрузки и/или обёртка запишет код возврата.
         var deadline = DateTime.Now + timeout;
         var appeared = false;
         while (DateTime.Now < deadline)
@@ -343,9 +343,13 @@ public sealed class KonturSchedulerService : BackgroundService
             var file = dir.Exists ? dir.GetFiles("*.xlsx").OrderByDescending(f => f.LastWriteTime).FirstOrDefault() : null;
             if (file is not null && file.LastWriteTime > beforeNewest)
             {
-                Thread.Sleep(3000); // дать файлу дописаться
-                _state.AddLog($"Задача выполнилась, появился файл: {file.Name}");
                 appeared = true;
+                _state.AddLog($"Появился файл выгрузки: {file.Name}");
+            }
+            // Экспортёр завершился (успех или ошибка) — обёртка записала код возврата.
+            if (File.Exists(statusFile))
+            {
+                Thread.Sleep(1500); // дать файлу выгрузки дописаться
                 break;
             }
         }
