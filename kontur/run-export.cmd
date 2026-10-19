@@ -34,4 +34,8 @@ echo [run-export] Запуск: "%EXE%" %ARGS%
 set "RC=%ERRORLEVEL%"
 echo [run-export] Код возврата: %RC%
 
+REM Пишем код возврата в файл статуса, чтобы сайт понял результат выгрузки
+for %%I in ("%EXE%") do set "STATUS=%%~dpIexport-status.txt"
+> "%STATUS%" echo %RC%
+
 endlocal & exit /b %RC%

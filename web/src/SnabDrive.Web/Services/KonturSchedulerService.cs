@@ -302,6 +302,10 @@ public sealed class KonturSchedulerService : BackgroundService
             return;
         }
 
+        // Файл статуса (код возврата экспортёра) — обнуляем перед запуском.
+        var statusFile = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(reqFile)) ?? outDir, "export-status.txt");
+        try { if (File.Exists(statusFile)) File.Delete(statusFile); } catch { }
+
         // Фиксируем самый свежий файл ДО запуска, чтобы дождаться именно нового.
         var dir = new DirectoryInfo(outDir);
         var beforeNewest = dir.Exists
@@ -332,6 +336,7 @@ public sealed class KonturSchedulerService : BackgroundService
 
         // Ждём, пока в папке появится НОВЫЙ файл выгрузки.
         var deadline = DateTime.Now + timeout;
+        var appeared = false;
         while (DateTime.Now < deadline)
         {
             Thread.Sleep(3000);
@@ -340,11 +345,56 @@ public sealed class KonturSchedulerService : BackgroundService
             {
                 Thread.Sleep(3000); // дать файлу дописаться
                 _state.AddLog($"Задача выполнилась, появился файл: {file.Name}");
-                return;
+                appeared = true;
+                break;
             }
         }
 
-        _state.AddLog("Файл выгрузки не появился за отведённое время. Проверьте задачу планировщика, вход в Контур (Login.cmd) и что сессия пользователя активна.");
+        // Читаем код возврата экспортёра из файла статуса (его пишет обёртка задачи).
+        ApplyExporterStatus(statusFile, appeared);
+    }
+
+    /// <summary>Интерпретирует код возврата экспортёра (из файла статуса) и обновляет состояние/лог.</summary>
+    private void ApplyExporterStatus(string statusFile, bool fileAppeared)
+    {
+        int? rc = null;
+        try
+        {
+            if (File.Exists(statusFile))
+            {
+                var text = File.ReadAllText(statusFile).Trim();
+                if (int.TryParse(text, out var code)) rc = code;
+            }
+        }
+        catch { }
+
+        if (rc is null)
+        {
+            if (!fileAppeared)
+            {
+                _state.LastSuccess = false;
+                _state.LastMessage = "Файл выгрузки не появился за отведённое время. Проверьте задачу планировщика, вход в Контур (Login.cmd) и активную сессию пользователя.";
+                _state.AddLog(_state.LastMessage);
+            }
+            return;
+        }
+
+        if (rc == 0)
+        {
+            _state.AddLog("Экспортёр завершился успешно (код 0).");
+        }
+        else if (rc == 2)
+        {
+            _state.LastSuccess = false;
+            _state.LastMessage = "Экспортёр: не выполнен вход в Контур (код 2). Запустите Login.cmd под пользователем задачи.";
+            _state.AddLog(_state.LastMessage);
+        }
+        else
+        {
+            _state.LastSuccess = false;
+            _state.LastMessage = $"Экспортёр завершился с ошибкой (код {rc}).";
+            _state.AddLog(_state.LastMessage);
+        }
     }
 
     private void RunDirect(KonturExporterOptions options, string outDir, string modeFlag, TimeSpan timeout)
