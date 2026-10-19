@@ -1,41 +1,46 @@
 @echo off
 REM ============================================================================
-REM  Обёртка для задачи Планировщика заданий Windows.
-REM  Веб-приложение (IIS, Session 0) не может открыть браузер, поэтому экспортёр
-REM  запускается ЭТОЙ задачей в интерактивной сессии залогиненного пользователя.
+REM  Обёртка для запуска KonturExport.exe ( headed-браузер в интерактивной сессии).
+REM  Аргументы передаёт задача Планировщика (или вы вручную):
+REM     run-export.cmd <favorites|templates> "<папка выгрузки>"
+REM  Пример:  run-export.cmd favorites "C:\KonturExport\out\favorites"
 REM
-REM  Как работает:
-REM   1. Сайт пишет аргументы (--no-pause --favorites/--templates --output "...")
-REM      в файл export-request.txt (параметр Kontur:RequestFile).
-REM   2. Сайт триггерит задачу:  schtasks /run /tn "SnabDriveKontur"
-REM   3. Задача выполняет этот файл -> он читает аргументы и запускает KonturExport.exe.
+REM  Обёртка:
+REM   - запускает экспортёр с нужным режимом и папкой;
+REM   - пишет ВЕСЬ вывод в export-run.log (рядом с .exe) — видно, что произошло;
+REM   - пишет код возврата в export-status.txt — сайт читает его как статус.
 REM
-REM  НАСТРОЙТЕ путь к KonturExport.exe ниже (REQ выведется автоматически рядом с ним).
+REM  НАСТРОЙТЕ путь к KonturExport.exe ниже.
 REM ============================================================================
 setlocal EnableExtensions
 
 set "EXE=C:\kontur\export\KonturExport.exe"
 
-REM Файл запроса лежит рядом с экспортёром (совпадает с Kontur:RequestFile по умолчанию)
-for %%I in ("%EXE%") do set "REQ=%%~dpIexport-request.txt"
+REM --- аргументы: режим и папка выгрузки ---
+set "MODE=%~1"
+set "OUT=%~2"
+if "%MODE%"=="" set "MODE=favorites"
+if /I "%MODE%"=="templates" (set "FLAG=--templates") else (set "FLAG=--favorites")
+if "%OUT%"=="" set "OUT=%~dp0out\%MODE%"
+
+REM --- пути рядом с экспортёром ---
+for %%I in ("%EXE%") do set "LOG=%%~dpIexport-run.log"
+for %%I in ("%EXE%") do set "STATUS=%%~dpIexport-status.txt"
+
+>> "%LOG%" echo.
+>> "%LOG%" echo ==== %DATE% %TIME% | режим=%MODE% | папка=%OUT% ====
 
 if not exist "%EXE%" (
-    echo [run-export] Экспортёр не найден: %EXE%
-    exit /b 1
-)
-if not exist "%REQ%" (
-    echo [run-export] Файл запроса не найден: %REQ%
-    exit /b 1
+    >> "%LOG%" echo [run-export] ОШИБКА: экспортёр не найден: %EXE%
+    > "%STATUS%" echo 127
+    endlocal & exit /b 127
 )
 
-set /p ARGS=<"%REQ%"
-echo [run-export] Запуск: "%EXE%" %ARGS%
-"%EXE%" %ARGS%
+>> "%LOG%" echo [run-export] Запуск: "%EXE%" --no-pause %FLAG% --output "%OUT%"
+"%EXE%" --no-pause %FLAG% --output "%OUT%" >> "%LOG%" 2>&1
 set "RC=%ERRORLEVEL%"
-echo [run-export] Код возврата: %RC%
 
-REM Пишем код возврата в файл статуса, чтобы сайт понял результат выгрузки
-for %%I in ("%EXE%") do set "STATUS=%%~dpIexport-status.txt"
+>> "%LOG%" echo [run-export] Код возврата: %RC%
 > "%STATUS%" echo %RC%
 
 endlocal & exit /b %RC%
