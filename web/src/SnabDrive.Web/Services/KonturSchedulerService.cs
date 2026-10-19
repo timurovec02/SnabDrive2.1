@@ -284,28 +284,6 @@ public sealed class KonturSchedulerService : BackgroundService
 
     private void RunViaScheduledTask(KonturExporterOptions options, string outDir, string modeFlag, string taskName, TimeSpan timeout)
     {
-        var args = $"--no-pause {modeFlag} --output \"{outDir}\"";
-        var reqFile = !string.IsNullOrWhiteSpace(options.RequestFile)
-            ? options.RequestFile
-            : Path.Combine(Path.GetDirectoryName(Path.GetFullPath(options.ExporterPath)) ?? outDir, "export-request.txt");
-
-        try
-        {
-            var reqDir = Path.GetDirectoryName(Path.GetFullPath(reqFile));
-            if (!string.IsNullOrEmpty(reqDir)) Directory.CreateDirectory(reqDir);
-            File.WriteAllText(reqFile, args);
-            _state.AddLog($"Аргументы для задачи записаны в «{reqFile}»: {args}");
-        }
-        catch (Exception ex)
-        {
-            _state.AddLog("Не удалось записать файл запроса: " + ex.Message);
-            return;
-        }
-
-        // Файл статуса (код возврата экспортёра) — обнуляем перед запуском.
-        var statusFile = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(reqFile)) ?? outDir, "export-status.txt");
-        try { if (File.Exists(statusFile)) File.Delete(statusFile); } catch { }
-
         // Фиксируем самый свежий файл ДО запуска, чтобы дождаться именно нового.
         var dir = new DirectoryInfo(outDir);
         var beforeNewest = dir.Exists
@@ -334,71 +312,23 @@ public sealed class KonturSchedulerService : BackgroundService
             return;
         }
 
-        // Ждём завершения экспортёра: появится файл выгрузки и/или обёртка запишет код возврата.
+        // Ждём появления нового файла выгрузки. Блокировка на сайте держится, пока IsRunning = true.
         var deadline = DateTime.Now + timeout;
-        var appeared = false;
         while (DateTime.Now < deadline)
         {
             Thread.Sleep(3000);
             var file = dir.Exists ? dir.GetFiles("*.xlsx").OrderByDescending(f => f.LastWriteTime).FirstOrDefault() : null;
             if (file is not null && file.LastWriteTime > beforeNewest)
             {
-                appeared = true;
+                Thread.Sleep(2000); // дать файлу дописаться
                 _state.AddLog($"Появился файл выгрузки: {file.Name}");
-            }
-            // Экспортёр завершился (успех или ошибка) — обёртка записала код возврата.
-            if (File.Exists(statusFile))
-            {
-                Thread.Sleep(1500); // дать файлу выгрузки дописаться
-                break;
+                return;
             }
         }
 
-        // Читаем код возврата экспортёра из файла статуса (его пишет обёртка задачи).
-        ApplyExporterStatus(statusFile, appeared);
-    }
-
-    /// <summary>Интерпретирует код возврата экспортёра (из файла статуса) и обновляет состояние/лог.</summary>
-    private void ApplyExporterStatus(string statusFile, bool fileAppeared)
-    {
-        int? rc = null;
-        try
-        {
-            if (File.Exists(statusFile))
-            {
-                var text = File.ReadAllText(statusFile).Trim();
-                if (int.TryParse(text, out var code)) rc = code;
-            }
-        }
-        catch { }
-
-        if (rc is null)
-        {
-            if (!fileAppeared)
-            {
-                _state.LastSuccess = false;
-                _state.LastMessage = "Файл выгрузки не появился за отведённое время. Проверьте задачу планировщика, вход в Контур (Login.cmd) и активную сессию пользователя.";
-                _state.AddLog(_state.LastMessage);
-            }
-            return;
-        }
-
-        if (rc == 0)
-        {
-            _state.AddLog("Экспортёр завершился успешно (код 0).");
-        }
-        else if (rc == 2)
-        {
-            _state.LastSuccess = false;
-            _state.LastMessage = "Экспортёр: не выполнен вход в Контур (код 2). Запустите Login.cmd под пользователем задачи.";
-            _state.AddLog(_state.LastMessage);
-        }
-        else
-        {
-            _state.LastSuccess = false;
-            _state.LastMessage = $"Экспортёр завершился с ошибкой (код {rc}).";
-            _state.AddLog(_state.LastMessage);
-        }
+        _state.LastSuccess = false;
+        _state.LastMessage = "Файл выгрузки не появился за отведённое время. Проверьте задачу планировщика и папку выгрузки.";
+        _state.AddLog(_state.LastMessage);
     }
 
     private void RunDirect(KonturExporterOptions options, string outDir, string modeFlag, TimeSpan timeout)
