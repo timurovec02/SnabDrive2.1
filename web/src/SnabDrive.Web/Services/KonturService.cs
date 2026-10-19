@@ -21,10 +21,16 @@ public interface IKonturService
 
     Task<Result> SetStatusAsync(IEnumerable<int> favoriteIds, KonturFavoriteStatus status, CancellationToken cancellationToken = default);
 
+    /// <summary>Полностью удалить выбранные строки «Избранного Контур» из БД.</summary>
+    Task<Result<int>> DeleteFavoritesAsync(IEnumerable<int> favoriteIds, ChangeActor actor, CancellationToken cancellationToken = default);
+
     // ---- Контур ловушка (--templates) ----
     Task<IReadOnlyList<KonturTemplate>> GetTemplatesAsync(CancellationToken cancellationToken = default);
     Task<Result<int>> ImportToTemplatesAsync(Stream excelStream, ChangeActor actor, CancellationToken cancellationToken = default);
     Task<Result> DeleteTemplateAsync(int id, ChangeActor actor, CancellationToken cancellationToken = default);
+
+    /// <summary>Полностью удалить выбранные строки «Контур ловушка» из БД.</summary>
+    Task<Result<int>> DeleteTemplatesAsync(IEnumerable<int> templateIds, ChangeActor actor, CancellationToken cancellationToken = default);
 }
 
 public sealed class KonturService : IKonturService
@@ -113,9 +119,9 @@ public sealed class KonturService : IKonturService
             query = query.Where(f => f.Status == KonturFavoriteStatus.New);
         }
 
-        // Показываем только последние 100 строк (самые свежие по дате добавления),
+        // Показываем только последние 50 строк по дате размещения (свежие сверху),
         // чтобы таблица «Избранное Контур» не росла бесконечно и быстро грузилась.
-        return await query.OrderByDescending(f => f.AddedAt).ThenByDescending(f => f.Id).Take(100).ToListAsync(cancellationToken);
+        return await query.OrderByDescending(f => f.DateOfPlacement).ThenByDescending(f => f.Id).Take(50).ToListAsync(cancellationToken);
     }
 
     public async Task<Result<int>> ImportToRegistryAsync(IEnumerable<int> favoriteIds, ChangeActor actor, CancellationToken cancellationToken = default)
@@ -280,6 +286,32 @@ public sealed class KonturService : IKonturService
         context.KonturTemplates.Remove(template);
         await context.SaveChangesAsync(cancellationToken);
         return Result.Ok();
+    }
+
+    public async Task<Result<int>> DeleteFavoritesAsync(IEnumerable<int> favoriteIds, ChangeActor actor, CancellationToken cancellationToken = default)
+    {
+        var ids = favoriteIds.Distinct().ToList();
+        if (ids.Count == 0)
+        {
+            return Result<int>.Fail("Не выбрано ни одной строки.");
+        }
+
+        await using var context = await _factory.CreateDbContextAsync(cancellationToken);
+        var deleted = await context.KonturFavorites.Where(f => ids.Contains(f.Id)).ExecuteDeleteAsync(cancellationToken);
+        return Result<int>.Ok(deleted);
+    }
+
+    public async Task<Result<int>> DeleteTemplatesAsync(IEnumerable<int> templateIds, ChangeActor actor, CancellationToken cancellationToken = default)
+    {
+        var ids = templateIds.Distinct().ToList();
+        if (ids.Count == 0)
+        {
+            return Result<int>.Fail("Не выбрано ни одной строки.");
+        }
+
+        await using var context = await _factory.CreateDbContextAsync(cancellationToken);
+        var deleted = await context.KonturTemplates.Where(t => ids.Contains(t.Id)).ExecuteDeleteAsync(cancellationToken);
+        return Result<int>.Ok(deleted);
     }
 
     // ------------------------------------------------------------------ разбор Excel
