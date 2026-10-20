@@ -96,6 +96,11 @@
                         <input class="input" @bind="_model.Email" />
                     </div>
                     <div class="form-field">
+                        <label>ID сотрудника в Битрикс24</label>
+                        <input class="input" @bind="_model.BitrixUserId" placeholder="напр. 1"
+                               title="Числовой ID сотрудника Битрикс24 — для личных уведомлений (im.notify TO=...)" />
+                    </div>
+                    <div class="form-field">
                         <label>@(_editingId is null ? "Пароль *" : "Новый пароль (пусто — не менять)")</label>
                         <input class="input" type="password" @bind="_model.Password" />
                     </div>
@@ -205,7 +210,7 @@
 
 @code {
     private sealed record UserRow(string Id, string UserName, string? DisplayName, string? Email,
-                                  bool IsAdmin, bool IsBlocked, bool IsOnline, DateTime? LastLoginUtc, bool KonturEnabled, bool SchedulerEnabled, string Role);
+                                  bool IsAdmin, bool IsBlocked, bool IsOnline, DateTime? LastLoginUtc, bool KonturEnabled, bool SchedulerEnabled, string Role, string? BitrixUserId);
 
     private sealed class UserModel
     {
@@ -218,6 +223,7 @@
         public bool IsBlocked { get; set; }
         public bool KonturEnabled { get; set; }
         public bool SchedulerEnabled { get; set; }
+        public string? BitrixUserId { get; set; }
     }
 
     private List<UserRow> _users = new();
@@ -268,7 +274,8 @@
                 user.LastLoginUtc,
                 user.KonturEnabled,
                 user.SchedulerEnabled,
-                role));
+                role,
+                user.BitrixUserId));
         }
 
         _users = rows;
@@ -307,7 +314,8 @@
             Role = user.Role,
             IsBlocked = user.IsBlocked,
             KonturEnabled = user.KonturEnabled,
-            SchedulerEnabled = user.SchedulerEnabled
+            SchedulerEnabled = user.SchedulerEnabled,
+            BitrixUserId = user.BitrixUserId
         };
         _formError = null;
         _showForm = true;
@@ -369,7 +377,8 @@
             EmailConfirmed = !string.IsNullOrWhiteSpace(_model.Email),
             IsBlocked = _model.IsBlocked,
             KonturEnabled = _model.KonturEnabled,
-            SchedulerEnabled = _model.SchedulerEnabled
+            SchedulerEnabled = _model.SchedulerEnabled,
+            BitrixUserId = string.IsNullOrWhiteSpace(_model.BitrixUserId) ? null : _model.BitrixUserId.Trim()
         };
 
         var created = await UserManager.CreateAsync(user, _model.Password);
@@ -400,6 +409,7 @@
         user.IsBlocked = _model.IsBlocked;
         user.KonturEnabled = _model.KonturEnabled;
         user.SchedulerEnabled = _model.SchedulerEnabled;
+        user.BitrixUserId = string.IsNullOrWhiteSpace(_model.BitrixUserId) ? null : _model.BitrixUserId.Trim();
 
         if (!string.IsNullOrWhiteSpace(_model.Email))
         {

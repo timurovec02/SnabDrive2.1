@@ -28,5 +28,8 @@ public class ApplicationUser : IdentityUser
     /// <summary>Доступ к планировщику выгрузки Контур.</summary>
     public bool SchedulerEnabled { get; set; }
 
+    /// <summary>Числовой ID сотрудника в Битрикс24 (для личных уведомлений im.notify TO=...). </summary>
+    public string? BitrixUserId { get; set; }
+
     public string DisplayNameOrDefault => string.IsNullOrWhiteSpace(DisplayName) ? (UserName ?? string.Empty) : DisplayName;
 }

@@ -210,12 +210,22 @@ BEGIN
         LastSeenUtc          DATETIME2(7)      NULL,
         IsBlocked            BIT               NOT NULL CONSTRAINT DF_Users_IsBlocked DEFAULT (0),
         ColumnAccessMode     INT               NOT NULL CONSTRAINT DF_Users_ColumnAccessMode DEFAULT (0),
+        BitrixUserId         NVARCHAR(64)      NULL,
         CONSTRAINT PK_AspNetUsers PRIMARY KEY (Id)
     );
 
     CREATE UNIQUE INDEX UserNameIndex ON dbo.AspNetUsers (NormalizedUserName)
         WHERE NormalizedUserName IS NOT NULL;
     CREATE INDEX EmailIndex ON dbo.AspNetUsers (NormalizedEmail);
+END
+GO
+
+/* Колонка BitrixUserId для уже существующей таблицы AspNetUsers (обновление со старой версии). */
+IF OBJECT_ID(N'dbo.AspNetUsers', N'U') IS NOT NULL
+   AND NOT EXISTS (SELECT 1 FROM sys.columns WHERE Name='BitrixUserId' AND Object_ID=OBJECT_ID(N'dbo.AspNetUsers'))
+BEGIN
+    ALTER TABLE dbo.AspNetUsers ADD BitrixUserId NVARCHAR(64) NULL;
+    PRINT 'Колонка [BitrixUserId] добавлена в [AspNetUsers].';
 END
 GO
 
