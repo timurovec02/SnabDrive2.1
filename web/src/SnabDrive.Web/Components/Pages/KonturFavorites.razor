@@ -65,6 +65,7 @@
                         <th>Заказчик</th>
                         <th class="th-sort" @onclick='() => SortBy("NMCK")'>НМЦК @Arrow("NMCK")</th>
                         <th class="th-sort" @onclick='() => SortBy("BiddingDate")'>Дата торгов @Arrow("BiddingDate")</th>
+                        <th class="th-sort" @onclick='() => SortBy("DateOfPlacement")'>Дата публикации @Arrow("DateOfPlacement")</th>
                         <th>Место поставки</th>
                         <th>Победитель</th>
                         <th class="th-sort" @onclick='() => SortBy("ResultPrice")'>Итог @Arrow("ResultPrice")</th>
@@ -79,6 +80,7 @@
                         <th><input class="filter-input" placeholder="фильтр" value='@GetFilter("Customer")' @onchange='e => SetFilter("Customer", e)' /></th>
                         <th><input class="filter-input" placeholder="фильтр" value='@GetFilter("NMCK")' @onchange='e => SetFilter("NMCK", e)' /></th>
                         <th><input class="filter-input" placeholder="фильтр" value='@GetFilter("BiddingDate")' @onchange='e => SetFilter("BiddingDate", e)' /></th>
+                        <th><input class="filter-input" placeholder="фильтр" value='@GetFilter("DateOfPlacement")' @onchange='e => SetFilter("DateOfPlacement", e)' /></th>
                         <th><input class="filter-input" placeholder="фильтр" value='@GetFilter("PlaceOfDelivery")' @onchange='e => SetFilter("PlaceOfDelivery", e)' /></th>
                         <th><input class="filter-input" placeholder="фильтр" value='@GetFilter("Winner")' @onchange='e => SetFilter("Winner", e)' /></th>
                         <th><input class="filter-input" placeholder="фильтр" value='@GetFilter("ResultPrice")' @onchange='e => SetFilter("ResultPrice", e)' /></th>
@@ -90,7 +92,7 @@
                 <tbody>
                     @if (_favorites.Count == 0)
                     {
-                        <tr><td colspan="12" class="registry-grid__empty">Нет строк. Нажмите «Выгрузить сейчас».</td></tr>
+                        <tr><td colspan="13" class="registry-grid__empty">Нет строк. Нажмите «Выгрузить сейчас».</td></tr>
                     }
                     else
                     {
@@ -109,6 +111,7 @@
                                 <td>@f.Customer</td>
                                 <td class="money-cell">@f.NMCK.ToString("# ##0.00")</td>
                                 <td>@(f.BiddingDate?.ToString("dd.MM.yyyy HH:mm") ?? "—")</td>
+                                <td>@(f.DateOfPlacement?.ToString("dd.MM.yyyy") ?? "—")</td>
                                 <td>@(f.PlaceOfDelivery ?? "")</td>
                                 <td>@(f.Winner ?? "")</td>
                                 <td class="money-cell">@f.ResultPrice.ToString("# ##0.00")</td>
@@ -160,7 +163,7 @@
     private bool _busy;
     private string? _message;
     private bool _messageOk;
-    private string _sortKey = "AddedAt";
+    private string _sortKey = "DateOfPlacement";
     private bool _sortDesc = true;
 
     protected override async Task OnInitializedAsync()
@@ -216,6 +219,7 @@
                 "Customer" => q.Where(f => Contains(f.Customer, v)),
                 "NMCK" => q.Where(f => f.NMCK.ToString(CultureInfo.InvariantCulture).Contains(v)),
                 "BiddingDate" => q.Where(f => (f.BiddingDate?.ToString("dd.MM.yyyy HH:mm") ?? "").Contains(v)),
+                "DateOfPlacement" => q.Where(f => (f.DateOfPlacement?.ToString("dd.MM.yyyy") ?? "").Contains(v)),
                 "PlaceOfDelivery" => q.Where(f => Contains(f.PlaceOfDelivery, v)),
                 "Winner" => q.Where(f => Contains(f.Winner, v)),
                 "ResultPrice" => q.Where(f => f.ResultPrice.ToString(CultureInfo.InvariantCulture).Contains(v)),
@@ -277,6 +281,7 @@
         "PurchaseNumber" => Ord(f => f.PurchaseNumber),
         "NMCK" => Ord(f => f.NMCK),
         "BiddingDate" => Ord(f => f.BiddingDate),
+        "DateOfPlacement" => Ord(f => f.DateOfPlacement),
         "ResultPrice" => Ord(f => f.ResultPrice),
         "Label" => Ord(f => f.Label),
         _ => Ord(f => f.AddedAt)
