@@ -25,7 +25,7 @@ public interface IKonturService
     Task<Result<int>> DeleteFavoritesAsync(IEnumerable<int> favoriteIds, ChangeActor actor, CancellationToken cancellationToken = default);
 
     // ---- Контур ловушка (--templates) ----
-    Task<IReadOnlyList<KonturTemplate>> GetTemplatesAsync(CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<KonturTemplate>> GetTemplatesAsync(int take = 50, CancellationToken cancellationToken = default);
     Task<Result<int>> ImportToTemplatesAsync(Stream excelStream, ChangeActor actor, CancellationToken cancellationToken = default);
     Task<Result> DeleteTemplateAsync(int id, ChangeActor actor, CancellationToken cancellationToken = default);
 
@@ -183,11 +183,12 @@ public sealed class KonturService : IKonturService
         return Result.Ok();
     }
 
-    public async Task<IReadOnlyList<KonturTemplate>> GetTemplatesAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<KonturTemplate>> GetTemplatesAsync(int take = 50, CancellationToken cancellationToken = default)
     {
         await using var context = await _factory.CreateDbContextAsync(cancellationToken);
         return await context.KonturTemplates.AsNoTracking()
-            .OrderByDescending(t => t.AddedAt).ThenByDescending(t => t.Id)
+            .OrderByDescending(t => t.DateOfPlacement).ThenByDescending(t => t.Id)
+            .Take(take <= 0 ? 50 : take)
             .ToListAsync(cancellationToken);
     }
 
