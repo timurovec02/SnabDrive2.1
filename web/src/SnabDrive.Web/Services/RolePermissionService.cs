@@ -23,6 +23,9 @@ public interface IRolePermissionService
 
     /// <summary>Эффективная карта колонок по ролям пользователя (без учёта личного override — его добавляет ColumnAccessService).</summary>
     Task<ColumnAccessMap> GetEffectiveColumnMapAsync(string userId, CancellationToken cancellationToken = default);
+
+    /// <summary>Эффективные стадии воркфлоу пользователя (объединение по ролям; Admin — все). Возвращает все Id, если ограничений нет.</summary>
+    Task<IReadOnlyList<int>> GetEffectiveStagesAsync(string userId, CancellationToken cancellationToken = default);
 }
 
 public sealed class RolePermissionService : IRolePermissionService
@@ -61,6 +64,7 @@ public sealed class RolePermissionService : IRolePermissionService
         }
         row.FeaturesJson = JsonSerializer.Serialize(set.Features, Json);
         row.ColumnsJson = JsonSerializer.Serialize(set.Columns, Json);
+        row.StagesJson = JsonSerializer.Serialize(set.Stages, Json);
         row.UpdatedAtUtc = DateTime.UtcNow;
         await ctx.SaveChangesAsync(cancellationToken);
     }
@@ -120,6 +124,30 @@ public sealed class RolePermissionService : IRolePermissionService
         return ColumnAccessMap.Build(perms);
     }
 
+    public async Task<IReadOnlyList<int>> GetEffectiveStagesAsync(string userId, CancellationToken cancellationToken = default)
+    {
+        var all = WorkflowStages.All.Select(s => s.Id).ToList();
+        if (string.IsNullOrWhiteSpace(userId)) return all;
+
+        var user = await _users.FindByIdAsync(userId);
+        if (user is null) return all;
+
+        var roles = await _users.GetRolesAsync(user);
+        if (roles.Contains(AppRoles.Admin)) return all;
+
+        var merged = new HashSet<int>();
+        var anyCustom = false;
+        foreach (var role in roles)
+        {
+            var set = await GetAsync(role, cancellationToken);
+            if (set.Stages.Count == 0) continue; // роль отвечает за все стадии
+            anyCustom = true;
+            foreach (var s in set.Stages) merged.Add(s);
+        }
+
+        return anyCustom ? merged.ToList() : all;
+    }
+
     private static RolePermissionSet Deserialize(RolePermission row)
     {
         var set = new RolePermissionSet();
@@ -137,6 +165,12 @@ public sealed class RolePermissionService : IRolePermissionService
         {
             try { set.Columns = JsonSerializer.Deserialize<List<ColumnPermission>>(row.ColumnsJson, Json) ?? new List<ColumnPermission>(); }
             catch { set.Columns = new List<ColumnPermission>(); }
+        }
+
+        if (!string.IsNullOrWhiteSpace(row.StagesJson))
+        {
+            try { set.Stages = JsonSerializer.Deserialize<List<int>>(row.StagesJson, Json) ?? new List<int>(); }
+            catch { set.Stages = new List<int>(); }
         }
         return set;
     }

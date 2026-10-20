@@ -58,6 +58,20 @@
         </table>
     </div>
 
+    <h3>Стадии воркфлоу</h3>
+    <p class="muted">Если ничего не отмечено — роль отвечает за все стадии. Отметьте стадии, за которые отвечает роль (используется в «Задачах» и для уведомлений).</p>
+    <div class="d-flex flex-wrap gap-3 mb-3">
+        @foreach (var stage in WorkflowStages.All)
+        {
+            var sid = stage.Id;
+            <label class="form-check">
+                <input type="checkbox" class="form-check-input" checked="@_set.StageEnabled(sid)"
+                       @onchange="@(e => ToggleStage(sid, e.Value is bool b && b))" />
+                <span class="form-check-label">@stage.Name</span>
+            </label>
+        }
+    </div>
+
     <div class="mt-3">
         <button class="btn btn--primary" @onclick="SaveAsync">Сохранить</button>
         <button class="btn" @onclick="ResetAsync">Сбросить к значениям по умолчанию</button>
@@ -103,6 +117,27 @@
         else if (canView || canEdit)
         {
             _set.Columns.Add(new ColumnPermission(key, canView, canEdit));
+        }
+    }
+
+    private void ToggleStage(int id, bool on)
+    {
+        if (_set is null) return;
+
+        // Если было «все стадии» (пустой список), а пользователь снял одну —
+        // материализуем полный набор, чтобы снятие имело эффект.
+        if (!on && _set.Stages.Count == 0)
+        {
+            _set.Stages = WorkflowStages.All.Select(s => s.Id).ToList();
+        }
+
+        if (on)
+        {
+            if (!_set.Stages.Contains(id)) _set.Stages.Add(id);
+        }
+        else
+        {
+            _set.Stages.Remove(id);
         }
     }
 

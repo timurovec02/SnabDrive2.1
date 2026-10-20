@@ -17,6 +17,7 @@ BEGIN
         RoleName     nvarchar(64)  NOT NULL,
         FeaturesJson nvarchar(max) NOT NULL CONSTRAINT DF_RolePermissions_Features DEFAULT (N'{}'),
         ColumnsJson  nvarchar(max) NULL,
+        StagesJson   nvarchar(max) NULL,
         UpdatedAtUtc datetime2(7)  NOT NULL CONSTRAINT DF_RolePermissions_Updated DEFAULT (SYSUTCDATETIME()),
         CONSTRAINT PK_RolePermissions PRIMARY KEY (RoleName)
     );
@@ -24,4 +25,12 @@ BEGIN
 END
 ELSE
     PRINT 'Таблица [RolePermissions] уже существует.';
+GO
+
+/* Колонка стадий для уже существующей таблицы (обновление со старой версии). */
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE Name='StagesJson' AND Object_ID=OBJECT_ID(N'dbo.RolePermissions'))
+BEGIN
+    ALTER TABLE dbo.RolePermissions ADD StagesJson nvarchar(max) NULL;
+    PRINT 'Колонка [StagesJson] добавлена в [RolePermissions].';
+END
 GO

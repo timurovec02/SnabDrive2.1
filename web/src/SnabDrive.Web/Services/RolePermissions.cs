@@ -41,12 +41,19 @@ public sealed class RolePermissionSet
     /// <summary>Права на колонки реестра. Пусто = все колонки видны и доступны (режим AllColumns).</summary>
     public List<ColumnPermission> Columns { get; set; } = new();
 
+    /// <summary>Стадии воркфлоу, за которые отвечает роль (Id из WorkflowStages.All). Пусто = все стадии.</summary>
+    public List<int> Stages { get; set; } = new();
+
     public bool FeatureEnabled(string key) => Features.TryGetValue(key, out var v) && v;
+
+    /// <summary>Отвечает ли роль за стадию (пустой набор = все стадии).</summary>
+    public bool StageEnabled(int stageId) => Stages.Count == 0 || Stages.Contains(stageId);
 
     public RolePermissionSet Clone() => new()
     {
         Features = Features.ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase),
-        Columns = Columns.Select(c => c with { }).ToList()
+        Columns = Columns.Select(c => c with { }).ToList(),
+        Stages = Stages.ToList()
     };
 }
 
@@ -71,6 +78,16 @@ public static class RolePermissionDefaults
             };
         }
         // Columns пусто = все колонки (AllColumns). Уточняется в настройке роли.
+
+        // Стадии воркфлоу, за которые отвечает роль (Id из WorkflowStages.All). Пусто = все стадии.
+        set.Stages = role switch
+        {
+            AppRoles.TenderManager => new List<int> { 1, 2, 12, 3, 4 }, // Контур, Резерв, Согласование, Подача заявки, Торги
+            AppRoles.Accountant => new List<int> { 6, 9, 10 },           // Контракт подписан, Приемка, Оплата
+            AppRoles.Operator => new List<int> { 1 },                    // только подготовка
+            _ => new List<int>()                                         // Admin, Director, TenderHead — все стадии
+        };
+
         return set;
     }
 }

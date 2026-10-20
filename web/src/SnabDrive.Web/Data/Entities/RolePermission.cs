@@ -16,5 +16,8 @@ public class RolePermission
     /// <summary>JSON: List&lt;ColumnPermission&gt; — права на колонки. "[]" или null = все колонки.</summary>
     public string? ColumnsJson { get; set; }
 
+    /// <summary>JSON: List&lt;int&gt; — стадии воркфлоу, за которые отвечает роль. "[]" или null = все стадии.</summary>
+    public string? StagesJson { get; set; }
+
     public DateTime UpdatedAtUtc { get; set; } = DateTime.UtcNow;
 }
