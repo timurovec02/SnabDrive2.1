@@ -123,6 +123,7 @@
     private int _pageSize = 50;
     private static readonly int[] PageSizes = { 50, 100, 200, 500 };
     private bool AllSelected => _rows is { Count: > 0 } && _selected.Count == _rows.Count;
+    private ChangeActor _actor = new(string.Empty, "system");
     private bool _busy;
     private bool _denied;
     private string? _statusMessage;
@@ -135,6 +136,7 @@
     {
         var state = await AuthStateProvider.GetAuthenticationStateAsync();
         var uid = state.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+        _actor = new ChangeActor(uid, state.User.Identity?.Name ?? "system");
         var feats = await RolePerms.GetEffectiveFeaturesAsync(uid);
         _denied = !(feats.TryGetValue(SnabDrive.Web.Services.AppFeatures.Kontur, out var kf) && kf);
         if (!_denied)
@@ -210,9 +212,12 @@
 
     private async Task DeleteSelectedAsync()
     {
-        if (_selected.Count == 0 || !await JS.ConfirmAsync($"Удалить выбранные ловушки ({_selected.Count})?")) { return; }
-        var result = await Kontur.DeleteTemplatesAsync(_selected.ToArray());
-        _statusMessage = result.Success ? $"Удалено ловушек: {result.Value}." : result.Error;
+        if (_selected.Count == 0) return;
+        var ok = await JS.InvokeAsync<bool>("confirm",
+            $"Удалить выбранные ловушки ({_selected.Count}) из базы безвозвратно?");
+        if (!ok) return;
+        var result = await Kontur.DeleteTemplatesAsync(_selected, _actor);
+        _statusMessage = result.Success ? $"Удалено ловушек: {result.Value}." : (result.Error ?? "Ошибка удаления");
         _selected.Clear();
         await LoadAsync();
     }
