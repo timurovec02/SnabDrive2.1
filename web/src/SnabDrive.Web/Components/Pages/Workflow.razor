@@ -5,6 +5,7 @@
 @using SnabDrive.Web.Services
 @attribute [Authorize]
 @inject IWorkflowService WorkflowSvc
+@inject IRolePermissionService RolePerms
 @inject AuthenticationStateProvider AuthStateProvider
 
 <h1 class="page-title">Задачи по закупкам</h1>
@@ -16,13 +17,18 @@
 }
 
 <div class="toolbar" style="flex-wrap:wrap;gap:6px;margin:12px 0">
-    @foreach (var st in WorkflowStages.All)
+    @foreach (var st in WorkflowStages.All.Where(s => _allowedStages.Contains(s.Id)))
     {
         <button class="@TabClass(st.Id)" @onclick="() => SetStage(st.Id)">@st.Name (@Count(st.Id))</button>
     }
     <div class="toolbar-spacer"></div>
     <button class="btn" disabled="@_busy" @onclick="LoadAsync">Обновить</button>
 </div>
+
+@if (!_loading && _allowedStages.Count == 0)
+{
+    <div class="alert alert-info">Вашей роли не назначено ни одной стадии воркфлоу. Настройка: «Роли» → «Стадии воркфлоу».</div>
+}
 
 @if (_loading)
 {
@@ -127,12 +133,26 @@ else
     private int _stage = 1;
     private string? _error;
     private ChangeActor _actor = new("user", "Пользователь");
+    private HashSet<int> _allowedStages = new();
 
     protected override async Task OnInitializedAsync()
     {
         var state = await AuthStateProvider.GetAuthenticationStateAsync();
         var name = state.User.Identity?.Name ?? "Пользователь";
         _actor = new ChangeActor(name, name);
+
+        // Стадии, разрешённые пользователю по его ролям (настройка в /roles → «Стадии воркфлоу»).
+        var uid = state.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+        var stages = await RolePerms.GetEffectiveStagesAsync(uid);
+        _allowedStages = stages.ToHashSet();
+
+        // Стадия по умолчанию — первая из разрешённых.
+        var firstAllowed = WorkflowStages.All.FirstOrDefault(s => _allowedStages.Contains(s.Id));
+        if (_allowedStages.Contains(firstAllowed.Id))
+        {
+            _stage = firstAllowed.Id;
+        }
+
         await LoadAsync();
     }
 
