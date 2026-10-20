@@ -150,9 +150,9 @@
                                         }
                                         else
                                         {
-                                            <input type="text" class="cell-input" value="@_editText"
-                                                   @oninput="OnTextInput"
-                                                   @onchange="CommitEdit" @onkeydown="OnEditorKeyDown" @onblur="OnEditorBlur" />
+                                            <textarea class="cell-input cell-input--area" rows="4"
+                                                      @oninput="OnTextInput"
+                                                      @onchange="CommitEdit" @onkeydown="OnEditorKeyDown" @onblur="OnEditorBlur">@_editText</textarea>
                                         }
                                     </div>
                                 }

@@ -1052,6 +1052,20 @@ input:disabled {
     outline: none;
 }
 
+/* Многострочное поле редактирования: занимает всю ячейку, текст переносится и виден целиком */
+.cell-input--area {
+    display: block;
+    field-sizing: content;   /* авто-рост высоты по содержимому (Chrome/Edge 123+) */
+    min-height: 84px;
+    max-height: 340px;
+    max-width: 100%;
+    resize: vertical;
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    line-height: 1.35;
+}
+
 .cell-editing {
     outline: 2px solid var(--accent, #1976d2);
     outline-offset: -1px;
