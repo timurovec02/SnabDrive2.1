@@ -232,6 +232,10 @@
         _access = await ColumnAccess.GetAsync(userId);
         _actor = state.User.ToActor() with { Access = _access };
 
+        // Пересчитываем видимые колонки уже с реальными правами доступа (_access),
+        // иначе фильтр CanView не применяется (раньше считалось до загрузки прав).
+        RebuildVisibleColumns();
+
         EventBus.Changed += OnRegistryChanged;
         Locks.LocksChanged += OnLocksChanged;
         _locks = Locks.GetActive();
