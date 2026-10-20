@@ -274,15 +274,22 @@
     private IEnumerable<KonturFavorite> Ord<T>(Func<KonturFavorite, T> key) =>
         _sortDesc ? Filtered().OrderByDescending(key) : Filtered().OrderBy(key);
 
-    private async Task ExportNowAsync()
+    private void ExportNowAsync()
     {
         _busy = true;
         _message = null;
-        await Scheduler.RunAsync("вручную со страницы Контур");
-        _messageOk = SchedulerState.LastSuccess;
-        _message = SchedulerState.LastMessage;
-        await LoadAsync();
-        _busy = false;
+        // Запуск в фоне: поток UI свободен, поэтому блокировка (оверлей по IsRunning) появляется сразу.
+        _ = Task.Run(async () =>
+        {
+            await Scheduler.RunAsync("вручную со страницы Контур");
+            await InvokeAsync(async () =>
+            {
+                _messageOk = SchedulerState.LastSuccess;
+                _message = SchedulerState.LastMessage;
+                await LoadAsync();
+                _busy = false;
+            });
+        });
     }
 
     private async Task ImportSelectedAsync()

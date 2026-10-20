@@ -137,19 +137,32 @@
         finally { _busy = false; }
     }
 
-    private async Task ExportNow()
+    private void ExportNow()
     {
         _busy = true;
         _error = null;
         _statusMessage = null;
-        try
+        // Запуск в фоне — блокировка (оверлей) появляется сразу, поток UI не блокируется.
+        _ = Task.Run(async () =>
         {
-            await Scheduler.RunAsync("вручную (Контур ловушка)", ExportMode.Templates);
-            _statusMessage = SchedulerState.LastMessage;
-            await LoadAsync();
-        }
-        catch (Exception ex) { _error = ex.Message; }
-        finally { _busy = false; }
+            try
+            {
+                await Scheduler.RunAsync("вручную (Контур ловушка)", ExportMode.Templates);
+                await InvokeAsync(async () =>
+                {
+                    _statusMessage = SchedulerState.LastMessage;
+                    await LoadAsync();
+                });
+            }
+            catch (Exception ex)
+            {
+                await InvokeAsync(() => { _error = ex.Message; });
+            }
+            finally
+            {
+                await InvokeAsync(() => { _busy = false; });
+            }
+        });
     }
 
     private async Task DeleteAsync(KonturTemplate t)

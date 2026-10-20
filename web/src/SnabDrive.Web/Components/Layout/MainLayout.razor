@@ -67,7 +67,7 @@
     private bool _isDirector;
     private Dictionary<string, bool> _features = new();
     private bool _exportRunning;
-    private CancellationTokenSource? _exportCts;
+    private bool _schedulerHooked;
 
     private void ToggleNav() => _navCollapsed = !_navCollapsed;
 
@@ -92,9 +92,11 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender && _exportCts is null)
+        if (firstRender && !_schedulerHooked)
         {
-            StartExportWatcher();
+            _schedulerHooked = true;
+            _exportRunning = SchedulerState.IsRunning;
+            SchedulerState.Changed += OnSchedulerChanged;
         }
 
         if (!firstRender || Session.PresenceRegistered)
@@ -116,32 +118,19 @@
 
     private void OnToastsChanged() => InvokeAsync(StateHasChanged);
 
-    private void StartExportWatcher()
+    private void OnSchedulerChanged()
     {
-        _exportCts = new CancellationTokenSource();
-        var token = _exportCts.Token;
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                while (!token.IsCancellationRequested)
-                {
-                    await Task.Delay(2000, token);
-                    var running = SchedulerState.IsRunning;
-                    if (running != _exportRunning)
-                    {
-                        _exportRunning = running;
-                        await InvokeAsync(StateHasChanged);
-                    }
-                }
-            }
-            catch (OperationCanceledException) { }
-        }, token);
+        _exportRunning = SchedulerState.IsRunning;
+        _ = InvokeAsync(StateHasChanged);
     }
 
     public ValueTask DisposeAsync()
     {
-        _exportCts?.Cancel();
+        if (_schedulerHooked)
+        {
+            SchedulerState.Changed -= OnSchedulerChanged;
+            _schedulerHooked = false;
+        }
         Toasts.Changed -= OnToastsChanged;
 
         if (Session.PresenceRegistered)

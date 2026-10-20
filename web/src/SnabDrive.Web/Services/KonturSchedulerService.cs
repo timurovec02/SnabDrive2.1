@@ -105,8 +105,22 @@ public sealed class KonturScheduleStore
 public sealed class KonturSchedulerState
 {
     private readonly object _gate = new();
+    private bool _isRunning;
 
-    public bool IsRunning { get; set; }
+    /// <summary>Событие изменения состояния — UI реагирует мгновенно (без опроса).</summary>
+    public event Action? Changed;
+
+    public bool IsRunning
+    {
+        get => _isRunning;
+        set
+        {
+            if (_isRunning == value) return;
+            _isRunning = value;
+            Changed?.Invoke();
+        }
+    }
+
     public DateTime? LastRunUtc { get; set; }
     public bool LastSuccess { get; set; }
     public string LastMessage { get; set; } = string.Empty;
@@ -312,8 +326,9 @@ public sealed class KonturSchedulerService : BackgroundService
             return;
         }
 
-        // Ждём появления нового файла выгрузки. Блокировка на сайте держится, пока IsRunning = true.
-        var deadline = DateTime.Now + timeout;
+        // Ждём появления нового файла выгрузки, но не дольше 30 секунд —
+        // чтобы при ошибке/зависании скрипта блокировка снималась и пользователь мог работать дальше.
+        var deadline = DateTime.Now + TimeSpan.FromSeconds(30);
         while (DateTime.Now < deadline)
         {
             Thread.Sleep(3000);
