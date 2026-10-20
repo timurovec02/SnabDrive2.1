@@ -9,6 +9,7 @@
 @inject IToastService Toasts
 @inject IRegistryEventBus EventBus
 @inject IColumnAccessService ColumnAccess
+@inject BitrixNotifier Bitrix
 @implements IDisposable
 
 <PageTitle>Пользователи — SnabDrive</PageTitle>
@@ -64,6 +65,8 @@
                         <td class="row-actions">
                             <button type="button" class="btn btn--small" @onclick="() => StartEdit(user)">Изменить</button>
                             <button type="button" class="btn btn--small" @onclick="() => OpenColumns(user)">Колонки</button>
+                            <button type="button" class="btn btn--small" @onclick="() => TestNotifyAsync(user)"
+                                    title="Отправить тестовое уведомление в Битрикс24">Проверить</button>
                             <button type="button" class="btn btn--small btn--danger" @onclick="() => AskDelete(user)">Удалить</button>
                         </td>
                     </tr>
@@ -473,6 +476,22 @@
     private ColumnAccessMode _columnMode = ColumnAccessMode.AllColumns;
     private List<ColumnPermRow> _columnRows = new();
     private string? _columnError;
+
+    private async Task TestNotifyAsync(UserRow user)
+    {
+        if (string.IsNullOrWhiteSpace(user.BitrixUserId))
+        {
+            Toasts.Show("У пользователя не заполнен «ID сотрудника в Битрикс24»", ToastKind.Error);
+            return;
+        }
+
+        var result = await Bitrix.SendTestAsync(user.BitrixUserId);
+        Toasts.Show(
+            result.Success
+                ? $"Тестовое уведомление отправлено сотруднику Битрикс24 (ID {user.BitrixUserId})"
+                : (result.Error ?? "Не удалось отправить уведомление"),
+            result.Success ? ToastKind.Success : ToastKind.Error);
+    }
 
     private async Task OpenColumns(UserRow user)
     {
