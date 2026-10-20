@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SnabDrive.Web.Data;
@@ -101,14 +102,19 @@ public sealed class WorkflowService : IWorkflowService
     private readonly BitrixNotifier _bitrix;
     private readonly IWebHostEnvironment _env;
     private readonly ILogger<WorkflowService> _logger;
+    private readonly IRolePermissionService _rolePerms;
+    private readonly UserManager<ApplicationUser> _users;
 
     public WorkflowService(IDbContextFactory<RegistryDbContext> factory, BitrixNotifier bitrix,
-        IWebHostEnvironment env, ILogger<WorkflowService> logger)
+        IWebHostEnvironment env, ILogger<WorkflowService> logger,
+        IRolePermissionService rolePerms, UserManager<ApplicationUser> users)
     {
         _factory = factory;
         _bitrix = bitrix;
         _env = env;
         _logger = logger;
+        _rolePerms = rolePerms;
+        _users = users;
     }
 
     public async Task<IReadOnlyList<WorkflowRow>> GetAsync(CancellationToken cancellationToken = default)
@@ -176,11 +182,64 @@ public sealed class WorkflowService : IWorkflowService
 
         await context.SaveChangesAsync(cancellationToken);
 
-        await _bitrix.NotifyAsync($"Задача: {WorkflowStages.Name(tr.To)}",
-            $"{item.NameLink}\nЗаказчик: {item.Customer}", cancellationToken);
+        await NotifyStageOwnersAsync(tr.To, item, cancellationToken);
 
         _logger.LogInformation("Воркфлоу: закупка {Id} {From}->{To} ({User})", regeditId, from, tr.To, actor.UserName);
         return Result.Ok();
+    }
+
+    /// <summary>
+    /// Личные уведомления в Битрикс24 пользователям ролей, отвечающих за стадию <paramref name="stageId"/>.
+    /// Роль отвечает за стадию, если в её настройке (/roles → «Стадии воркфлоу») стадия отмечена
+    /// либо набор стадий пуст (= все стадии). Администратор (техобслуживание) не уведомляется.
+    /// Получатель — пользователь с заполненным BitrixUserId.
+    /// </summary>
+    private async Task NotifyStageOwnersAsync(int stageId, Regedit item, CancellationToken cancellationToken)
+    {
+        var stageName = WorkflowStages.Name(stageId);
+        var title = $"Задача на этапе: {stageName}";
+        var body =
+            $"{item.NameLink}\n" +
+            $"Заказчик: {item.Customer}\n" +
+            $"НМЦК: {item.NMCK:# ##0.00}\n" +
+            $"Этап: {stageName}\n" +
+            $"Запись #{item.Id}";
+
+        try
+        {
+            var roleNames = await _rolePerms.GetAllRoleNamesAsync(cancellationToken);
+            var notified = new HashSet<string>(StringComparer.Ordinal);
+
+            foreach (var role in roleNames)
+            {
+                if (string.Equals(role, AppRoles.Admin, StringComparison.Ordinal))
+                {
+                    continue; // администратор — техобслуживание, бизнес-уведомления не получает
+                }
+
+                var set = await _rolePerms.GetAsync(role, cancellationToken);
+                if (!set.StageEnabled(stageId))
+                {
+                    continue;
+                }
+
+                var users = await _users.GetUsersInRoleAsync(role);
+                foreach (var user in users)
+                {
+                    var bitrixId = user.BitrixUserId;
+                    if (string.IsNullOrWhiteSpace(bitrixId) || !notified.Add(bitrixId))
+                    {
+                        continue; // нет ID Битрикс или уже уведомили (пользователь в нескольких ролях)
+                    }
+
+                    await _bitrix.NotifyAsync(title, body, cancellationToken, bitrixId);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Не удалось разослать уведомления Битрикс24 по стадии {Stage}", stageId);
+        }
     }
 
     public async Task<Result<string>> SaveAttachmentAsync(int regeditId, string fileName, Stream content, CancellationToken cancellationToken = default)
