@@ -33,6 +33,15 @@
             <label class="chk">
                 <input type="checkbox" @bind="_onlyNew" @bind:after="LoadAsync" /> только новые
             </label>
+            <label class="chk">
+                показать
+                <select @bind="_pageSize" @bind:after="LoadAsync">
+                    @foreach (var n in PageSizes)
+                    {
+                        <option value="@n">@n</option>
+                    }
+                </select>
+            </label>
             <div class="toolbar__spacer"></div>
             <button class="btn btn--primary" disabled="@(_selected.Count == 0 || _busy)" @onclick="ImportSelectedAsync">
                 Перенести в реестр (@_selected.Count)
@@ -146,6 +155,8 @@
     private ChangeActor _actor = new(string.Empty, "system");
     private bool _denied;
     private bool _onlyNew = true;
+    private int _pageSize = 50;
+    private static readonly int[] PageSizes = { 50, 100, 200, 500 };
     private bool _busy;
     private string? _message;
     private bool _messageOk;
@@ -172,7 +183,7 @@
 
     private async Task LoadAsync()
     {
-        _favorites = (await Kontur.GetFavoritesAsync(_onlyNew)).ToList();
+        _favorites = (await Kontur.GetFavoritesAsync(_onlyNew, _pageSize)).ToList();
         _selected.Clear();
     }
 

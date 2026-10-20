@@ -14,7 +14,7 @@ public interface IKonturService
     /// <summary>Разбирает выгрузку Контур.Закупки (Excel) и складывает строки в «Избранное Контур».</summary>
     Task<Result<int>> ImportFromExcelAsync(Stream excelStream, ChangeActor actor, CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<KonturFavorite>> GetFavoritesAsync(bool onlyNew, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<KonturFavorite>> GetFavoritesAsync(bool onlyNew, int take = 50, CancellationToken cancellationToken = default);
 
     /// <summary>Переносит выбранные строки в реестр (создаёт записи Regedit).</summary>
     Task<Result<int>> ImportToRegistryAsync(IEnumerable<int> favoriteIds, ChangeActor actor, CancellationToken cancellationToken = default);
@@ -110,7 +110,7 @@ public sealed class KonturService : IKonturService
         return Result<int>.Ok(added);
     }
 
-    public async Task<IReadOnlyList<KonturFavorite>> GetFavoritesAsync(bool onlyNew, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<KonturFavorite>> GetFavoritesAsync(bool onlyNew, int take = 50, CancellationToken cancellationToken = default)
     {
         await using var context = await _factory.CreateDbContextAsync(cancellationToken);
         var query = context.KonturFavorites.AsNoTracking();
@@ -121,7 +121,7 @@ public sealed class KonturService : IKonturService
 
         // Показываем только последние 50 строк по дате размещения (свежие сверху),
         // чтобы таблица «Избранное Контур» не росла бесконечно и быстро грузилась.
-        return await query.OrderByDescending(f => f.DateOfPlacement).ThenByDescending(f => f.Id).Take(50).ToListAsync(cancellationToken);
+        return await query.OrderByDescending(f => f.DateOfPlacement).ThenByDescending(f => f.Id).Take(take <= 0 ? 50 : take).ToListAsync(cancellationToken);
     }
 
     public async Task<Result<int>> ImportToRegistryAsync(IEnumerable<int> favoriteIds, ChangeActor actor, CancellationToken cancellationToken = default)
