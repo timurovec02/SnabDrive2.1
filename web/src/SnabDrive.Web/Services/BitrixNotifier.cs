@@ -27,7 +27,11 @@ public sealed class BitrixNotifier
         _logger = logger;
     }
 
-    public async Task NotifyAsync(string title, string body, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Отправляет уведомление (im.notify). Если указан <paramref name="toUserId"/> (числовой ID сотрудника
+    /// Битрикс24), уведомление придёт лично ему; иначе — владельцу вебхука.
+    /// </summary>
+    public async Task NotifyAsync(string title, string body, CancellationToken cancellationToken = default, string? toUserId = null)
     {
         if (string.IsNullOrWhiteSpace(_options.WebhookUrl))
         {
@@ -38,13 +42,22 @@ public sealed class BitrixNotifier
         try
         {
             var url = _options.WebhookUrl.TrimEnd('/') + "/im.notify.json";
-            using var content = new FormUrlEncodedContent(new[]
+
+            var pairs = new List<KeyValuePair<string, string>>
             {
-                new KeyValuePair<string, string>("MESSAGE", $"{title}\n{body}")
-            });
+                new("MESSAGE", $"{title}\n{body}")
+            };
+
+            // Личный получатель. Без TO Битрикс шлёт уведомление владельцу вебхука.
+            if (!string.IsNullOrWhiteSpace(toUserId))
+            {
+                pairs.Add(new KeyValuePair<string, string>("TO", toUserId));
+            }
+
+            using var content = new FormUrlEncodedContent(pairs);
 
             var response = await _httpFactory.CreateClient().PostAsync(url, content, cancellationToken);
-            _logger.LogInformation("Bitrix24 уведомление отправлено, код {Code}", (int)response.StatusCode);
+            _logger.LogInformation("Bitrix24 уведомление отправлено (TO={To}), код {Code}", toUserId ?? "владелец вебхука", (int)response.StatusCode);
         }
         catch (Exception ex)
         {
