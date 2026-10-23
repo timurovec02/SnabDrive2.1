@@ -19,7 +19,12 @@
        поэтому вход работает даже до загрузки blazor.web.js (иначе белая страница). *@
     <Routes @rendermode="new InteractiveServerRenderMode(prerender: true)" />
     <script src="_framework/blazor.web.js"></script>
+    @* Необязательный браузерный SignalR-клиент (уведомления на неактивной вкладке).
+       Включать только после установки JS-клиента:
+       npm i @microsoft/signalr && copy ... wwwroot\lib\signalr\signalr.min.js
+       Без файла подключение давало 404 в консоли; realtime и так работает через циркул.
     <script src="js/realtime.js"></script>
+    *@
 </body>
 
 </html>
