@@ -15,11 +15,9 @@
 <body>
     @* Весь UI работает в интерактивном серверном режиме: один циркул на пользователя,
        realtime-обновление таблицы идёт по этому же соединению.
-       prerender: false — страницы НЕ пререндерятся на сервере. Иначе при F5
-       OnInitializedAsync выполняется в контексте пререндера (без цепи), где вызовы
-       AuthenticationStateProvider/данные падают и страница показывает ошибку загрузки.
-       Вход тоже рендерится цепью (форма появляется после подключения blazor.web.js). *@
-    <Routes @rendermode="new InteractiveServerRenderMode(prerender: false)" />
+       prerender: true — страница логина и оболочка отдаются готовым HTML с сервера,
+       поэтому вход работает даже до загрузки blazor.web.js (иначе белая страница). *@
+    <Routes @rendermode="new InteractiveServerRenderMode(prerender: true)" />
     <script src="_framework/blazor.web.js"></script>
     <script src="js/realtime.js"></script>
 </body>
