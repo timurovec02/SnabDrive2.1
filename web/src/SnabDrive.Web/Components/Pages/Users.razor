@@ -243,9 +243,16 @@
         // Список онлайна меняется при каждом подключении/отключении — обновляем таблицу.
         EventBus.PresenceChanged += OnPresenceChanged;
 
-        var state = await AuthStateProvider.GetAuthenticationStateAsync();
-        _currentUserId = state.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
-        await LoadAsync();
+        try
+        {
+            var state = await AuthStateProvider.GetAuthenticationStateAsync();
+            _currentUserId = state.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+            await LoadAsync();
+        }
+        catch
+        {
+            // Пререндер (F5) может не иметь контекста — цепь повторит инициализацию.
+        }
     }
 
     private void OnPresenceChanged(IReadOnlyList<OnlineUser> online)

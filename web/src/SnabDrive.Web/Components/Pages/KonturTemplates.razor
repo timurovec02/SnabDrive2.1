@@ -134,14 +134,21 @@
 
     protected override async Task OnInitializedAsync()
     {
-        var state = await AuthStateProvider.GetAuthenticationStateAsync();
-        var uid = state.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
-        _actor = new ChangeActor(uid, state.User.Identity?.Name ?? "system");
-        var feats = await RolePerms.GetEffectiveFeaturesAsync(uid);
-        _denied = !(feats.TryGetValue(SnabDrive.Web.Services.AppFeatures.Kontur, out var kf) && kf);
-        if (!_denied)
+        try
         {
-            await LoadAsync();
+            var state = await AuthStateProvider.GetAuthenticationStateAsync();
+            var uid = state.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+            _actor = new ChangeActor(uid, state.User.Identity?.Name ?? "system");
+            var feats = await RolePerms.GetEffectiveFeaturesAsync(uid);
+            _denied = !(feats.TryGetValue(SnabDrive.Web.Services.AppFeatures.Kontur, out var kf) && kf);
+            if (!_denied)
+            {
+                await LoadAsync();
+            }
+        }
+        catch
+        {
+            // Пререндер (F5) может не иметь контекста — цепь повторит инициализацию.
         }
     }
 

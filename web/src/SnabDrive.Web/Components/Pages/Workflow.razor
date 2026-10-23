@@ -137,23 +137,32 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        var state = await AuthStateProvider.GetAuthenticationStateAsync();
-        var name = state.User.Identity?.Name ?? "Пользователь";
-        _actor = new ChangeActor(name, name);
-
-        // Стадии, разрешённые пользователю по его ролям (настройка в /roles → «Стадии воркфлоу»).
-        var uid = state.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
-        var stages = await RolePerms.GetEffectiveStagesAsync(uid);
-        _allowedStages = stages.ToHashSet();
-
-        // Стадия по умолчанию — первая из разрешённых.
-        var firstAllowed = WorkflowStages.All.FirstOrDefault(s => _allowedStages.Contains(s.Id));
-        if (_allowedStages.Contains(firstAllowed.Id))
+        try
         {
-            _stage = firstAllowed.Id;
-        }
+            var state = await AuthStateProvider.GetAuthenticationStateAsync();
+            var name = state.User.Identity?.Name ?? "Пользователь";
+            _actor = new ChangeActor(name, name);
 
-        await LoadAsync();
+            // Стадии, разрешённые пользователю по его ролям (настройка в /roles → «Стадии воркфлоу»).
+            var uid = state.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+            var stages = await RolePerms.GetEffectiveStagesAsync(uid);
+            _allowedStages = stages.ToHashSet();
+
+            // Стадия по умолчанию — первая из разрешённых.
+            var firstAllowed = WorkflowStages.All.FirstOrDefault(s => _allowedStages.Contains(s.Id));
+            if (_allowedStages.Contains(firstAllowed.Id))
+            {
+                _stage = firstAllowed.Id;
+            }
+
+            await LoadAsync();
+        }
+        catch
+        {
+            // При пререндере (F5) контекст авторизации/БД может быть недоступен и запрос
+            // завершился бы 500. Интерактивная цепь выполнит инициализацию повторно и
+            // отрисует страницу, поэтому здесь исключение достаточно проглотить.
+        }
     }
 
     private async Task LoadAsync()
