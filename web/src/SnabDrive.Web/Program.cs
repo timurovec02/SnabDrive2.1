@@ -178,9 +178,10 @@ app.MapGet("/attachments/{id:int}/{**name}", async (int id, CancellationToken ct
 {
     await using var db = await factory.CreateDbContextAsync(ct);
     var file = await db.Attachments.AsNoTracking().FirstOrDefaultAsync(a => a.Id == id, ct);
-    return file is null
+    IResult response = file is null
         ? Results.NotFound()
         : Results.File(file.Content, file.ContentType, file.FileName);
+    return response;
 });
 
 app.MapRazorComponents<App>()
