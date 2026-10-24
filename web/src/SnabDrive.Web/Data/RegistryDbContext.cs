@@ -29,6 +29,7 @@ public class RegistryDbContext : DbContext
     public DbSet<KonturTemplate> KonturTemplates => Set<KonturTemplate>();
     public DbSet<RegistryWorkflowLog> RegistryWorkflowLogs => Set<RegistryWorkflowLog>();
     public DbSet<AttachmentFile> Attachments => Set<AttachmentFile>();
+    public DbSet<BiddingNotification> BiddingNotifications => Set<BiddingNotification>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -254,6 +255,17 @@ public class RegistryDbContext : DbContext
             entity.Property(x => x.UploadedAtUtc).HasColumnName("UploadedAtUtc");
             entity.Property(x => x.UploadedBy).HasColumnName("UploadedBy").HasMaxLength(256);
             entity.HasIndex(x => x.RegeditId);
+        });
+
+        modelBuilder.Entity<BiddingNotification>(entity =>
+        {
+            entity.ToTable("BiddingNotifications");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.RegeditId).HasColumnName("RegeditId");
+            entity.Property(x => x.Kind).HasColumnName("Kind").HasMaxLength(20).IsRequired();
+            entity.Property(x => x.NotifiedAtUtc).HasColumnName("NotifiedAtUtc");
+            entity.Property(x => x.RecipientsCount).HasColumnName("RecipientsCount");
+            entity.HasIndex(x => new { x.RegeditId, x.Kind }).IsUnique();
         });
     }
 }

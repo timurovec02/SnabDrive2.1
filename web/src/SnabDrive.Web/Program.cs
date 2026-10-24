@@ -131,6 +131,9 @@ builder.Services.AddSingleton<KonturSchedulerState>();
 builder.Services.AddSingleton<KonturSchedulerService>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<KonturSchedulerService>());
 
+// Уведомления о предстоящих торгах (за 1 день и в день торгов) для роли TenderHead — в Битрикс24, однократно.
+builder.Services.AddHostedService<BiddingNotificationService>();
+
 // Воркфлоу по стадиям + уведомления в Битрикс24
 builder.Services.AddHttpClient();
 builder.Services.Configure<BitrixOptions>(builder.Configuration.GetSection("Bitrix"));
