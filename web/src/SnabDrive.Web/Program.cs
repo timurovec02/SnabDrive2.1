@@ -169,6 +169,17 @@ app.MapControllers();
 app.MapHub<RegistryHub>(RegistryHub.Route);
 app.MapAccountEndpoints();
 
+// Скачивание вложений из БД (таблица [Attachments]) — файлы не лежат на файловой системе IIS.
+// Защищено глобальным FallbackPolicy (RequireAuthenticatedUser): cookie аутентификации приходит вместе с запросом.
+app.MapGet("/attachments/{id:int}/{**name}", async (int id, CancellationToken ct, IDbContextFactory<RegistryDbContext> factory) =>
+{
+    await using var db = await factory.CreateDbContextAsync(ct);
+    var file = await db.Attachments.AsNoTracking().FirstOrDefaultAsync(a => a.Id == id, ct);
+    return file is null
+        ? Results.NotFound()
+        : Results.File(file.Content, file.ContentType, file.FileName);
+});
+
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 

@@ -28,6 +28,7 @@ public class RegistryDbContext : DbContext
     public DbSet<KonturFavorite> KonturFavorites => Set<KonturFavorite>();
     public DbSet<KonturTemplate> KonturTemplates => Set<KonturTemplate>();
     public DbSet<RegistryWorkflowLog> RegistryWorkflowLogs => Set<RegistryWorkflowLog>();
+    public DbSet<AttachmentFile> Attachments => Set<AttachmentFile>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -238,6 +239,20 @@ public class RegistryDbContext : DbContext
             entity.Property(x => x.Comment).HasColumnName("Comment");
             entity.Property(x => x.AtUtc).HasColumnName("AtUtc");
             entity.Property(x => x.ByUser).HasColumnName("ByUser").HasMaxLength(256);
+            entity.HasIndex(x => x.RegeditId);
+        });
+
+        modelBuilder.Entity<AttachmentFile>(entity =>
+        {
+            entity.ToTable("Attachments");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.RegeditId).HasColumnName("RegeditId");
+            entity.Property(x => x.FileName).HasColumnName("FileName").HasMaxLength(500).IsRequired();
+            entity.Property(x => x.ContentType).HasColumnName("ContentType").HasMaxLength(200);
+            entity.Property(x => x.SizeBytes).HasColumnName("SizeBytes");
+            entity.Property(x => x.Content).HasColumnName("Content"); // varbinary(max)
+            entity.Property(x => x.UploadedAtUtc).HasColumnName("UploadedAtUtc");
+            entity.Property(x => x.UploadedBy).HasColumnName("UploadedBy").HasMaxLength(256);
             entity.HasIndex(x => x.RegeditId);
         });
     }

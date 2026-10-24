@@ -251,24 +251,66 @@ public sealed class WorkflowService : IWorkflowService
             return Result<string>.Fail("Запись не найдена.");
         }
 
-        var dir = Path.Combine(_env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot"), "uploads", regeditId.ToString());
-        Directory.CreateDirectory(dir);
-
         var safeName = Path.GetFileName(fileName);
-        var stored = $"{Guid.NewGuid():N}_{safeName}";
-        await using (var fs = new FileStream(Path.Combine(dir, stored), FileMode.Create, FileAccess.Write))
-        {
-            await content.CopyToAsync(fs, cancellationToken);
-        }
 
-        var relative = $"/uploads/{regeditId}/{stored}";
+        // Содержимое сохраняем в БД (таблица [Attachments]), а не в wwwroot — файлы не зависят от IIS.
+        using var ms = new MemoryStream();
+        await content.CopyToAsync(ms, cancellationToken);
+        var bytes = ms.ToArray();
+
+        var file = new AttachmentFile
+        {
+            RegeditId = regeditId,
+            FileName = safeName,
+            ContentType = ContentTypeFromName(safeName),
+            SizeBytes = bytes.Length,
+            Content = bytes,
+            UploadedAtUtc = DateTime.UtcNow
+        };
+        context.Attachments.Add(file);
+        await context.SaveChangesAsync(cancellationToken); // получаем file.Id
+
+        var url = $"/attachments/{file.Id}/{safeName}";
         var list = string.IsNullOrWhiteSpace(item.Attachments)
-            ? relative
-            : item.Attachments + ";" + relative;
+            ? url
+            : item.Attachments + ";" + url;
         item.Attachments = list;
         await context.SaveChangesAsync(cancellationToken);
 
         return Result<string>.Ok(list);
+    }
+
+    private static string ContentTypeFromName(string name) => Path.GetExtension(name).ToLowerInvariant() switch
+    {
+        ".pdf" => "application/pdf",
+        ".png" => "image/png",
+        ".jpg" or ".jpeg" => "image/jpeg",
+        ".gif" => "image/gif",
+        ".bmp" => "image/bmp",
+        ".webp" => "image/webp",
+        ".txt" => "text/plain",
+        ".csv" => "text/csv",
+        ".doc" => "application/msword",
+        ".docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        ".xls" => "application/vnd.ms-excel",
+        ".xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        ".zip" => "application/zip",
+        ".rar" => "application/vnd.rar",
+        ".7z" => "application/x-7z-compressed",
+        ".json" => "application/json",
+        ".xml" => "application/xml",
+        _ => "application/octet-stream"
+    };
+
+    private static int? ParseAttachmentId(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return null;
+        }
+
+        var m = System.Text.RegularExpressions.Regex.Match(path, @"/attachments/(\d+)");
+        return m.Success && int.TryParse(m.Groups[1].Value, out var id) ? id : null;
     }
 
     public async Task<Result> DeleteAttachmentAsync(int regeditId, string attachmentPath, CancellationToken cancellationToken = default)
@@ -280,26 +322,39 @@ public sealed class WorkflowService : IWorkflowService
             return Result.Fail("Запись не найдена.");
         }
 
+        if (ParseAttachmentId(attachmentPath) is int fileId)
+        {
+            // Новое вложение в БД — удаляем двоичное содержимое.
+            var file = await context.Attachments.FirstOrDefaultAsync(a => a.Id == fileId, cancellationToken);
+            if (file is not null)
+            {
+                context.Attachments.Remove(file);
+            }
+        }
+        else
+        {
+            // Старое вложение на файловой системе — удаляем физический файл.
+            try
+            {
+                var root = _env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot");
+                var rel = attachmentPath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar);
+                var full = Path.Combine(root, rel);
+                if (File.Exists(full))
+                {
+                    File.Delete(full);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Не удалось удалить файл вложения {Path}", attachmentPath);
+            }
+        }
+
         var parts = (item.Attachments ?? string.Empty)
             .Split(';', StringSplitOptions.RemoveEmptyEntries)
             .Where(p => p != attachmentPath)
             .ToList();
         item.Attachments = string.Join(";", parts);
-
-        try
-        {
-            var root = _env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot");
-            var rel = attachmentPath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar);
-            var full = Path.Combine(root, rel);
-            if (File.Exists(full))
-            {
-                File.Delete(full);
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Не удалось удалить файл вложения {Path}", attachmentPath);
-        }
 
         await context.SaveChangesAsync(cancellationToken);
         return Result.Ok();
