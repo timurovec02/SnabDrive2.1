@@ -35,6 +35,7 @@ public static class WorkflowStages
 public sealed record WorkflowRow(
     int Id,
     string NameLink,
+    string? EisLink,
     string Customer,
     decimal NMCK,
     DateTime? BiddingDate,
@@ -125,7 +126,7 @@ public sealed class WorkflowService : IWorkflowService
         await using var context = await _factory.CreateDbContextAsync(cancellationToken);
         return await context.Regedit.AsNoTracking()
             .OrderBy(r => r.Stage).ThenByDescending(r => r.Id)
-            .Select(r => new WorkflowRow(r.Id, r.NameLink, r.Customer, r.NMCK, r.BiddingDate,
+            .Select(r => new WorkflowRow(r.Id, r.NameLink, r.EisLink, r.Customer, r.NMCK, r.BiddingDate,
                 r.ReserveNumber, r.Place, r.PlaceOfDelivery, r.ResultPrice, r.Winner, r.Note,
                 r.Attachments, r.Stage, r.IsLost))
             .ToListAsync(cancellationToken);

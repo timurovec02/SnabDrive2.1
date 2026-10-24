@@ -63,6 +63,13 @@ else
     {
         <div class="card" style="margin-bottom:12px">
             <div class="card-body">
+                @if (!string.IsNullOrWhiteSpace(r.EisLink))
+                {
+                    <a href="@r.EisLink" target="_blank" rel="noopener noreferrer" title="@r.EisLink"
+                       style="display:inline-flex;align-items:center;gap:4px;margin-bottom:8px;font-size:14px;text-decoration:none">
+                        <span style="font-size:18px;line-height:1">🔗</span> ЕИС
+                    </a>
+                }
                 <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px">
                     <div><label style="display:block;font-size:12px;color:#666;margin-bottom:2px">Наименование</label><input class="input" style="width:100%;box-sizing:border-box" @bind="_edits[r.Id].NameLink" /></div>
                     <div><label style="display:block;font-size:12px;color:#666;margin-bottom:2px">Заказчик</label><input class="input" style="width:100%;box-sizing:border-box" @bind="_edits[r.Id].Customer" /></div>
@@ -230,7 +237,7 @@ else
 
     private List<WorkflowRow> Rows() => _rows.Where(r => r.Stage == _stage).ToList();
 
-    private static string Fmt(DateTime? d) => d?.ToString("dd.MM.yyyy") ?? string.Empty;
+    private static string Fmt(DateTime? d) => d?.ToString("dd.MM.yyyy HH:mm") ?? string.Empty;
 
     private static string[] SplitAttachments(string value) =>
         string.IsNullOrWhiteSpace(value) ? Array.Empty<string>() : value.Split(';', StringSplitOptions.RemoveEmptyEntries);
