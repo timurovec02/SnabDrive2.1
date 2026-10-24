@@ -5,8 +5,11 @@
 @using SnabDrive.Web.Domain
 @using SnabDrive.Web.Services
 @attribute [Authorize(Policy = AppPolicies.ManageSystem)]
+@implements IDisposable
 @inject IRegistryService Registry
 @inject IKonturService Kontur
+@inject IPresenceService Presence
+@inject IRegistryEventBus EventBus
 
 <h1 class="page-title">Обзор директора</h1>
 <p class="page-subtitle">Сводная аналитика по закупкам и выгрузкам «Контур ловушка».</p>
@@ -15,6 +18,25 @@
 {
     <div class="alert alert-error">@_error</div>
 }
+
+<div class="cards" style="display:flex;flex-wrap:wrap;gap:12px;margin:16px 0">
+    <div class="card" style="min-width:180px"><div class="card-body">
+        <div class="muted">Записей в реестре</div><div style="font-size:24px;font-weight:600">@_registryCount</div>
+    </div></div>
+    <div class="card" style="min-width:180px"><div class="card-body">
+        <div class="muted">Записей в архиве</div><div style="font-size:24px;font-weight:600">@_archiveCount</div>
+    </div></div>
+    <div class="card" style="min-width:180px"><div class="card-body">
+        <div class="muted">Пользователей онлайн</div><div style="font-size:24px;font-weight:600">@_online.Count</div>
+        @if (_online.Count > 0)
+        {
+            <div class="muted" style="font-size:12px;margin-top:4px">@string.Join(", ", _online.Select(u => u.UserName))</div>
+        }
+    </div></div>
+    <div class="card" style="min-width:180px"><div class="card-body">
+        <div class="muted">Время сервера</div><div style="font-size:24px;font-weight:600">@_serverTime.ToString("HH:mm")</div>
+    </div></div>
+</div>
 
 <div class="toolbar" style="flex-wrap:wrap;gap:8px;margin:12px 0">
     <label class="muted">Период (дата торгов):</label>
@@ -87,6 +109,11 @@ else
     private bool _loading = true;
     private string? _error;
 
+    private int _registryCount;
+    private int _archiveCount;
+    private IReadOnlyList<OnlineUser> _online = Array.Empty<OnlineUser>();
+    private DateTime _serverTime = DateTime.Now;
+
     private List<RegistryRowDto> _all = new();
     private List<SnabDrive.Web.Data.Entities.KonturTemplate> _templates = new();
 
@@ -106,6 +133,10 @@ else
     {
         try
         {
+            EventBus.Changed += OnChanged;
+            EventBus.PresenceChanged += OnPresenceChanged;
+            await LoadCountsAsync();
+
             _all = new List<RegistryRowDto>();
             var page = 1;
             while (page <= 200)
@@ -135,6 +166,32 @@ else
         {
             _loading = false;
         }
+    }
+
+    private async Task LoadCountsAsync()
+    {
+        _registryCount = await Registry.CountAsync();
+        _archiveCount = await Registry.CountArchiveAsync();
+        _online = Presence.GetOnline();
+        _serverTime = DateTime.Now;
+    }
+
+    private void OnChanged(RegistryChangeEvent changeEvent) => _ = InvokeAsync(async () =>
+    {
+        await LoadCountsAsync();
+        StateHasChanged();
+    });
+
+    private void OnPresenceChanged(IReadOnlyList<OnlineUser> online)
+    {
+        _online = online;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        EventBus.Changed -= OnChanged;
+        EventBus.PresenceChanged -= OnPresenceChanged;
     }
 
     private void Recompute()
