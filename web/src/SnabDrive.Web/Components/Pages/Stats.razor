@@ -1,0 +1,149 @@
+@page "/stats"
+@using Microsoft.EntityFrameworkCore
+@using SnabDrive.Web.Data
+@using SnabDrive.Web.Data.Entities
+@attribute [Authorize]
+@inject IDbContextFactory<AppIdentityDbContext> IdentityFactory
+@inject IDbContextFactory<RegistryDbContext> RegistryFactory
+
+<h1 class="page-title">Статистика активности</h1>
+<p class="page-subtitle">Кто и сколько выполнил операций: добавление, изменение, удаление, архивация и переводы по стадиям воркфлоу.</p>
+
+<div class="toolbar" style="margin:12px 0;gap:10px;flex-wrap:wrap;align-items:end">
+    <label style="display:flex;flex-direction:column;gap:2px">
+        <span>С</span>
+        <input type="date" class="input" @bind="_from" />
+    </label>
+    <label style="display:flex;flex-direction:column;gap:2px">
+        <span>По</span>
+        <input type="date" class="input" @bind="_to" />
+    </label>
+    <button class="btn btn-primary" @onclick="LoadAsync" disabled="@_loading">Показать</button>
+</div>
+
+@if (_error is not null)
+{
+    <div class="alert alert-error">@_error</div>
+}
+
+@if (_loading)
+{
+    <p>Загрузка…</p>
+}
+else if (_rows.Count == 0)
+{
+    <div class="alert alert-info">За выбранный период операций не найдено.</div>
+}
+else
+{
+    <table class="table" style="width:auto;min-width:640px">
+        <thead>
+            <tr>
+                <th>Пользователь</th>
+                <th style="text-align:right">Добавлено</th>
+                <th style="text-align:right">Изменено</th>
+                <th style="text-align:right">Удалено</th>
+                <th style="text-align:right">В архив</th>
+                <th style="text-align:right">Переводов стадий</th>
+                <th style="text-align:right">Всего</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var row in _rows.OrderByDescending(r => r.Total).ThenBy(r => r.User))
+            {
+                <tr>
+                    <td>@row.User</td>
+                    <td style="text-align:right">@row.Created</td>
+                    <td style="text-align:right">@row.Updated</td>
+                    <td style="text-align:right">@row.Deleted</td>
+                    <td style="text-align:right">@row.Archived</td>
+                    <td style="text-align:right">@row.StageChanges</td>
+                    <td style="text-align:right"><strong>@row.Total</strong></td>
+                </tr>
+            }
+        </tbody>
+        <tfoot>
+            <tr>
+                <th>Итого</th>
+                <th style="text-align:right">@_rows.Sum(r => r.Created)</th>
+                <th style="text-align:right">@_rows.Sum(r => r.Updated)</th>
+                <th style="text-align:right">@_rows.Sum(r => r.Deleted)</th>
+                <th style="text-align:right">@_rows.Sum(r => r.Archived)</th>
+                <th style="text-align:right">@_rows.Sum(r => r.StageChanges)</th>
+                <th style="text-align:right">@_rows.Sum(r => r.Total)</th>
+            </tr>
+        </tfoot>
+    </table>
+}
+
+@code {
+    private DateTime _from = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+    private DateTime _to = DateTime.Today;
+    private bool _loading = true;
+    private string? _error;
+    private List<UserActivityRow> _rows = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await LoadAsync();
+        }
+        catch
+        {
+            // При пререндере (F5) контекст может быть недоступен; интерактивная цепь повторит инициализацию.
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+        try
+        {
+            var from = _from.Date;
+            var to = _to.Date.AddDays(1).AddTicks(-1);
+
+            await using var identity = await IdentityFactory.CreateDbContextAsync();
+            var audit = await identity.AuditLog.AsNoTracking()
+                .Where(a => a.CreatedAtUtc >= from && a.CreatedAtUtc <= to)
+                .GroupBy(a => new { a.UserName, a.Action })
+                .Select(g => new { g.Key.UserName, g.Key.Action, Count = g.Count() })
+                .ToListAsync();
+
+            await using var registry = await RegistryFactory.CreateDbContextAsync();
+            var workflow = await registry.RegistryWorkflowLogs.AsNoTracking()
+                .Where(w => w.AtUtc >= from && w.AtUtc <= to)
+                .GroupBy(w => w.ByUser)
+                .Select(g => new { User = g.Key, Count = g.Count() })
+                .ToListAsync();
+
+            var users = audit.Select(a => a.UserName)
+                .Concat(workflow.Select(w => w.User))
+                .Where(u => !string.IsNullOrWhiteSpace(u))
+                .Distinct()
+                .ToList();
+
+            _rows = users.Select(u =>
+            {
+                var created = audit.Where(a => a.UserName == u && a.Action == AuditAction.Created).Sum(a => a.Count);
+                var updated = audit.Where(a => a.UserName == u && a.Action == AuditAction.Updated).Sum(a => a.Count);
+                var deleted = audit.Where(a => a.UserName == u && a.Action == AuditAction.Deleted).Sum(a => a.Count);
+                var archived = audit.Where(a => a.UserName == u && a.Action == AuditAction.Archived).Sum(a => a.Count);
+                var stageChanges = workflow.Where(w => w.User == u).Sum(w => w.Count);
+                return new UserActivityRow(u, created, updated, deleted, archived, stageChanges,
+                    created + updated + deleted + archived + stageChanges);
+            }).ToList();
+        }
+        catch (Exception ex)
+        {
+            _error = "Не удалось загрузить статистику: " + ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private sealed record UserActivityRow(string User, int Created, int Updated, int Deleted, int Archived, int StageChanges, int Total);
+}
