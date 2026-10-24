@@ -76,6 +76,9 @@ public interface IWorkflowService
     Task<Result<string>> SaveAttachmentAsync(int regeditId, string fileName, Stream content, CancellationToken cancellationToken = default);
 
     Task<Result> DeleteAttachmentAsync(int regeditId, string attachmentPath, CancellationToken cancellationToken = default);
+
+    /// <summary>Количество закупок с торгами завтра и сегодня (для всплывающего уведомления).</summary>
+    Task<(int Tomorrow, int Today)> GetUpcomingBiddingCountsAsync(CancellationToken cancellationToken = default);
 }
 
 public sealed class WorkflowService : IWorkflowService
@@ -358,5 +361,17 @@ public sealed class WorkflowService : IWorkflowService
 
         await context.SaveChangesAsync(cancellationToken);
         return Result.Ok();
+    }
+
+    public async Task<(int Tomorrow, int Today)> GetUpcomingBiddingCountsAsync(CancellationToken cancellationToken = default)
+    {
+        var today = DateTime.Today;
+        var tomorrow = today.AddDays(1);
+        await using var context = await _factory.CreateDbContextAsync(cancellationToken);
+        var dates = await context.Regedit.AsNoTracking()
+            .Where(r => r.BiddingDate != null)
+            .Select(r => r.BiddingDate!.Value)
+            .ToListAsync(cancellationToken);
+        return (dates.Count(d => d.Date == tomorrow), dates.Count(d => d.Date == today));
     }
 }

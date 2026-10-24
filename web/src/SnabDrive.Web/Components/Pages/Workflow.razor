@@ -16,6 +16,25 @@
     <div class="alert alert-error">@_error</div>
 }
 
+@if (_isTenderHead && (_biddingTomorrow > 0 || _biddingToday > 0))
+{
+    <div class="alert alert-info" style="border-left:4px solid #d97706;background:#fffbeb;color:#92400e;margin:12px 0">
+        🔔 <strong>Предстоящие торги:</strong>
+        @if (_biddingTomorrow > 0)
+        {
+            <span>завтра — @_biddingTomorrow</span>
+        }
+        @if (_biddingTomorrow > 0 && _biddingToday > 0)
+        {
+            <span>;&nbsp;</span>
+        }
+        @if (_biddingToday > 0)
+        {
+            <span>сегодня — @_biddingToday</span>
+        }
+    </div>
+}
+
 <div class="toolbar" style="flex-wrap:wrap;gap:6px;margin:12px 0">
     @foreach (var st in WorkflowStages.All.Where(s => _allowedStages.Contains(s.Id)))
     {
@@ -134,6 +153,9 @@ else
     private string? _error;
     private ChangeActor _actor = new("user", "Пользователь");
     private HashSet<int> _allowedStages = new();
+    private bool _isTenderHead;
+    private int _biddingTomorrow;
+    private int _biddingToday;
 
     protected override async Task OnInitializedAsync()
     {
@@ -147,6 +169,13 @@ else
             var uid = state.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
             var stages = await RolePerms.GetEffectiveStagesAsync(uid);
             _allowedStages = stages.ToHashSet();
+
+            // Всплывающее уведомление о предстоящих торгах — для роли «Руководитель тендерного отдела».
+            _isTenderHead = state.User.IsInRole("TenderHead");
+            if (_isTenderHead)
+            {
+                (_biddingTomorrow, _biddingToday) = await WorkflowSvc.GetUpcomingBiddingCountsAsync();
+            }
 
             // Стадия по умолчанию — первая из разрешённых.
             var firstAllowed = WorkflowStages.All.FirstOrDefault(s => _allowedStages.Contains(s.Id));
