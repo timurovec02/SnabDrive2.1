@@ -100,7 +100,7 @@
             {
                 @foreach (var row in Rows)
                 {
-                    <tr class="@RowClass(row)" @onclick="() => OnRowSelected.InvokeAsync(row)">
+                    <tr class="@RowClass(row)" @onclick="@(e => OnRowSelected.InvokeAsync(new RowClickArgs(row, e.CtrlKey, e.ShiftKey)))">
                         <td class="registry-grid__index">@row.Id</td>
                         @foreach (var column in Columns)
                         {
@@ -210,9 +210,9 @@
     [Parameter] public IReadOnlyList<DictionaryItemDto> B2BStatuses { get; set; } = Array.Empty<DictionaryItemDto>();
     [Parameter] public IReadOnlyList<DictionaryItemDto> ExecutionStatuses { get; set; } = Array.Empty<DictionaryItemDto>();
     [Parameter] public IReadOnlyDictionary<string, string> CellColors { get; set; } = new Dictionary<string, string>();
-    [Parameter] public EventCallback<RegistryRowDto> OnRowSelected { get; set; }
+    [Parameter] public EventCallback<RowClickArgs> OnRowSelected { get; set; }
     [Parameter] public EventCallback<CellClickArgs> OnCellSelected { get; set; }
-    [Parameter] public int SelectedId { get; set; }
+    [Parameter] public IReadOnlyCollection<int> SelectedIds { get; set; } = Array.Empty<int>();
     [Parameter] public string? SelectedCellKey { get; set; }
     [Parameter] public bool IsLoading { get; set; }
 
@@ -388,7 +388,7 @@
     {
         var classes = new List<string>();
 
-        if (row.Id == SelectedId)
+        if (SelectedIds.Contains(row.Id))
         {
             classes.Add("is-selected");
         }

@@ -66,7 +66,7 @@
                 <button type="button" class="btn" @onclick='() => Navigation.NavigateTo("/kontur")'>★ Контур</button>
             }
             <button type="button" class="btn" @onclick="EditSelectedAsync" disabled="@(_busy || _selected is null)">✎ Изменить</button>
-            <button type="button" class="btn btn--danger" @onclick="AskDelete" disabled="@(_busy || _selected is null)">🗑 Удалить</button>
+            <button type="button" class="btn btn--danger" @onclick="AskDelete" disabled="@(_busy || _selectedIds.Count == 0)">🗑 Удалить@(_selectedIds.Count > 1 ? $" ({_selectedIds.Count})" : "")</button>
 
             @if (_isAdmin)
             {
@@ -90,7 +90,7 @@
                       B2BStatuses="@_b2bStatuses"
                       ExecutionStatuses="@_executionStatuses"
                       CellColors="@_colors"
-                      SelectedId="@(_selected?.Id ?? 0)"
+                      SelectedIds="@_selectedIds"
                       SelectedCellKey="@_selectedCellKey"
                       IsLoading="@_loading"
                       OnRowSelected="SelectRow"
@@ -175,6 +175,8 @@
     private List<RegistryColumn> _visibleColumns = new();
 
     private RegistryRowDto? _selected;
+    private readonly HashSet<int> _selectedIds = new();
+    private int _anchorId;
     private string? _selectedCellKey;
     private string _selectedCellTitle = string.Empty;
 
@@ -383,9 +385,45 @@
 
     // ------------------------------------------------------------ выделение и подсветка
 
-    private void SelectRow(RegistryRowDto row)
+    private void SelectRow(RowClickArgs args)
     {
+        var row = args.Row;
         _selected = row;
+
+        if (args.Ctrl)
+        {
+            // Ctrl+клик — добавить/убрать строку из выделения.
+            if (!_selectedIds.Remove(row.Id))
+            {
+                _selectedIds.Add(row.Id);
+            }
+
+            _anchorId = row.Id;
+        }
+        else if (args.Shift && _anchorId != 0)
+        {
+            // Shift+клик — диапазон от опорной строки до текущей (в порядке текущей страницы).
+            var ids = _data.Items.Select(r => r.Id).ToList();
+            var a = ids.IndexOf(_anchorId);
+            var b = ids.IndexOf(row.Id);
+            if (a >= 0 && b >= 0)
+            {
+                var from = Math.Min(a, b);
+                var to = Math.Max(a, b);
+                _selectedIds.Clear();
+                for (var i = from; i <= to; i++)
+                {
+                    _selectedIds.Add(ids[i]);
+                }
+            }
+        }
+        else
+        {
+            // Обычный клик — только эта строка.
+            _selectedIds.Clear();
+            _selectedIds.Add(row.Id);
+            _anchorId = row.Id;
+        }
     }
 
     private void SelectCell(CellClickArgs args)
@@ -598,21 +636,62 @@
 
     private void AskDelete()
     {
-        if (_selected is null)
+        if (_selectedIds.Count == 0)
         {
             return;
         }
 
-        var row = _selected;
+        if (_selectedIds.Count == 1 && _selected is not null)
+        {
+            var row = _selected;
+            _confirm = new ConfirmRequest(
+                "Удаление записи",
+                $"Удалить запись «{row.NameLink}»? Действие необратимо.",
+                "Удалить",
+                async () =>
+                {
+                    _confirm = null;
+                    await DeleteAsync(row);
+                });
+            return;
+        }
+
+        var count = _selectedIds.Count;
         _confirm = new ConfirmRequest(
-            "Удаление записи",
-            $"Удалить запись «{row.NameLink}»? Действие необратимо.",
+            "Массовое удаление",
+            $"Удалить выбранные записи ({count})? Действие необратимо.",
             "Удалить",
             async () =>
             {
                 _confirm = null;
-                await DeleteAsync(row);
+                await DeleteSelectedAsync();
             });
+    }
+
+    private async Task DeleteSelectedAsync()
+    {
+        _busy = true;
+        var ok = 0;
+        var fail = 0;
+        try
+        {
+            foreach (var id in _selectedIds.ToList())
+            {
+                var result = await RegistryService.DeleteAsync(id, _actor);
+                if (result.Success) { ok++; } else { fail++; }
+            }
+
+            Toasts.Show(fail == 0 ? $"Удалено записей: {ok}" : $"Удалено: {ok}, с ошибками: {fail}",
+                fail == 0 ? ToastKind.Success : ToastKind.Warning);
+            _selectedIds.Clear();
+            _selected = null;
+            _selectedCellKey = null;
+            await ReloadAsync();
+        }
+        finally
+        {
+            _busy = false;
+        }
     }
 
     private async Task DeleteAsync(RegistryRowDto row)
@@ -623,6 +702,17 @@
             var result = await RegistryService.DeleteAsync(row.Id, _actor);
             Toasts.Show(result.Success ? "Запись удалена" : result.Error ?? "Ошибка удаления",
                 result.Success ? ToastKind.Success : ToastKind.Error);
+            if (result.Success)
+            {
+                _selectedIds.Remove(row.Id);
+                if (_selected?.Id == row.Id)
+                {
+                    _selected = null;
+                    _selectedCellKey = null;
+                }
+
+                await ReloadAsync();
+            }
         }
         finally
         {
