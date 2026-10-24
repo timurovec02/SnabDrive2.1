@@ -9,6 +9,10 @@ public sealed record RegeditUpsertRequest
     [StringLength(1000, ErrorMessage = "Не более 1000 символов")]
     public string NameLink { get; set; } = string.Empty;
 
+    /// <summary>Ссылка на закупку в ЕИС (отдельно от наименования).</summary>
+    [StringLength(1000, ErrorMessage = "Не более 1000 символов")]
+    public string? EisLink { get; set; }
+
     [Required(ErrorMessage = "Укажите заказчика")]
     [StringLength(500, ErrorMessage = "Не более 500 символов")]
     public string Customer { get; set; } = string.Empty;

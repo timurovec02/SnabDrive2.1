@@ -11,6 +11,10 @@ public class ArchiveRegedit
     public int IdOld { get; set; }
 
     public string NameLink { get; set; } = string.Empty;
+
+    /// <summary>Ссылка на закупку в ЕИС (переносится из реестра при архивации).</summary>
+    public string? EisLink { get; set; }
+
     public string PlaceOfDelivery { get; set; } = string.Empty;
     public string ReserveNumber { get; set; } = string.Empty;
     public string NationalMode { get; set; } = string.Empty;

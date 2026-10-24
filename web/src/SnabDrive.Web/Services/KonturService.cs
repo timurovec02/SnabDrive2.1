@@ -144,6 +144,7 @@ public sealed class KonturService : IKonturService
             var request = new RegeditUpsertRequest
             {
                 NameLink = string.IsNullOrWhiteSpace(favorite.NameLink) ? favorite.PurchaseNumber : favorite.NameLink,
+                EisLink = favorite.EisLink,
                 Customer = favorite.Customer,
                 NMCK = favorite.NMCK,
                 BiddingDate = favorite.BiddingDate,

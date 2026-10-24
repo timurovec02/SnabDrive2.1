@@ -9,6 +9,10 @@ public class Regedit
     public int Id { get; set; }
 
     public string NameLink { get; set; } = string.Empty;
+
+    /// <summary>Ссылка на закупку в ЕИС (отдельно от наименования).</summary>
+    public string? EisLink { get; set; }
+
     public string PlaceOfDelivery { get; set; } = string.Empty;
     public string ReserveNumber { get; set; } = string.Empty;
     public string NationalMode { get; set; } = string.Empty;

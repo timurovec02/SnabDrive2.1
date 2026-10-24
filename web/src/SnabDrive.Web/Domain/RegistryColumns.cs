@@ -29,7 +29,8 @@ public static class RegistryColumns
 {
     public static readonly IReadOnlyList<RegistryColumn> All = new List<RegistryColumn>
     {
-        new("NameLink", "Ссылка / наименование", ColumnKind.Link, "260px"),
+        new("NameLink", "Наименование", ColumnKind.Text, "260px"),
+        new("EisLink", "ЕИС", ColumnKind.Link, "90px"),
         new("Customer", "Заказчик", ColumnKind.Text, "180px"),
         new("TypeOfPurchaseId", "Тип закупки", ColumnKind.Dictionary, "160px"),
         new("PlaceOfDelivery", "Место поставки товара", ColumnKind.Text, "170px"),

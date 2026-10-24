@@ -48,3 +48,25 @@ END
 ELSE
     PRINT 'Таблица [BiddingNotifications] уже существует — пропуск.';
 GO
+
+-- -------------------------------------------------------------
+-- 3) Ссылка на закупку в ЕИС — отдельное поле (раньше ссылка и наименование
+--    были совмещены в NameLink). NVARCHAR(1000), NULL.
+-- -------------------------------------------------------------
+IF COL_LENGTH('RegistryItems', 'EisLink') IS NULL
+BEGIN
+    ALTER TABLE [RegistryItems] ADD [EisLink] NVARCHAR(1000) NULL;
+    PRINT 'Колонка [RegistryItems].[EisLink] добавлена.';
+END
+ELSE
+    PRINT 'Колонка [RegistryItems].[EisLink] уже существует — пропуск.';
+GO
+
+IF COL_LENGTH('ArchiveRegistryItems', 'EisLink') IS NULL
+BEGIN
+    ALTER TABLE [ArchiveRegistryItems] ADD [EisLink] NVARCHAR(1000) NULL;
+    PRINT 'Колонка [ArchiveRegistryItems].[EisLink] добавлена.';
+END
+ELSE
+    PRINT 'Колонка [ArchiveRegistryItems].[EisLink] уже существует — пропуск.';
+GO

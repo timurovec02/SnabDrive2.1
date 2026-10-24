@@ -9,6 +9,7 @@ public class RegistryRowDto
     public int? IdOld { get; set; }
 
     public string NameLink { get; set; } = string.Empty;
+    public string EisLink { get; set; } = string.Empty;
     public string Customer { get; set; } = string.Empty;
 
     public int? TypeOfPurchaseId { get; set; }

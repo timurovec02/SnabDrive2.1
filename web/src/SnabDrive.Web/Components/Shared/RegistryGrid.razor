@@ -158,8 +158,15 @@
                                 }
                                 else if (column.Kind == ColumnKind.Link)
                                 {
-                                    <a class="registry-grid__link" href="@row.NameLink" target="_blank"
-                                       rel="noopener noreferrer" title="@row.NameLink">@row.NameLink</a>
+                                    @if (!string.IsNullOrWhiteSpace(row.EisLink))
+                                    {
+                                        <a class="registry-grid__link" href="@row.EisLink" target="_blank"
+                                           rel="noopener noreferrer" title="@row.EisLink">ЕИС ↗</a>
+                                    }
+                                    else
+                                    {
+                                        <span class="muted">—</span>
+                                    }
                                     @if (lockedByOther)
                                     {
                                         <LockBadge UserName="@cellLock!.UserName" />
@@ -356,6 +363,7 @@
     private static string EditorRaw(RegistryRowDto row, string key) => key switch
     {
         "NameLink" => row.NameLink,
+        "EisLink" => row.EisLink,
         "Customer" => row.Customer,
         "PlaceOfDelivery" => row.PlaceOfDelivery,
         "ReserveNumber" => row.ReserveNumber,
@@ -477,6 +485,7 @@
     private string TextValue(RegistryRowDto row, string key) => key switch
     {
         "NameLink" => row.NameLink,
+        "EisLink" => row.EisLink,
         "Customer" => row.Customer,
         "TypeOfPurchaseId" => row.TypeOfPurchaseName ?? string.Empty,
         "PlaceOfDelivery" => row.PlaceOfDelivery,

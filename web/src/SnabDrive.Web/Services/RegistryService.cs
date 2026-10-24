@@ -97,6 +97,7 @@ public sealed class RegistryService : IRegistryService
                 Id = x.Id,
                 IdOld = null,
                 NameLink = x.NameLink,
+                EisLink = x.EisLink ?? string.Empty,
                 Customer = x.Customer,
                 TypeOfPurchaseId = x.TypeOfPurchaseId,
                 TypeOfPurchaseName = x.TypeOfPurchase != null ? x.TypeOfPurchase.NameOfPurchase : null,
@@ -160,6 +161,7 @@ public sealed class RegistryService : IRegistryService
                 Id = x.Id,
                 IdOld = x.IdOld,
                 NameLink = x.NameLink,
+                EisLink = x.EisLink ?? string.Empty,
                 Customer = x.Customer,
                 TypeOfPurchaseId = x.TypeOfPurchaseId,
                 TypeOfPurchaseName = x.TypeOfPurchase != null ? x.TypeOfPurchase.NameOfPurchase : null,
@@ -250,6 +252,7 @@ public sealed class RegistryService : IRegistryService
                 Id = x.Id,
                 IdOld = null,
                 NameLink = x.NameLink,
+                EisLink = x.EisLink ?? string.Empty,
                 Customer = x.Customer,
                 TypeOfPurchaseId = x.TypeOfPurchaseId,
                 TypeOfPurchaseName = x.TypeOfPurchase != null ? x.TypeOfPurchase.NameOfPurchase : null,
@@ -393,6 +396,9 @@ public sealed class RegistryService : IRegistryService
         {
             case "NameLink":
                 AddCellChange(changes, column.Title, entity.NameLink, entity.NameLink = raw);
+                break;
+            case "EisLink":
+                AddCellChange(changes, column.Title, entity.EisLink ?? string.Empty, entity.EisLink = raw);
                 break;
             case "Customer":
                 AddCellChange(changes, column.Title, entity.Customer, entity.Customer = raw);
@@ -604,6 +610,7 @@ public sealed class RegistryService : IRegistryService
         {
             IdOld = entity.Id,
             NameLink = entity.NameLink,
+            EisLink = entity.EisLink,
             PlaceOfDelivery = entity.PlaceOfDelivery,
             ReserveNumber = entity.ReserveNumber,
             NationalMode = entity.NationalMode,
@@ -654,6 +661,7 @@ public sealed class RegistryService : IRegistryService
         var restored = new Regedit
         {
             NameLink = archive.NameLink,
+            EisLink = archive.EisLink,
             PlaceOfDelivery = archive.PlaceOfDelivery,
             ReserveNumber = archive.ReserveNumber,
             NationalMode = archive.NationalMode,
@@ -710,6 +718,7 @@ public sealed class RegistryService : IRegistryService
         var before = ToRequestFromArchive(entity);
 
         entity.NameLink = request.NameLink;
+        entity.EisLink = request.EisLink;
         entity.Customer = request.Customer;
         entity.PlaceOfDelivery = request.PlaceOfDelivery;
         entity.ReserveNumber = request.ReserveNumber;
@@ -864,6 +873,7 @@ public sealed class RegistryService : IRegistryService
         }
 
         if (!access.CanView("NameLink")) row.NameLink = string.Empty;
+        if (!access.CanView("EisLink")) row.EisLink = string.Empty;
         if (!access.CanView("Customer")) row.Customer = string.Empty;
         if (!access.CanView("TypeOfPurchaseId"))
         {
@@ -913,6 +923,7 @@ public sealed class RegistryService : IRegistryService
         }
 
         if (!access.CanView("NameLink")) request.NameLink = string.Empty;
+        if (!access.CanView("EisLink")) request.EisLink = string.Empty;
         if (!access.CanView("Customer")) request.Customer = string.Empty;
         if (!access.CanView("PlaceOfDelivery")) request.PlaceOfDelivery = string.Empty;
         if (!access.CanView("ReserveNumber")) request.ReserveNumber = string.Empty;
@@ -971,6 +982,7 @@ public sealed class RegistryService : IRegistryService
     private static void Apply(Regedit entity, RegeditUpsertRequest request, ColumnAccessMap access)
     {
         if (access.CanEdit("NameLink")) entity.NameLink = request.NameLink.Trim();
+        if (access.CanEdit("EisLink")) entity.EisLink = request.EisLink;
         if (access.CanEdit("Customer")) entity.Customer = request.Customer.Trim();
         if (access.CanEdit("PlaceOfDelivery")) entity.PlaceOfDelivery = request.PlaceOfDelivery;
         if (access.CanEdit("ReserveNumber")) entity.ReserveNumber = request.ReserveNumber;
@@ -999,6 +1011,7 @@ public sealed class RegistryService : IRegistryService
     private static RegeditUpsertRequest ToRequest(Regedit entity) => new()
     {
         NameLink = entity.NameLink,
+        EisLink = entity.EisLink,
         Customer = entity.Customer,
         PlaceOfDelivery = entity.PlaceOfDelivery,
         ReserveNumber = entity.ReserveNumber,
@@ -1024,6 +1037,7 @@ public sealed class RegistryService : IRegistryService
     private static RegeditUpsertRequest ToRequestFromArchive(ArchiveRegedit entity) => new()
     {
         NameLink = entity.NameLink,
+        EisLink = entity.EisLink,
         Customer = entity.Customer,
         PlaceOfDelivery = entity.PlaceOfDelivery,
         ReserveNumber = entity.ReserveNumber,
@@ -1281,6 +1295,7 @@ public sealed class RegistryService : IRegistryService
         switch (key)
         {
             case "NameLink": return q.Where(x => EF.Functions.Like(x.NameLink.ToLower(), like));
+            case "EisLink": return q.Where(x => x.EisLink != null && EF.Functions.Like(x.EisLink.ToLower(), like));
             case "Customer": return q.Where(x => EF.Functions.Like(x.Customer.ToLower(), like));
             case "PlaceOfDelivery": return q.Where(x => EF.Functions.Like(x.PlaceOfDelivery.ToLower(), like));
             case "ReserveNumber": return q.Where(x => EF.Functions.Like(x.ReserveNumber.ToLower(), like));
