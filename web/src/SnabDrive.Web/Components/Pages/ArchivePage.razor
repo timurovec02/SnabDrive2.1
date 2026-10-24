@@ -41,7 +41,7 @@
                       B2BStatuses="@_b2bStatuses"
                       ExecutionStatuses="@_executionStatuses"
                       CellColors="@_colors"
-                      SelectedId="@(_selected?.Id ?? 0)"
+                      SelectedIds="@(_selected is null ? Array.Empty<int>() : new int[] { _selected.Id })"
                       IsLoading="@_loading"
                       OnRowSelected="SelectRow"
                       OnCellSelected="SelectCell" />
@@ -104,7 +104,7 @@
         await ReloadAsync();
     }
 
-    private void SelectRow(RegistryRowDto row) => _selected = row;
+    private void SelectRow(RowClickArgs args) => _selected = args.Row;
 
     private void SelectCell(CellClickArgs args) => _selected = args.Row;
 
