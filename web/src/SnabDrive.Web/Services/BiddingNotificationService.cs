@@ -14,14 +14,11 @@ public sealed class BiddingNotificationService : BackgroundService
 {
     private const string TenderHeadRole = "TenderHead";
 
-    private readonly IDbContextFactory<RegistryDbContext> _factory;
     private readonly IServiceProvider _services;
     private readonly ILogger<BiddingNotificationService> _logger;
 
-    public BiddingNotificationService(IDbContextFactory<RegistryDbContext> factory, IServiceProvider services,
-        ILogger<BiddingNotificationService> logger)
+    public BiddingNotificationService(IServiceProvider services, ILogger<BiddingNotificationService> logger)
     {
-        _factory = factory;
         _services = services;
         _logger = logger;
     }
@@ -64,7 +61,13 @@ public sealed class BiddingNotificationService : BackgroundService
         var today = DateTime.Today;
         var tomorrow = today.AddDays(1);
 
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        // Фабрика БД, BitrixNotifier и UserManager — scoped, берём их из области видимости.
+        using var scope = _services.CreateScope();
+        var factory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<RegistryDbContext>>();
+        var bitrix = scope.ServiceProvider.GetRequiredService<BitrixNotifier>();
+        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+
+        await using var db = await factory.CreateDbContextAsync(ct);
 
         var upcoming = await db.Regedit.AsNoTracking()
             .Where(r => r.BiddingDate != null)
@@ -78,11 +81,6 @@ public sealed class BiddingNotificationService : BackgroundService
         {
             return;
         }
-
-        // BitrixNotifier и UserManager — scoped, поэтому берём их из области видимости.
-        using var scope = _services.CreateScope();
-        var bitrix = scope.ServiceProvider.GetRequiredService<BitrixNotifier>();
-        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
 
         var users = await userManager.GetUsersInRoleAsync(TenderHeadRole);
         var recipients = users
