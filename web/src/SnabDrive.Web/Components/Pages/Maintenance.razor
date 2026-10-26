@@ -22,6 +22,10 @@
     <button class="btn btn--danger" disabled="@_busy" @onclick='() => Clear("archive", "Архив")'>Очистить архив</button>
     <button class="btn btn--danger" disabled="@_busy" @onclick='() => Clear("kontur", "Контур — избранное")'>Очистить Контур (избранное)</button>
     <button class="btn btn--danger" disabled="@_busy" @onclick='() => Clear("templates", "Контур — ловушка")'>Очистить Контур (ловушка)</button>
+    <button class="btn btn--danger" disabled="@_busy" @onclick='() => Clear("attachments", "Вложения")'>Очистить вложения</button>
+    <button class="btn btn--danger" disabled="@_busy" @onclick='() => Clear("notifications", "Уведомления о торгах")'>Очистить уведомления о торгах</button>
+    <button class="btn btn--danger" disabled="@_busy" @onclick='() => Clear("dictionaries", "Справочники")'>Очистить справочники</button>
+    <button class="btn btn--danger" disabled="@_busy" @onclick='() => Clear("audit", "Журнал")'>Очистить журнал</button>
 </div>
 
 @code {
