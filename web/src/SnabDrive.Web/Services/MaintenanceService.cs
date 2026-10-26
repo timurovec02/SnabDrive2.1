@@ -83,11 +83,13 @@ public sealed class MaintenanceService : IMaintenanceService
                 label = "Уведомления о торгах";
                 break;
             case Dictionaries:
-                var b2b = await db.B2BStatuses.ExecuteDeleteAsync(cancellationToken);
-                var types = await db.TypesOfPurchase.ExecuteDeleteAsync(cancellationToken);
-                var exec = await db.ExecutionStatuses.ExecuteDeleteAsync(cancellationToken);
-                var colors = await db.CellColors.ExecuteDeleteAsync(cancellationToken);
-                count = b2b + types + exec + colors;
+                {
+                    var b2b = await db.B2BStatuses.ExecuteDeleteAsync(cancellationToken);
+                    var types = await db.TypesOfPurchase.ExecuteDeleteAsync(cancellationToken);
+                    var exec = await db.ExecutionStatuses.ExecuteDeleteAsync(cancellationToken);
+                    var colors = await db.CellColors.ExecuteDeleteAsync(cancellationToken);
+                    count = b2b + types + exec + colors;
+                }
                 label = "Справочники";
                 break;
             default:
