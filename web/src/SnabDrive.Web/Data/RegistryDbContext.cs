@@ -30,6 +30,7 @@ public class RegistryDbContext : DbContext
     public DbSet<RegistryWorkflowLog> RegistryWorkflowLogs => Set<RegistryWorkflowLog>();
     public DbSet<AttachmentFile> Attachments => Set<AttachmentFile>();
     public DbSet<BiddingNotification> BiddingNotifications => Set<BiddingNotification>();
+    public DbSet<Branch> Branches => Set<Branch>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -69,6 +70,11 @@ public class RegistryDbContext : DbContext
             entity.Property(x => x.IsFinished).HasColumnName("IsFinished");
             entity.Property(x => x.IsApproved).HasColumnName("IsApproved");
             entity.Property(x => x.IsCall).HasColumnName("IsCall");
+            entity.Property(x => x.IsByRequest).HasColumnName("IsByRequest");
+            entity.Property(x => x.ExpectedDeliveryDate).HasColumnName("ExpectedDeliveryDate");
+            entity.Property(x => x.BranchId).HasColumnName("BranchId");
+            entity.Property(x => x.BranchFilePath).HasColumnName("BranchFilePath").HasMaxLength(1000);
+            entity.Property(x => x.ReturnReason).HasColumnName("ReturnReason").HasMaxLength(2000);
 
             entity.HasOne(x => x.TypeOfPurchase)
                   .WithMany()
@@ -272,6 +278,15 @@ public class RegistryDbContext : DbContext
             entity.Property(x => x.NotifiedAtUtc).HasColumnName("NotifiedAtUtc");
             entity.Property(x => x.RecipientsCount).HasColumnName("RecipientsCount");
             entity.HasIndex(x => new { x.RegeditId, x.Kind }).IsUnique();
+        });
+
+        modelBuilder.Entity<Branch>(entity =>
+        {
+            entity.ToTable("Branches");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Name).HasColumnName("Name").HasMaxLength(300).IsRequired();
+            entity.Property(x => x.BitrixUserId).HasColumnName("BitrixUserId").HasMaxLength(100);
+            entity.Property(x => x.IsActive).HasColumnName("IsActive");
         });
     }
 }

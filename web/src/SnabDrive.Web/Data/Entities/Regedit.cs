@@ -48,6 +48,21 @@ public class Regedit
     /// <summary>Отметка «Звони» (иконка телефона) — подсветка мин. суммы на торгах.</summary>
     public bool IsCall { get; set; }
 
+    /// <summary>Отметка «По заявкам» (этап 1).</summary>
+    public bool IsByRequest { get; set; }
+
+    /// <summary>Ожидаемая дата доставки (этапы 5 и 7).</summary>
+    public DateTime? ExpectedDeliveryDate { get; set; }
+
+    /// <summary>Выбранный филиал (этап 7, справочник Branches); NULL — не выбран.</summary>
+    public int? BranchId { get; set; }
+
+    /// <summary>Отдельный файл для оповещения филиала (этап 7).</summary>
+    public string? BranchFilePath { get; set; }
+
+    /// <summary>Причина возврата (этап 9 -> «Возвраты»).</summary>
+    public string? ReturnReason { get; set; }
+
     // ---- Воркфлоу по стадиям (web): 1 = поиск/подготовка, 2 = участие, 3 = оформление, 4 = завершено; IsLost = проигран ----
     public int Stage { get; set; } = 1;
     public bool IsLost { get; set; }

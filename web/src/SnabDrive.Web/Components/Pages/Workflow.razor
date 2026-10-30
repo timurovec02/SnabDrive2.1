@@ -8,6 +8,7 @@
 @inject IWorkflowService WorkflowSvc
 @inject IRolePermissionService RolePerms
 @inject IDictionaryService DictSvc
+@inject IBranchService BranchSvc
 @inject AuthenticationStateProvider AuthStateProvider
 
 <h1 class="page-title">Задачи по закупкам</h1>
@@ -45,6 +46,14 @@
     <div class="toolbar-spacer"></div>
     <button class="btn" disabled="@_busy" @onclick="LoadAsync">Обновить</button>
 </div>
+
+@if (!_loading && _allowedStages.Contains(_stage))
+{
+    <div class="alert alert-info" style="margin:0 0 12px;font-size:16px;display:flex;align-items:center;gap:8px">
+        <span style="font-size:18px">📂</span>
+        <span>Открытая стадия: <strong>@WorkflowStages.Name(_stage)</strong></span>
+    </div>
+}
 
 @if (!_loading && _allowedStages.Count == 0)
 {
@@ -178,6 +187,16 @@ else
                                 </label>
                             </div>
                         }
+                        @if (_stage == 1)
+                        {
+                            <div class="wf-field">
+                                <label class="wf-label">По заявкам</label>
+                                <label style="display:flex;align-items:center;gap:8px;font-size:15px;font-weight:600">
+                                    <input type="checkbox" style="width:20px;height:20px" checked="@_edits[r.Id].IsByRequest" @onchange="ev => OnToggleByRequest(r.Id, ev)" />
+                                    <span>📋 По заявкам</span>
+                                </label>
+                            </div>
+                        }
                     </div>
                 }
                 @* ===== Этап 3 «Подача заявки на площадку»: те же поля, только чтение ===== *@
@@ -218,9 +237,102 @@ else
                                 <div class="wf-readonly">@r.MinPrice.ToString("N2")</div>
                             }
                         </div>
+                        <div class="wf-field">
+                            <label class="wf-label">Итог цена</label>
+                            <input type="number" class="wf-input" @bind="_edits[r.Id].ResultPrice" @bind:after="() => SaveAsync(r.Id)" />
+                        </div>
+                        <div class="wf-field">
+                            <label class="wf-label">Место на торгах</label>
+                            <input class="wf-input" @bind="_edits[r.Id].Place" @bind:after="() => SaveAsync(r.Id)" />
+                        </div>
                     </div>
                 }
-                @* ===== Остальные этапы (5–10): прежняя форма ===== *@
+                @* ===== Этап 5 «Перемещение товара» ===== *@
+                else if (_stage == 5)
+                {
+                    <div class="wf-grid">
+                        <div class="wf-field">
+                            <label class="wf-label">Заказчик</label>
+                            <textarea class="wf-area" @bind="_edits[r.Id].Customer" @bind:after="() => SaveAsync(r.Id)"></textarea>
+                        </div>
+                        <div class="wf-field">
+                            <label class="wf-label">Тип закупки</label>
+                            <select class="wf-input" @bind="_edits[r.Id].TypeOfPurchaseId" @bind:after="() => SaveAsync(r.Id)">
+                                <option value="">— не выбран —</option>
+                                @foreach (var t in _types)
+                                {
+                                    <option value="@t.Id">@t.Name</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="wf-field">
+                            <label class="wf-label">Место поставки</label>
+                            <textarea class="wf-area" @bind="_edits[r.Id].PlaceOfDelivery" @bind:after="() => SaveAsync(r.Id)"></textarea>
+                        </div>
+                        <div class="wf-field">
+                            <label class="wf-label">Статус резерва B2B</label>
+                            <select class="wf-input" @bind="_edits[r.Id].B2BStatusId" @bind:after="() => SaveAsync(r.Id)">
+                                <option value="">— не выбран —</option>
+                                @foreach (var b in _b2b)
+                                {
+                                    <option value="@b.Id">@b.Name</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="wf-field">
+                            <label class="wf-label">Нац режим</label>
+                            <input class="wf-input" @bind="_edits[r.Id].NationalMode" @bind:after="() => SaveAsync(r.Id)" />
+                        </div>
+                        <div class="wf-field">
+                            <label class="wf-label">Ожидаемая дата доставки</label>
+                            <input type="date" class="wf-input" @bind="_edits[r.Id].ExpectedDeliveryDate" @bind:format="yyyy-MM-dd" @bind:after="() => SaveAsync(r.Id)" />
+                        </div>
+                        <div class="wf-field">
+                            <label class="wf-label">Примечания</label>
+                            <textarea class="wf-area" @bind="_edits[r.Id].Note" @bind:after="() => SaveAsync(r.Id)"></textarea>
+                        </div>
+                    </div>
+                }
+                @* ===== Этап 7 «Логистические документы»: дата доставки, файл, филиал, оповещение ===== *@
+                else if (_stage == 7)
+                {
+                    <div class="wf-grid">
+                        <div class="wf-field">
+                            <label class="wf-label">Ожидаемая дата доставки</label>
+                            <input type="date" class="wf-input" @bind="_edits[r.Id].ExpectedDeliveryDate" @bind:format="yyyy-MM-dd" @bind:after="() => SaveAsync(r.Id)" />
+                        </div>
+                        <div class="wf-field">
+                            <label class="wf-label">Филиал</label>
+                            <select class="wf-input" @bind="_edits[r.Id].BranchId" @bind:after="() => SaveAsync(r.Id)">
+                                <option value="">— не выбран —</option>
+                                @foreach (var br in _branches)
+                                {
+                                    <option value="@br.Id">@br.Name</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="wf-field">
+                            <label class="wf-label">Файл для оповещения</label>
+                            @if (!string.IsNullOrWhiteSpace(r.BranchFilePath))
+                            {
+                                <div style="margin-bottom:4px">
+                                    <a href="@r.BranchFilePath" target="_blank" rel="noopener">@System.IO.Path.GetFileName(r.BranchFilePath)</a>
+                                </div>
+                            }
+                            <InputFile OnChange="ev => OnBranchFileAsync(ev, r.Id)" class="form-control" />
+                        </div>
+                    </div>
+                    <div style="margin-top:10px">
+                        <button class="btn btn-primary" disabled="@(_edits[r.Id].BranchId is null)" @onclick="() => NotifyBranch(r.Id)">
+                            📨 Оповестить филиал и перейти далее
+                        </button>
+                        @if (_edits[r.Id].BranchId is null)
+                        {
+                            <span class="muted" style="margin-left:8px;font-size:12px">Выберите филиал, чтобы отправить оповещение</span>
+                        }
+                    </div>
+                }
+                @* ===== Остальные этапы (6, 8, 9, 10): прежняя форма ===== *@
                 else
                 {
                     <div class="wf-grid">
@@ -235,6 +347,11 @@ else
                         <div class="wf-field"><label class="wf-label">Победитель</label><input class="wf-input" @bind="_edits[r.Id].Winner" @bind:after="() => SaveAsync(r.Id)" /></div>
                         <div class="wf-field"><label class="wf-label">Примечание</label><textarea class="wf-area" @bind="_edits[r.Id].Note" @bind:after="() => SaveAsync(r.Id)"></textarea></div>
                     </div>
+                }
+
+                @if (_stage == 13 && !string.IsNullOrWhiteSpace(r.ReturnReason))
+                {
+                    <div class="alert alert-error" style="margin-top:10px">↩ Причина возврата: @r.ReturnReason</div>
                 }
 
                 <div class="toolbar" style="margin-top:10px;flex-wrap:wrap;gap:6px;align-items:center">
@@ -269,10 +386,7 @@ else
                     {
                         <button class="btn" @onclick="() => Advance(r.Id, 8)">→ Логистика</button>
                     }
-                    else if (_stage == 7)
-                    {
-                        <button class="btn" @onclick="() => Advance(r.Id, 9)">→ Ожидание доставки</button>
-                    }
+                    @* Этап 7 переводится далее кнопкой «Оповестить филиал» (в блоке полей). *@
                     else if (_stage == 8)
                     {
                         <button class="btn" @onclick="() => Advance(r.Id, 10)">→ Приемка</button>
@@ -280,6 +394,7 @@ else
                     else if (_stage == 9)
                     {
                         <button class="btn" @onclick="() => Advance(r.Id, 11)">→ Оплата</button>
+                        <button class="btn btn--danger" @onclick="() => OpenReturn(r.Id)">↩ Возврат</button>
                     }
                     else if (_stage == 10)
                     {
@@ -291,11 +406,32 @@ else
     }
 }
 
+@* ===== Модальное окно «Возврат» (этап 9) ===== *@
+@if (_returnFor is not null)
+{
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:1000" @onclick="CloseReturn">
+        <div style="background:#fff;border-radius:8px;max-width:480px;width:92%;box-shadow:0 10px 40px rgba(0,0,0,.3)" @onclick:stopPropagation="true">
+            <div style="padding:16px 20px;border-bottom:1px solid #eee;font-size:18px;font-weight:800">Возврат закупки</div>
+            <div style="padding:16px 20px">
+                <label class="wf-label" style="display:block;margin-bottom:6px">Причина возврата</label>
+                <textarea class="wf-area" style="min-height:90px" @bind="_returnReason"></textarea>
+            </div>
+            <div style="padding:12px 20px;border-top:1px solid #eee;display:flex;justify-content:flex-end;gap:8px">
+                <button class="btn" @onclick="CloseReturn">Отмена</button>
+                <button class="btn btn--danger" @onclick="SubmitReturn">Оформить возврат</button>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private List<WorkflowRow> _rows = new();
     private readonly Dictionary<int, WorkflowEdit> _edits = new();
     private IReadOnlyList<DictionaryItemDto> _types = Array.Empty<DictionaryItemDto>();
     private IReadOnlyList<DictionaryItemDto> _b2b = Array.Empty<DictionaryItemDto>();
+    private IReadOnlyList<BranchDto> _branches = Array.Empty<BranchDto>();
+    private int? _returnFor;                 // Id закупки, для которой открыто окно «Возврат»
+    private string _returnReason = string.Empty;
     private bool _busy;
     private bool _loading = true;
     private int _stage = 1;
@@ -322,6 +458,7 @@ else
             // Словари для выпадающих списков «Тип закупки» и «Статус резерва B2B».
             _types = await DictSvc.GetTypesOfPurchaseAsync();
             _b2b = await DictSvc.GetB2BStatusesAsync();
+            _branches = await BranchSvc.GetActiveAsync();
 
             // Всплывающее уведомление о предстоящих торгах — для роли «Руководитель тендерного отдела».
             _isTenderHead = state.User.IsInRole("TenderHead");
@@ -374,7 +511,10 @@ else
                     BiddingDate = r.BiddingDate,
                     MinPrice = r.MinPrice,
                     DeliveryTime = r.DeliveryTime,
-                    IsCall = r.IsCall
+                    IsCall = r.IsCall,
+                    IsByRequest = r.IsByRequest,
+                    ExpectedDeliveryDate = r.ExpectedDeliveryDate,
+                    BranchId = r.BranchId
                 };
             }
         }
@@ -408,6 +548,52 @@ else
     {
         _edits[id].IsCall = ev.Value is bool b && b;
         await SaveAsync(id);
+    }
+
+    // Флажок «По заявкам» (этап 1).
+    private async Task OnToggleByRequest(int id, ChangeEventArgs ev)
+    {
+        _edits[id].IsByRequest = ev.Value is bool b && b;
+        await SaveAsync(id);
+    }
+
+    // Этап 7: сохранить отдельный файл для оповещения филиала.
+    private async Task OnBranchFileAsync(InputFileChangeEventArgs ev, int id)
+    {
+        _error = null;
+        try
+        {
+            var file = ev.File;
+            await using var stream = file.OpenReadStream(20 * 1024 * 1024);
+            var result = await WorkflowSvc.SaveBranchFileAsync(id, file.Name, stream);
+            if (!result.Success) { _error = result.Error; }
+            await LoadAsync();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    // Этап 7: оповестить филиал в Битрикс24 и перевести на следующий этап.
+    private async Task NotifyBranch(int id)
+    {
+        _error = null;
+        var result = await WorkflowSvc.NotifyBranchAsync(id, _actor);
+        if (!result.Success) { _error = result.Error; return; }
+        await LoadAsync();
+    }
+
+    // Этап 9: окно «Возврат» с причиной.
+    private void OpenReturn(int id) { _returnFor = id; _returnReason = string.Empty; }
+
+    private void CloseReturn() { _returnFor = null; _returnReason = string.Empty; }
+
+    private async Task SubmitReturn()
+    {
+        if (_returnFor is null) { return; }
+        _error = null;
+        var result = await WorkflowSvc.ReturnAsync(_returnFor.Value, _returnReason, _actor);
+        if (!result.Success) { _error = result.Error; return; }
+        CloseReturn();
+        await LoadAsync();
     }
 
     private async Task DeleteAttachment(int id, string path)

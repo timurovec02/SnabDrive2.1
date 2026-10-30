@@ -25,7 +25,8 @@ public static class WorkflowStages
         (9, "9. Приемка заказчиком"),
         (10, "10. Оплата заказчиком"),
         (11, "Завершена"),
-        (0, "Проиграна")
+        (0, "Проиграна"),
+        (13, "Возвраты")
     };
 
     public static string Name(int id) => All.FirstOrDefault(x => x.Id == id).Name ?? "—";
@@ -57,7 +58,12 @@ public sealed record WorkflowRow(
     string DeliveryTime,
     bool IsApproved,
     bool IsCall,
-    string PurchaseNumber);
+    string PurchaseNumber,
+    bool IsByRequest,
+    DateTime? ExpectedDeliveryDate,
+    int? BranchId,
+    string? BranchFilePath,
+    string? ReturnReason);
 
 /// <summary>Модель редактирования строки воркфлоу.</summary>
 public sealed class WorkflowEdit
@@ -83,6 +89,15 @@ public sealed class WorkflowEdit
 
     /// <summary>Флажок «Звони» (стадия 2 — Согласование).</summary>
     public bool IsCall { get; set; }
+
+    /// <summary>Флажок «По заявкам» (стадия 1).</summary>
+    public bool IsByRequest { get; set; }
+
+    /// <summary>Ожидаемая дата доставки (этапы 5/7).</summary>
+    public DateTime? ExpectedDeliveryDate { get; set; }
+
+    /// <summary>Выбранный филиал (этап 7).</summary>
+    public int? BranchId { get; set; }
 }
 
 public interface IWorkflowService
@@ -98,6 +113,15 @@ public interface IWorkflowService
     Task<Result<string>> SaveAttachmentAsync(int regeditId, string fileName, Stream content, CancellationToken cancellationToken = default);
 
     Task<Result> DeleteAttachmentAsync(int regeditId, string attachmentPath, CancellationToken cancellationToken = default);
+
+    /// <summary>Этап 7: сохранить отдельный файл для оповещения филиала.</summary>
+    Task<Result<string>> SaveBranchFileAsync(int regeditId, string fileName, Stream content, CancellationToken cancellationToken = default);
+
+    /// <summary>Этап 7: оповестить выбранный филиал в Битрикс24 (со ссылкой на файл) и перевести на следующий этап.</summary>
+    Task<Result> NotifyBranchAsync(int regeditId, ChangeActor actor, CancellationToken cancellationToken = default);
+
+    /// <summary>Этап 9: оформить возврат с причиной — переводит закупку на стадию «Возвраты».</summary>
+    Task<Result> ReturnAsync(int regeditId, string reason, ChangeActor actor, CancellationToken cancellationToken = default);
 
     /// <summary>Количество закупок с торгами завтра и сегодня (для всплывающего уведомления).</summary>
     Task<(int Tomorrow, int Today)> GetUpcomingBiddingCountsAsync(CancellationToken cancellationToken = default);
@@ -153,7 +177,8 @@ public sealed class WorkflowService : IWorkflowService
                 r.Attachments, r.Stage, r.IsLost,
                 r.TypeOfPurchaseId, r.TypeOfPurchase != null ? r.TypeOfPurchase.NameOfPurchase : null,
                 r.B2BStatusId, r.B2BStatus != null ? r.B2BStatus.NameB2B : null,
-                r.NationalMode, r.MinPrice, r.DeliveryTime, r.IsApproved, r.IsCall, r.PurchaseNumber))
+                r.NationalMode, r.MinPrice, r.DeliveryTime, r.IsApproved, r.IsCall, r.PurchaseNumber,
+                r.IsByRequest, r.ExpectedDeliveryDate, r.BranchId, r.BranchFilePath, r.ReturnReason))
             .ToListAsync(cancellationToken);
     }
 
@@ -186,6 +211,9 @@ public sealed class WorkflowService : IWorkflowService
         item.MinPrice = edit.MinPrice;
         item.DeliveryTime = edit.DeliveryTime;
         item.IsCall = edit.IsCall;
+        item.IsByRequest = edit.IsByRequest;
+        item.ExpectedDeliveryDate = edit.ExpectedDeliveryDate;
+        item.BranchId = edit.BranchId;
 
         await context.SaveChangesAsync(cancellationToken);
         return Result.Ok();
@@ -238,6 +266,118 @@ public sealed class WorkflowService : IWorkflowService
         await NotifyStageOwnersAsync(tr.To, item, cancellationToken);
 
         _logger.LogInformation("Воркфлоу: закупка {Id} {From}->{To} ({User})", regeditId, from, tr.To, actor.UserName);
+        return Result.Ok();
+    }
+
+    public async Task<Result<string>> SaveBranchFileAsync(int regeditId, string fileName, Stream content, CancellationToken cancellationToken = default)
+    {
+        await using var context = await _factory.CreateDbContextAsync(cancellationToken);
+        var item = await context.Regedit.FirstOrDefaultAsync(r => r.Id == regeditId, cancellationToken);
+        if (item is null)
+        {
+            return Result<string>.Fail("Запись не найдена.");
+        }
+
+        var safeName = Path.GetFileName(fileName);
+        using var ms = new MemoryStream();
+        await content.CopyToAsync(ms, cancellationToken);
+        var bytes = ms.ToArray();
+
+        var file = new AttachmentFile
+        {
+            RegeditId = regeditId,
+            FileName = safeName,
+            ContentType = ContentTypeFromName(safeName),
+            SizeBytes = bytes.Length,
+            Content = bytes,
+            UploadedAtUtc = DateTime.UtcNow
+        };
+        context.Attachments.Add(file);
+        await context.SaveChangesAsync(cancellationToken); // получаем file.Id
+
+        item.BranchFilePath = $"/attachments/{file.Id}/{safeName}";
+        await context.SaveChangesAsync(cancellationToken);
+        return Result<string>.Ok(item.BranchFilePath);
+    }
+
+    public async Task<Result> NotifyBranchAsync(int regeditId, ChangeActor actor, CancellationToken cancellationToken = default)
+    {
+        await using var context = await _factory.CreateDbContextAsync(cancellationToken);
+        var item = await context.Regedit.FirstOrDefaultAsync(r => r.Id == regeditId, cancellationToken);
+        if (item is null)
+        {
+            return Result.Fail("Запись не найдена.");
+        }
+
+        if (item.BranchId is null)
+        {
+            return Result.Fail("Выберите филиал для оповещения.");
+        }
+
+        var branch = await context.Branches.FirstOrDefaultAsync(b => b.Id == item.BranchId, cancellationToken);
+        var branchName = branch?.Name ?? "Филиал";
+        var fileLink = string.IsNullOrWhiteSpace(item.BranchFilePath) ? "(файл не прикреплён)" : item.BranchFilePath;
+
+        var title = $"Оповещение филиала: {branchName}";
+        var body =
+            $"{item.NameLink}\n" +
+            $"Заказчик: {item.Customer}\n" +
+            $"Филиал: {branchName}\n" +
+            $"Ожидаемая дата доставки: {item.ExpectedDeliveryDate:dd.MM.yyyy}\n" +
+            $"Файл: {fileLink}\n" +
+            $"Запись #{item.Id}";
+
+        // Уведомление в Битрикс24: получателю филиала, иначе — общая рассылка (toUserId = null).
+        await _bitrix.NotifyAsync(title, body, cancellationToken, branch?.BitrixUserId);
+
+        // Перевод на следующий этап: 7 «Логистические документы» -> 8 «Ожидание доставки».
+        var from = item.Stage;
+        item.Stage = 8;
+        context.RegistryWorkflowLogs.Add(new RegistryWorkflowLog
+        {
+            RegeditId = regeditId,
+            FromStage = from,
+            ToStage = 8,
+            Action = "Оповещён филиал " + branchName,
+            ByUser = actor.UserName,
+            AtUtc = DateTime.UtcNow
+        });
+        await context.SaveChangesAsync(cancellationToken);
+
+        _logger.LogInformation("Воркфлоу: оповещён филиал {Branch} по закупке {Id} ({User})", branchName, regeditId, actor.UserName);
+        return Result.Ok();
+    }
+
+    public async Task<Result> ReturnAsync(int regeditId, string reason, ChangeActor actor, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            return Result.Fail("Укажите причину возврата.");
+        }
+
+        await using var context = await _factory.CreateDbContextAsync(cancellationToken);
+        var item = await context.Regedit.FirstOrDefaultAsync(r => r.Id == regeditId, cancellationToken);
+        if (item is null)
+        {
+            return Result.Fail("Запись не найдена.");
+        }
+
+        var from = item.Stage;
+        item.Stage = 13;            // «Возвраты»
+        item.ReturnReason = reason.Trim();
+
+        context.RegistryWorkflowLogs.Add(new RegistryWorkflowLog
+        {
+            RegeditId = regeditId,
+            FromStage = from,
+            ToStage = 13,
+            Action = "Возврат: " + reason.Trim(),
+            ByUser = actor.UserName,
+            AtUtc = DateTime.UtcNow
+        });
+        await context.SaveChangesAsync(cancellationToken);
+
+        _logger.LogInformation("Воркфлоу: возврат закупки {Id} ({User}): {Reason}", regeditId, actor.UserName, reason);
         return Result.Ok();
     }
 

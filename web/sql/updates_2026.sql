@@ -92,3 +92,38 @@ IF COL_LENGTH('dbo.ArchiveRegistryItems', 'PurchaseNumber') IS NULL
     ALTER TABLE dbo.ArchiveRegistryItems ADD PurchaseNumber NVARCHAR(200) NOT NULL
         CONSTRAINT DF_ArchiveRegistryItems_PurchaseNumber DEFAULT('');
 GO
+
+-- ============================================================================
+-- 2026-10: новые поля воркфлоу в реестре.
+--   IsByRequest «По заявкам» (этап 1), ExpectedDeliveryDate «Ожидаемая дата
+--   доставки» (этапы 5/7), BranchId «Филиал» (этап 7), BranchFilePath «Файл
+--   оповещения филиала» (этап 7), ReturnReason «Причина возврата» (этап 9).
+-- ============================================================================
+IF COL_LENGTH('dbo.RegistryItems', 'IsByRequest') IS NULL
+    ALTER TABLE dbo.RegistryItems ADD IsByRequest BIT NOT NULL CONSTRAINT DF_RegistryItems_IsByRequest DEFAULT(0);
+IF COL_LENGTH('dbo.RegistryItems', 'ExpectedDeliveryDate') IS NULL
+    ALTER TABLE dbo.RegistryItems ADD ExpectedDeliveryDate DATETIME2(3) NULL;
+IF COL_LENGTH('dbo.RegistryItems', 'BranchId') IS NULL
+    ALTER TABLE dbo.RegistryItems ADD BranchId INT NULL;
+IF COL_LENGTH('dbo.RegistryItems', 'BranchFilePath') IS NULL
+    ALTER TABLE dbo.RegistryItems ADD BranchFilePath NVARCHAR(1000) NULL;
+IF COL_LENGTH('dbo.RegistryItems', 'ReturnReason') IS NULL
+    ALTER TABLE dbo.RegistryItems ADD ReturnReason NVARCHAR(2000) NULL;
+GO
+
+-- ============================================================================
+-- 2026-10: справочник «Филиалы» (для оповещения на этапе 7).
+-- ============================================================================
+IF OBJECT_ID('dbo.Branches', 'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.Branches
+    (
+        Id          INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_Branches PRIMARY KEY,
+        Name        NVARCHAR(300)  NOT NULL,
+        BitrixUserId NVARCHAR(100) NULL,
+        IsActive    BIT NOT NULL CONSTRAINT DF_Branches_IsActive DEFAULT(1)
+    );
+    -- Примеры филиалов (замените на реальные):
+    INSERT INTO dbo.Branches (Name) VALUES (N'Филиал 1'), (N'Филиал 2'), (N'Филиал 3');
+END
+GO

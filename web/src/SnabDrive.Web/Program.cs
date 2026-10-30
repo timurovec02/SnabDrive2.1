@@ -140,6 +140,7 @@ builder.Services.Configure<BitrixOptions>(builder.Configuration.GetSection("Bitr
 builder.Services.AddScoped<BitrixNotifier>();
 builder.Services.AddScoped<IWorkflowService, WorkflowService>();
 builder.Services.AddScoped<IDictionaryService, DictionaryService>();
+builder.Services.AddScoped<IBranchService, BranchService>();
 builder.Services.AddScoped<IColumnAccessService, ColumnAccessService>();
 builder.Services.AddScoped<IRolePermissionService, RolePermissionService>();
 builder.Services.AddScoped<IMaintenanceService, MaintenanceService>();
