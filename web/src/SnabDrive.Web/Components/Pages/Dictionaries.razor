@@ -1,6 +1,7 @@
 @page "/dictionaries"
 @attribute [Authorize(Policy = AppPolicies.ManageSystem)]
 @inject IDictionaryService DictService
+@inject IBranchService BranchSvc
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IRegistryEventBus EventBus
 @inject IToastService Toasts
@@ -34,6 +35,11 @@
                            OnCreate="@(() => StartCreate(DictKind.Execution))"
                            OnEdit="@(item => StartEdit(DictKind.Execution, item))"
                            OnDelete="@(item => AskDelete(DictKind.Execution, item))" />
+
+        <DictionarySection Title="Филиалы" Items="@_branches"
+                           OnCreate="@(() => StartCreate(DictKind.Branch))"
+                           OnEdit="@(item => StartEdit(DictKind.Branch, item))"
+                           OnDelete="@(item => AskDelete(DictKind.Branch, item))" />
     </div>
 </div>
 
@@ -82,11 +88,12 @@
 }
 
 @code {
-    private enum DictKind { TypeOfPurchase, B2B, Execution }
+    private enum DictKind { TypeOfPurchase, B2B, Execution, Branch }
 
     private List<DictionaryItemDto> _typesOfPurchase = new();
     private List<DictionaryItemDto> _b2bStatuses = new();
     private List<DictionaryItemDto> _executionStatuses = new();
+    private List<DictionaryItemDto> _branches = new();
 
     private bool _showForm;
     private bool _busy;
@@ -127,6 +134,9 @@
         _typesOfPurchase = (await DictService.GetTypesOfPurchaseAsync()).ToList();
         _b2bStatuses = (await DictService.GetB2BStatusesAsync()).ToList();
         _executionStatuses = (await DictService.GetExecutionStatusesAsync()).ToList();
+        _branches = (await BranchSvc.GetActiveAsync())
+            .Select(b => new DictionaryItemDto(b.Id, b.Name, null))
+            .ToList();
     }
 
     private void StartCreate(DictKind kind)
@@ -173,6 +183,7 @@
     {
         DictKind.TypeOfPurchase => "Тип закупки",
         DictKind.B2B => "Статус B2B",
+        DictKind.Branch => "Филиал",
         _ => "Статус исполнения"
     };
 
@@ -197,9 +208,12 @@
                 DictKind.B2B => _formId is null
                     ? await DictService.CreateB2BStatusAsync(_formName, _actor)
                     : await DictService.UpdateB2BStatusAsync(_formId.Value, _formName, _actor),
-                _ => _formId is null
+                DictKind.Execution => _formId is null
                     ? await DictService.CreateExecutionStatusAsync(_formName, _actor)
-                    : await DictService.UpdateExecutionStatusAsync(_formId.Value, _formName, _actor)
+                    : await DictService.UpdateExecutionStatusAsync(_formId.Value, _formName, _actor),
+                _ => _formId is null
+                    ? await BranchSvc.CreateAsync(_formName)
+                    : await BranchSvc.UpdateAsync(_formId.Value, _formName)
             };
 
             if (result.Success)
@@ -238,7 +252,8 @@
                     {
                         DictKind.TypeOfPurchase => await DictService.DeleteTypeOfPurchaseAsync(item.Id, _actor),
                         DictKind.B2B => await DictService.DeleteB2BStatusAsync(item.Id, _actor),
-                        _ => await DictService.DeleteExecutionStatusAsync(item.Id, _actor)
+                        DictKind.Execution => await DictService.DeleteExecutionStatusAsync(item.Id, _actor),
+                        _ => await BranchSvc.DeleteAsync(item.Id)
                     };
 
                     Toasts.Show(result.Success ? "Удалено" : result.Error ?? "Ошибка",

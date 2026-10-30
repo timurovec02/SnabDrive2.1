@@ -161,6 +161,17 @@ a:hover {
     margin: 8px 4px;
 }
 
+/* Заголовок группы в меню (например, «Администрирование») */
+.nav__group-title {
+    padding: 6px 12px 2px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .6px;
+    text-transform: uppercase;
+    color: var(--muted, #8a8f98);
+    opacity: .8;
+}
+
 .nav__footer {
     margin-top: auto;
     padding: 8px 10px;
@@ -1106,6 +1117,7 @@ input:disabled {
 }
 
 .app-shell.nav-collapsed .nav__item .nav__label,
+.app-shell.nav-collapsed .nav__group-title,
 .app-shell.nav-collapsed .nav__footer {
     display: none;
 }

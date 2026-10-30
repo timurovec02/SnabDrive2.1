@@ -47,7 +47,11 @@
         </NavLink>
     }
 
-    <div class="nav__divider"></div>
+    @if (Feat(AppFeatures.Dictionaries) || Feat(AppFeatures.Users) || Feat(AppFeatures.Audit))
+    {
+        <div class="nav__divider"></div>
+        <div class="nav__group-title" title="Раздел администратора">Администрирование</div>
+    }
 
     @if (Feat(AppFeatures.Dictionaries))
     {
