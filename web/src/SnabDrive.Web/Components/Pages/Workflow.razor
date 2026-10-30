@@ -156,8 +156,8 @@ else
                         {
                             <div class="wf-field">
                                 <label class="wf-label">Звони</label>
-                                <label style="display:flex;align-items:center;gap:6px;font-size:14px">
-                                    <input type="checkbox" style="width:18px;height:18px" @bind="_edits[r.Id].IsCall" @bind:after="() => SaveAsync(r.Id)" />
+                                <label style="display:flex;align-items:center;gap:8px;font-size:15px;font-weight:600">
+                                    <input type="checkbox" style="width:20px;height:20px" checked="@_edits[r.Id].IsCall" @onchange="ev => OnToggleCall(r.Id, ev)" />
                                     <span>📞 Звони</span>
                                 </label>
                             </div>
@@ -196,10 +196,14 @@ else
                         </div>
                         <div class="wf-field">
                             <label class="wf-label">Наша минимальная сумма</label>
-                            <div class="wf-readonly @(r.IsCall ? "wf-call" : "")">@r.MinPrice.ToString("N2")</div>
                             @if (r.IsCall)
                             {
-                                <span class="wf-call-badge">📞 Звони</span>
+                                <div class="wf-readonly" style="border:2px solid #d97706;background:#fff7ed;color:#92400e;font-weight:800;font-size:17px">@r.MinPrice.ToString("N2")</div>
+                                <span style="display:inline-flex;align-items:center;gap:6px;margin-top:4px;font-size:15px;font-weight:800;color:#b45309">📞 Звони</span>
+                            }
+                            else
+                            {
+                                <div class="wf-readonly">@r.MinPrice.ToString("N2")</div>
                             }
                         </div>
                     </div>
@@ -385,6 +389,13 @@ else
         _error = null;
         var result = await WorkflowSvc.UpdateAsync(id, _edits[id]);
         if (!result.Success) { _error = result.Error; }
+    }
+
+    // Флажок «Звони» (этап Согласование): явное сохранение, чтобы отметка точно попала в БД.
+    private async Task OnToggleCall(int id, ChangeEventArgs ev)
+    {
+        _edits[id].IsCall = ev.Value is bool b && b;
+        await SaveAsync(id);
     }
 
     private async Task DeleteAttachment(int id, string path)
