@@ -15,15 +15,15 @@ public static class WorkflowStages
     {
         (1, "1. Контур и подготовка"),
         (2, "1.2 Резерв: дозаполнение"),
-        (12, "1.5 Согласование"),
-        (3, "2. Подача заявки на площадку"),
-        (4, "3. Торги"),
-        (5, "4. Перемещение товара"),
-        (6, "5. Контракт подписан"),
-        (7, "6. Логистические документы"),
-        (8, "7. Ожидание доставки"),
-        (9, "8. Приемка заказчиком"),
-        (10, "9. Оплата заказчиком"),
+        (12, "2. Согласование"),
+        (3, "3. Подача заявки на площадку"),
+        (4, "4. Торги"),
+        (5, "5. Перемещение товара"),
+        (6, "6. Контракт подписан"),
+        (7, "7. Логистические документы"),
+        (8, "8. Ожидание доставки"),
+        (9, "9. Приемка заказчиком"),
+        (10, "10. Оплата заказчиком"),
         (11, "Завершена"),
         (0, "Проиграна")
     };
@@ -47,7 +47,16 @@ public sealed record WorkflowRow(
     string Note,
     string? Attachments,
     int Stage,
-    bool IsLost);
+    bool IsLost,
+    int? TypeOfPurchaseId,
+    string? TypeOfPurchaseName,
+    int? B2BStatusId,
+    string? B2BStatusName,
+    string NationalMode,
+    decimal MinPrice,
+    string DeliveryTime,
+    bool IsApproved,
+    bool IsCall);
 
 /// <summary>Модель редактирования строки воркфлоу.</summary>
 public sealed class WorkflowEdit
@@ -62,6 +71,17 @@ public sealed class WorkflowEdit
     public string Winner { get; set; } = string.Empty;
     public string Note { get; set; } = string.Empty;
     public string Attachments { get; set; } = string.Empty;
+
+    // Поля, доступные на стадиях 1 / 1.2 / 2 (Согласование):
+    public int? TypeOfPurchaseId { get; set; }
+    public int? B2BStatusId { get; set; }
+    public string NationalMode { get; set; } = string.Empty;
+    public DateTime? BiddingDate { get; set; }
+    public decimal MinPrice { get; set; }
+    public string DeliveryTime { get; set; } = string.Empty;
+
+    /// <summary>Флажок «Звони» (стадия 2 — Согласование).</summary>
+    public bool IsCall { get; set; }
 }
 
 public interface IWorkflowService
@@ -129,7 +149,10 @@ public sealed class WorkflowService : IWorkflowService
             .OrderBy(r => r.Stage).ThenByDescending(r => r.Id)
             .Select(r => new WorkflowRow(r.Id, r.NameLink, r.EisLink, r.Customer, r.NMCK, r.BiddingDate,
                 r.ReserveNumber, r.Place, r.PlaceOfDelivery, r.ResultPrice, r.Winner, r.Note,
-                r.Attachments, r.Stage, r.IsLost))
+                r.Attachments, r.Stage, r.IsLost,
+                r.TypeOfPurchaseId, r.TypeOfPurchase != null ? r.TypeOfPurchase.NameOfPurchase : null,
+                r.B2BStatusId, r.B2BStatus != null ? r.B2BStatus.NameB2B : null,
+                r.NationalMode, r.MinPrice, r.DeliveryTime, r.IsApproved, r.IsCall))
             .ToListAsync(cancellationToken);
     }
 
@@ -153,6 +176,16 @@ public sealed class WorkflowService : IWorkflowService
         item.Note = edit.Note;
         item.Attachments = edit.Attachments;
 
+        // Поля стадий 1 / 1.2 / 2 (Согласование). На более поздних стадиях они
+        // приходят неизменёнными (форма инициализирует их текущими значениями).
+        item.TypeOfPurchaseId = edit.TypeOfPurchaseId;
+        item.B2BStatusId = edit.B2BStatusId;
+        item.NationalMode = edit.NationalMode;
+        item.BiddingDate = edit.BiddingDate;
+        item.MinPrice = edit.MinPrice;
+        item.DeliveryTime = edit.DeliveryTime;
+        item.IsCall = edit.IsCall;
+
         await context.SaveChangesAsync(cancellationToken);
         return Result.Ok();
     }
@@ -172,6 +205,20 @@ public sealed class WorkflowService : IWorkflowService
         }
 
         var from = item.Stage;
+
+        // Авто-даты при завершении этапа (дата + время):
+        //  1 «Контур и подготовка»      -> «Дата передачи на размещение»;
+        //  3 «Подача заявки на площадку» -> «Дата размещения на площадке».
+        var now = DateTime.Now;
+        if (from == 1)
+        {
+            item.DateOfTransferForPlacement = now;
+        }
+        if (from == 3)
+        {
+            item.DateOfPlacement = now;
+        }
+
         item.Stage = tr.To;
         item.IsLost = tr.Lost;
 

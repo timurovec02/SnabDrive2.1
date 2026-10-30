@@ -1,4 +1,5 @@
 @page "/workflow"
+@using System.Globalization
 @using System.Linq
 @using System.Security.Claims
 @using SnabDrive.Web.Domain
@@ -6,6 +7,7 @@
 @attribute [Authorize]
 @inject IWorkflowService WorkflowSvc
 @inject IRolePermissionService RolePerms
+@inject IDictionaryService DictSvc
 @inject AuthenticationStateProvider AuthStateProvider
 
 <h1 class="page-title">Задачи по закупкам</h1>
@@ -70,20 +72,9 @@ else
                         <span style="font-size:18px;line-height:1">🔗</span> ЕИС
                     </a>
                 }
-                <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px">
-                    <div><label style="display:block;font-size:12px;color:#666;margin-bottom:2px">Наименование</label><input class="input" style="width:100%;box-sizing:border-box" @bind="_edits[r.Id].NameLink" @bind:after="() => SaveAsync(r.Id)" /></div>
-                    <div><label style="display:block;font-size:12px;color:#666;margin-bottom:2px">Заказчик</label><input class="input" style="width:100%;box-sizing:border-box" @bind="_edits[r.Id].Customer" @bind:after="() => SaveAsync(r.Id)" /></div>
-                    <div><label style="display:block;font-size:12px;color:#666;margin-bottom:2px">НМЦК</label><input type="number" class="input" style="width:100%;box-sizing:border-box" @bind="_edits[r.Id].NMCK" @bind:after="() => SaveAsync(r.Id)" /></div>
-                    <div><label style="display:block;font-size:12px;color:#666;margin-bottom:2px">Дата торгов</label><input class="input" style="width:100%;box-sizing:border-box" value="@Fmt(r.BiddingDate)" disabled /></div>
-                    <div><label style="display:block;font-size:12px;color:#666;margin-bottom:2px">Резерв 1С</label><input class="input" style="width:100%;box-sizing:border-box" @bind="_edits[r.Id].ReserveNumber" @bind:after="() => SaveAsync(r.Id)" /></div>
-                    <div><label style="display:block;font-size:12px;color:#666;margin-bottom:2px">Место на торгах</label><input class="input" style="width:100%;box-sizing:border-box" @bind="_edits[r.Id].Place" @bind:after="() => SaveAsync(r.Id)" /></div>
-                    <div><label style="display:block;font-size:12px;color:#666;margin-bottom:2px">Место поставки</label><input class="input" style="width:100%;box-sizing:border-box" @bind="_edits[r.Id].PlaceOfDelivery" @bind:after="() => SaveAsync(r.Id)" /></div>
-                    <div><label style="display:block;font-size:12px;color:#666;margin-bottom:2px">Итог. цена</label><input type="number" class="input" style="width:100%;box-sizing:border-box" @bind="_edits[r.Id].ResultPrice" @bind:after="() => SaveAsync(r.Id)" /></div>
-                    <div><label style="display:block;font-size:12px;color:#666;margin-bottom:2px">Победитель</label><input class="input" style="width:100%;box-sizing:border-box" @bind="_edits[r.Id].Winner" @bind:after="() => SaveAsync(r.Id)" /></div>
-                    <div><label style="display:block;font-size:12px;color:#666;margin-bottom:2px">Примечание</label><input class="input" style="width:100%;box-sizing:border-box" @bind="_edits[r.Id].Note" @bind:after="() => SaveAsync(r.Id)" /></div>
-                </div>
 
-                <div style="margin-top:8px">
+                @* ===== Вложения и ссылки — вверху на всех этапах ===== *@
+                <div style="margin-bottom:10px">
                     <label class="form-label">Вложения</label>
                     <div>
                         @foreach (var a in SplitAttachments(_edits[r.Id].Attachments))
@@ -97,24 +88,157 @@ else
                     <InputFile OnChange="ev => OnFileAsync(ev, r.Id)" class="form-control" style="max-width:360px;margin-top:4px" />
                 </div>
 
+                @* ===== Этапы 1 / 1.2 / 2 (Согласование): полный набор редактируемых полей ===== *@
+                @if (_stage == 1 || _stage == 2 || _stage == 12)
+                {
+                    <div class="wf-grid">
+                        <div class="wf-field">
+                            <label class="wf-label">Наименование</label>
+                            <textarea class="wf-area" @bind="_edits[r.Id].NameLink" @bind:after="() => SaveAsync(r.Id)"></textarea>
+                        </div>
+                        <div class="wf-field">
+                            <label class="wf-label">Заказчик</label>
+                            <textarea class="wf-area" @bind="_edits[r.Id].Customer" @bind:after="() => SaveAsync(r.Id)"></textarea>
+                        </div>
+                        <div class="wf-field">
+                            <label class="wf-label">Тип закупки</label>
+                            <select class="wf-input" @bind="_edits[r.Id].TypeOfPurchaseId" @bind:after="() => SaveAsync(r.Id)">
+                                <option value="">— не выбран —</option>
+                                @foreach (var t in _types)
+                                {
+                                    <option value="@t.Id">@t.Name</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="wf-field">
+                            <label class="wf-label">Место поставки</label>
+                            <textarea class="wf-area" @bind="_edits[r.Id].PlaceOfDelivery" @bind:after="() => SaveAsync(r.Id)"></textarea>
+                        </div>
+                        <div class="wf-field">
+                            <label class="wf-label">Номер резерва</label>
+                            <input class="wf-input" @bind="_edits[r.Id].ReserveNumber" @bind:after="() => SaveAsync(r.Id)" />
+                        </div>
+                        <div class="wf-field">
+                            <label class="wf-label">Статус резерва B2B</label>
+                            <select class="wf-input" @bind="_edits[r.Id].B2BStatusId" @bind:after="() => SaveAsync(r.Id)">
+                                <option value="">— не выбран —</option>
+                                @foreach (var b in _b2b)
+                                {
+                                    <option value="@b.Id">@b.Name</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="wf-field">
+                            <label class="wf-label">Нац режим</label>
+                            <input class="wf-input" @bind="_edits[r.Id].NationalMode" @bind:after="() => SaveAsync(r.Id)" />
+                        </div>
+                        <div class="wf-field">
+                            <label class="wf-label">Дата торгов</label>
+                            <input type="datetime-local" class="wf-input" @bind="_edits[r.Id].BiddingDate" @bind:format="yyyy-MM-dd'T'HH:mm" @bind:after="() => SaveAsync(r.Id)" />
+                        </div>
+                        <div class="wf-field">
+                            <label class="wf-label">НМЦК</label>
+                            <input type="number" class="wf-input" @bind="_edits[r.Id].NMCK" @bind:after="() => SaveAsync(r.Id)" />
+                        </div>
+                        <div class="wf-field">
+                            <label class="wf-label">Наша минимальная сумма</label>
+                            <input type="number" class="wf-input" @bind="_edits[r.Id].MinPrice" @bind:after="() => SaveAsync(r.Id)" />
+                        </div>
+                        <div class="wf-field">
+                            <label class="wf-label">Срок поставки</label>
+                            <input class="wf-input" @bind="_edits[r.Id].DeliveryTime" @bind:after="() => SaveAsync(r.Id)" />
+                        </div>
+                        <div class="wf-field">
+                            <label class="wf-label">Примечания</label>
+                            <textarea class="wf-area" @bind="_edits[r.Id].Note" @bind:after="() => SaveAsync(r.Id)"></textarea>
+                        </div>
+                        @if (_stage == 12)
+                        {
+                            <div class="wf-field">
+                                <label class="wf-label">Звони</label>
+                                <label style="display:flex;align-items:center;gap:6px;font-size:14px">
+                                    <input type="checkbox" style="width:18px;height:18px" @bind="_edits[r.Id].IsCall" @bind:after="() => SaveAsync(r.Id)" />
+                                    <span>📞 Звони</span>
+                                </label>
+                            </div>
+                        }
+                    </div>
+                }
+                @* ===== Этап 3 «Подача заявки на площадку»: те же поля, только чтение ===== *@
+                else if (_stage == 3)
+                {
+                    <div class="wf-grid">
+                        <div class="wf-field"><label class="wf-label">Наименование</label><div class="wf-readonly">@r.NameLink</div></div>
+                        <div class="wf-field"><label class="wf-label">Заказчик</label><div class="wf-readonly">@r.Customer</div></div>
+                        <div class="wf-field"><label class="wf-label">Тип закупки</label><div class="wf-readonly">@r.TypeOfPurchaseName</div></div>
+                        <div class="wf-field"><label class="wf-label">Место поставки</label><div class="wf-readonly">@r.PlaceOfDelivery</div></div>
+                        <div class="wf-field"><label class="wf-label">Номер резерва</label><div class="wf-readonly">@r.ReserveNumber</div></div>
+                        <div class="wf-field"><label class="wf-label">Статус резерва B2B</label><div class="wf-readonly">@r.B2BStatusName</div></div>
+                        <div class="wf-field"><label class="wf-label">Нац режим</label><div class="wf-readonly">@r.NationalMode</div></div>
+                        <div class="wf-field"><label class="wf-label">Дата торгов</label><div class="wf-readonly">@Fmt(r.BiddingDate)</div></div>
+                        <div class="wf-field"><label class="wf-label">НМЦК</label><div class="wf-readonly">@r.NMCK.ToString("N2")</div></div>
+                        <div class="wf-field"><label class="wf-label">Наша минимальная сумма</label><div class="wf-readonly">@r.MinPrice.ToString("N2")</div></div>
+                        <div class="wf-field"><label class="wf-label">Срок поставки</label><div class="wf-readonly">@r.DeliveryTime</div></div>
+                        <div class="wf-field"><label class="wf-label">Примечания</label><div class="wf-readonly">@r.Note</div></div>
+                    </div>
+                }
+                @* ===== Этап 4 «Торги»: наименование/заказчик/тип — чтение, дата торгов — редактируется;
+                      при флажке «Звони» подсвечивается наша минимальная сумма ===== *@
+                else if (_stage == 4)
+                {
+                    <div class="wf-grid">
+                        <div class="wf-field"><label class="wf-label">Наименование</label><div class="wf-readonly">@r.NameLink</div></div>
+                        <div class="wf-field"><label class="wf-label">Заказчик</label><div class="wf-readonly">@r.Customer</div></div>
+                        <div class="wf-field"><label class="wf-label">Тип закупки</label><div class="wf-readonly">@r.TypeOfPurchaseName</div></div>
+                        <div class="wf-field">
+                            <label class="wf-label">Дата и время торгов</label>
+                            <input type="datetime-local" class="wf-input" @bind="_edits[r.Id].BiddingDate" @bind:format="yyyy-MM-dd'T'HH:mm" @bind:after="() => SaveAsync(r.Id)" />
+                        </div>
+                        <div class="wf-field">
+                            <label class="wf-label">Наша минимальная сумма</label>
+                            <div class="wf-readonly @(r.IsCall ? "wf-call" : "")">@r.MinPrice.ToString("N2")</div>
+                            @if (r.IsCall)
+                            {
+                                <span class="wf-call-badge">📞 Звони</span>
+                            }
+                        </div>
+                    </div>
+                }
+                @* ===== Остальные этапы (5–10): прежняя форма ===== *@
+                else
+                {
+                    <div class="wf-grid">
+                        <div class="wf-field"><label class="wf-label">Наименование</label><textarea class="wf-area" @bind="_edits[r.Id].NameLink" @bind:after="() => SaveAsync(r.Id)"></textarea></div>
+                        <div class="wf-field"><label class="wf-label">Заказчик</label><textarea class="wf-area" @bind="_edits[r.Id].Customer" @bind:after="() => SaveAsync(r.Id)"></textarea></div>
+                        <div class="wf-field"><label class="wf-label">НМЦК</label><input type="number" class="wf-input" @bind="_edits[r.Id].NMCK" @bind:after="() => SaveAsync(r.Id)" /></div>
+                        <div class="wf-field"><label class="wf-label">Дата торгов</label><input class="wf-input" value="@Fmt(r.BiddingDate)" disabled /></div>
+                        <div class="wf-field"><label class="wf-label">Резерв 1С</label><input class="wf-input" @bind="_edits[r.Id].ReserveNumber" @bind:after="() => SaveAsync(r.Id)" /></div>
+                        <div class="wf-field"><label class="wf-label">Место на торгах</label><input class="wf-input" @bind="_edits[r.Id].Place" @bind:after="() => SaveAsync(r.Id)" /></div>
+                        <div class="wf-field"><label class="wf-label">Место поставки</label><textarea class="wf-area" @bind="_edits[r.Id].PlaceOfDelivery" @bind:after="() => SaveAsync(r.Id)"></textarea></div>
+                        <div class="wf-field"><label class="wf-label">Итог. цена</label><input type="number" class="wf-input" @bind="_edits[r.Id].ResultPrice" @bind:after="() => SaveAsync(r.Id)" /></div>
+                        <div class="wf-field"><label class="wf-label">Победитель</label><input class="wf-input" @bind="_edits[r.Id].Winner" @bind:after="() => SaveAsync(r.Id)" /></div>
+                        <div class="wf-field"><label class="wf-label">Примечание</label><textarea class="wf-area" @bind="_edits[r.Id].Note" @bind:after="() => SaveAsync(r.Id)"></textarea></div>
+                    </div>
+                }
+
                 <div class="toolbar" style="margin-top:10px;flex-wrap:wrap;gap:6px;align-items:center">
                     <span class="muted" style="font-size:12px">Изменения сохраняются автоматически</span>
                     @if (_stage == 1)
                     {
                         <button class="btn" @onclick="() => Advance(r.Id, 2)">→ 1.2 Резерв</button>
-                        <button class="btn" @onclick="() => Advance(r.Id, 14)">→ 1.5 Согласование</button>
+                        <button class="btn" @onclick="() => Advance(r.Id, 14)">→ 2 Согласование</button>
                     }
                     else if (_stage == 2)
                     {
-                        <button class="btn" @onclick="() => Advance(r.Id, 3)">→ Согласование</button>
+                        <button class="btn" @onclick="() => Advance(r.Id, 3)">→ 2 Согласование</button>
                     }
                     else if (_stage == 12)
                     {
-                        <button class="btn" @onclick="() => Advance(r.Id, 13)">Согласовано → Подача</button>
+                        <button class="btn" @onclick="() => Advance(r.Id, 13)">Согласовано → 3 Подача</button>
                     }
                     else if (_stage == 3)
                     {
-                        <button class="btn" @onclick="() => Advance(r.Id, 4)">Подана →</button>
+                        <button class="btn" @onclick="() => Advance(r.Id, 4)">Размещена → 4 Торги</button>
                     }
                     else if (_stage == 4)
                     {
@@ -154,6 +278,8 @@ else
 @code {
     private List<WorkflowRow> _rows = new();
     private readonly Dictionary<int, WorkflowEdit> _edits = new();
+    private IReadOnlyList<DictionaryItemDto> _types = Array.Empty<DictionaryItemDto>();
+    private IReadOnlyList<DictionaryItemDto> _b2b = Array.Empty<DictionaryItemDto>();
     private bool _busy;
     private bool _loading = true;
     private int _stage = 1;
@@ -176,6 +302,10 @@ else
             var uid = state.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
             var stages = await RolePerms.GetEffectiveStagesAsync(uid);
             _allowedStages = stages.ToHashSet();
+
+            // Словари для выпадающих списков «Тип закупки» и «Статус резерва B2B».
+            _types = await DictSvc.GetTypesOfPurchaseAsync();
+            _b2b = await DictSvc.GetB2BStatusesAsync();
 
             // Всплывающее уведомление о предстоящих торгах — для роли «Руководитель тендерного отдела».
             _isTenderHead = state.User.IsInRole("TenderHead");
@@ -221,7 +351,14 @@ else
                     ResultPrice = r.ResultPrice,
                     Winner = r.Winner,
                     Note = r.Note,
-                    Attachments = r.Attachments ?? string.Empty
+                    Attachments = r.Attachments ?? string.Empty,
+                    TypeOfPurchaseId = r.TypeOfPurchaseId,
+                    B2BStatusId = r.B2BStatusId,
+                    NationalMode = r.NationalMode,
+                    BiddingDate = r.BiddingDate,
+                    MinPrice = r.MinPrice,
+                    DeliveryTime = r.DeliveryTime,
+                    IsCall = r.IsCall
                 };
             }
         }
