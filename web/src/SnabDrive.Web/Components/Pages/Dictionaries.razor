@@ -65,6 +65,15 @@
                     </div>
                 }
 
+                @if (_formKind == DictKind.Branch)
+                {
+                    <div class="form-field">
+                        <label>ID сотрудника в Битрикс24</label>
+                        <input class="input" @bind="_formBitrixId" placeholder="напр. 1"
+                               title="Числовой ID сотрудника Битрикс24 — для адресного уведомления филиала" />
+                    </div>
+                }
+
                 @if (!string.IsNullOrEmpty(_formError))
                 {
                     <div class="form-error">@_formError</div>
@@ -102,6 +111,7 @@
     private string _formTitle = string.Empty;
     private string _formName = string.Empty;
     private string _formColor = "#ffffff";
+    private string _formBitrixId = string.Empty;   // ID сотрудника Битрикс24 (для филиала)
     private string? _formError;
     private ChangeActor _actor = ChangeActor.System;
     private ConfirmRequest? _confirm;
@@ -135,7 +145,7 @@
         _b2bStatuses = (await DictService.GetB2BStatusesAsync()).ToList();
         _executionStatuses = (await DictService.GetExecutionStatusesAsync()).ToList();
         _branches = (await BranchSvc.GetActiveAsync())
-            .Select(b => new DictionaryItemDto(b.Id, b.Name, null))
+            .Select(b => new DictionaryItemDto(b.Id, b.Name, b.BitrixUserId))
             .ToList();
     }
 
@@ -145,6 +155,7 @@
         _formId = null;
         _formName = string.Empty;
         _formColor = "#ffffff";
+        _formBitrixId = string.Empty;
         _formError = null;
         _formTitle = KindTitle(kind) + ": новое значение";
         _showForm = true;
@@ -156,6 +167,7 @@
         _formId = item.Id;
         _formName = item.Name;
         _formColor = string.IsNullOrWhiteSpace(item.ColorCode) ? "#ffffff" : NormalizeColor(item.ColorCode);
+        _formBitrixId = kind == DictKind.Branch ? item.ColorCode ?? string.Empty : string.Empty;
         _formError = null;
         _formTitle = KindTitle(kind) + ": изменить";
         _showForm = true;
@@ -212,8 +224,8 @@
                     ? await DictService.CreateExecutionStatusAsync(_formName, _actor)
                     : await DictService.UpdateExecutionStatusAsync(_formId.Value, _formName, _actor),
                 _ => _formId is null
-                    ? await BranchSvc.CreateAsync(_formName)
-                    : await BranchSvc.UpdateAsync(_formId.Value, _formName)
+                    ? await BranchSvc.CreateAsync(_formName, _formBitrixId)
+                    : await BranchSvc.UpdateAsync(_formId.Value, _formName, _formBitrixId)
             };
 
             if (result.Success)

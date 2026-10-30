@@ -852,9 +852,11 @@ a:hover {
 }
 
 .form-field--checkbox {
+    grid-column: 1 / -1;       /* во всю ширину сетки — иначе элементы вылезали за окно */
     flex-direction: row;
+    flex-wrap: wrap;           /* перенос, если не помещается в одну строку */
     align-items: center;
-    gap: 16px;
+    gap: 12px 20px;
 }
 
 .form-error {
