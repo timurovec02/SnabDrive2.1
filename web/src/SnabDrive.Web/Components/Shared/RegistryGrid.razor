@@ -297,8 +297,12 @@
         _ => Array.Empty<DictionaryItemDto>()
     };
 
-    private void BeginEdit(RegistryRowDto row, RegistryColumn column) =>
+    private void BeginEdit(RegistryRowDto row, RegistryColumn column)
+    {
+        // «Стадия» — только чтение: меняется переводом по воркфлоу на вкладке «Задачи».
+        if (column.Key == "Stage") { return; }
         OnBeginEdit.InvokeAsync(new CellClickArgs(row.Id, column.Key, row));
+    }
 
     private void OnEditorKeyDown(KeyboardEventArgs e)
     {

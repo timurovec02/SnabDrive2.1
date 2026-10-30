@@ -47,6 +47,8 @@ public static class CsvExporter
         "B2BStatusId" => row.B2BStatusName ?? string.Empty,
         "ExecutionStatusId" => row.ExecutionStatusName ?? string.Empty,
         "IsFinished" => row.IsFinished == true ? "да" : "нет",
+        "IsApproved" => row.IsApproved ? "да" : "нет",
+        "Stage" => row.StageName,
         _ => string.Empty
     };
 

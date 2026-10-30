@@ -926,6 +926,8 @@ public sealed class RegistryService : IRegistryService
         }
 
         if (!access.CanView("IsFinished")) row.IsFinished = null;
+        if (!access.CanView("IsApproved")) row.IsApproved = false;
+        if (!access.CanView("Stage")) row.StageName = string.Empty;
         if (!access.CanView("ArchivateDate")) row.ArchivateDate = null;
     }
 
