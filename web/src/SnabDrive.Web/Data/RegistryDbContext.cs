@@ -66,6 +66,8 @@ public class RegistryDbContext : DbContext
             entity.Property(x => x.B2BStatusId).HasColumnName("B2BStatusId");
             entity.Property(x => x.ExecutionStatusId).HasColumnName("ExecutionStatusId");
             entity.Property(x => x.IsFinished).HasColumnName("IsFinished");
+            entity.Property(x => x.IsApproved).HasColumnName("IsApproved");
+            entity.Property(x => x.IsCall).HasColumnName("IsCall");
 
             entity.HasOne(x => x.TypeOfPurchase)
                   .WithMany()

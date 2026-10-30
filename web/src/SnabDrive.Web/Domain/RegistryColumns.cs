@@ -31,6 +31,7 @@ public static class RegistryColumns
     {
         new("NameLink", "Наименование", ColumnKind.Text, "260px"),
         new("EisLink", "ЕИС", ColumnKind.Link, "90px"),
+        new("Stage", "Стадия", ColumnKind.Text, "180px"),
         new("Customer", "Заказчик", ColumnKind.Text, "180px"),
         new("TypeOfPurchaseId", "Тип закупки", ColumnKind.Dictionary, "160px"),
         new("PlaceOfDelivery", "Место поставки товара", ColumnKind.Text, "170px"),
@@ -51,6 +52,7 @@ public static class RegistryColumns
         new("B2BStatusId", "Статус резерва B2B", ColumnKind.Dictionary, "170px"),
         new("ExecutionStatusId", "Статус исполнения контракта", ColumnKind.Dictionary, "180px"),
         new("IsFinished", "Оплачен", ColumnKind.Bool, "90px"),
+        new("IsApproved", "Согласован", ColumnKind.Bool, "110px"),
         new("ArchivateDate", "Дата архивации", ColumnKind.Date, "140px")
     };
 

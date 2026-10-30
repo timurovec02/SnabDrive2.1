@@ -39,6 +39,12 @@ public class Regedit
 
     public bool? IsFinished { get; set; }
 
+    /// <summary>Отметка «Согласован» (используется на стадии согласования).</summary>
+    public bool IsApproved { get; set; }
+
+    /// <summary>Отметка «Звони» (иконка телефона) — подсветка мин. суммы на торгах.</summary>
+    public bool IsCall { get; set; }
+
     // ---- Воркфлоу по стадиям (web): 1 = поиск/подготовка, 2 = участие, 3 = оформление, 4 = завершено; IsLost = проигран ----
     public int Stage { get; set; } = 1;
     public bool IsLost { get; set; }

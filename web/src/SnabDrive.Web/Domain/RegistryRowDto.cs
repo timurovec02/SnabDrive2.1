@@ -43,6 +43,15 @@ public class RegistryRowDto
 
     public bool? IsFinished { get; set; }
 
+    /// <summary>Код стадии воркфлоу (для колонки «Стадия»).</summary>
+    public int Stage { get; set; }
+
+    /// <summary>Название стадии (заполняется на сервере).</summary>
+    public string StageName { get; set; } = string.Empty;
+
+    /// <summary>Отметка «Согласован».</summary>
+    public bool IsApproved { get; set; }
+
     /// <summary>Только для архива.</summary>
     public DateTime? ArchivateDate { get; set; }
 

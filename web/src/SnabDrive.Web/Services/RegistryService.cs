@@ -122,6 +122,8 @@ public sealed class RegistryService : IRegistryService
                 ExecutionStatusId = x.ExecutionStatusId,
                 ExecutionStatusName = x.ExecutionStatus != null ? x.ExecutionStatus.NameExecution : null,
                 IsFinished = x.IsFinished,
+                Stage = x.Stage,
+                IsApproved = x.IsApproved,
                 ArchivateDate = null
             })
             .ToListAsync(cancellationToken);
@@ -277,6 +279,8 @@ public sealed class RegistryService : IRegistryService
                 ExecutionStatusId = x.ExecutionStatusId,
                 ExecutionStatusName = x.ExecutionStatus != null ? x.ExecutionStatus.NameExecution : null,
                 IsFinished = x.IsFinished,
+                Stage = x.Stage,
+                IsApproved = x.IsApproved,
                 ArchivateDate = null
             })
             .FirstOrDefaultAsync(cancellationToken);
@@ -454,6 +458,11 @@ public sealed class RegistryService : IRegistryService
             case "IsFinished":
                 AddCellChange(changes, column.Title, FmtBool(entity.IsFinished), FmtBool(entity.IsFinished = raw == "true"));
                 break;
+            case "IsApproved":
+                AddCellChange(changes, column.Title, FmtBool(entity.IsApproved), FmtBool(entity.IsApproved = raw == "true"));
+                break;
+            case "Stage":
+                return Result.Fail("Стадия изменяется на вкладке «Задачи».");
             case "TypeOfPurchaseId":
             {
                 var old_TypeOfPurchaseId = entity.TypeOfPurchaseId?.ToString() ?? "";
@@ -867,6 +876,12 @@ public sealed class RegistryService : IRegistryService
     /// </summary>
     internal static void MaskRow(RegistryRowDto row, ColumnAccessMap access)
     {
+        // Название стадии для колонки «Стадия» (только реестр; у архива стадии нет).
+        if (!row.IsArchive)
+        {
+            row.StageName = WorkflowStages.Name(row.Stage);
+        }
+
         if (access.Unrestricted)
         {
             return;
@@ -1480,6 +1495,8 @@ public sealed class RegistryService : IRegistryService
             "MinPrice" => Order(x => x.MinPrice),
             "ResultPrice" => Order(x => x.ResultPrice),
             "IsFinished" => Order(x => x.IsFinished),
+            "IsApproved" => Order(x => x.IsApproved),
+            "Stage" => Order(x => x.Stage),
             "TypeOfPurchaseId" => Order(x => x.TypeOfPurchase == null ? string.Empty : x.TypeOfPurchase.NameOfPurchase),
             "B2BStatusId" => Order(x => x.B2BStatus == null ? string.Empty : x.B2BStatus.NameB2B),
             "ExecutionStatusId" => Order(x => x.ExecutionStatus == null ? string.Empty : x.ExecutionStatus.NameExecution),

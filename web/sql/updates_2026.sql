@@ -70,3 +70,14 @@ END
 ELSE
     PRINT 'Колонка [ArchiveRegistryItems].[EisLink] уже существует — пропуск.';
 GO
+
+-- ============================================================================
+-- 2026-10: поля «Согласован» (IsApproved) и «Звони» (IsCall).
+-- ============================================================================
+IF COL_LENGTH('dbo.RegistryItems', 'IsApproved') IS NULL
+    ALTER TABLE dbo.RegistryItems ADD IsApproved BIT NOT NULL
+        CONSTRAINT DF_RegistryItems_IsApproved DEFAULT(0);
+IF COL_LENGTH('dbo.RegistryItems', 'IsCall') IS NULL
+    ALTER TABLE dbo.RegistryItems ADD IsCall BIT NOT NULL
+        CONSTRAINT DF_RegistryItems_IsCall DEFAULT(0);
+GO

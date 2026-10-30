@@ -174,7 +174,7 @@
                                 }
                                 else if (column.Kind == ColumnKind.Bool)
                                 {
-                                    <span class="bool-cell">@(row.IsFinished == true ? "✔" : "—")</span>
+                                    <span class="bool-cell">@(BoolValue(row, column.Key) ? "✔" : "—")</span>
                                     @if (lockedByOther)
                                     {
                                         <LockBadge UserName="@cellLock!.UserName" />
@@ -255,7 +255,7 @@
                 if (row is not null)
                 {
                     _editText = EditorRaw(row, EditingCell.Value.ColumnKey);
-                    _editBool = row.IsFinished == true;
+                    _editBool = BoolValue(row, EditingCell.Value.ColumnKey);
                     _originalText = _editText;
                     _originalBool = _editBool;
                 }
@@ -359,6 +359,12 @@
         _editText = e.Value?.ToString() ?? string.Empty;
         CommitEdit();
     }
+
+    private static bool BoolValue(RegistryRowDto row, string key) => key switch
+    {
+        "IsApproved" => row.IsApproved,
+        _ => row.IsFinished == true
+    };
 
     private static string EditorRaw(RegistryRowDto row, string key) => key switch
     {
@@ -486,6 +492,7 @@
     {
         "NameLink" => row.NameLink,
         "EisLink" => row.EisLink,
+        "Stage" => row.StageName,
         "Customer" => row.Customer,
         "TypeOfPurchaseId" => row.TypeOfPurchaseName ?? string.Empty,
         "PlaceOfDelivery" => row.PlaceOfDelivery,
