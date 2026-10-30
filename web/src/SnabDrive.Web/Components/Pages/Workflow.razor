@@ -322,13 +322,14 @@ else
                             <InputFile OnChange="ev => OnBranchFileAsync(ev, r.Id)" class="form-control" />
                         </div>
                     </div>
-                    <div style="margin-top:10px">
+                    <div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center">
                         <button class="btn btn-primary" disabled="@(_edits[r.Id].BranchId is null)" @onclick="() => NotifyBranch(r.Id)">
                             📨 Оповестить филиал и перейти далее
                         </button>
+                        <button class="btn" @onclick="() => Advance(r.Id, 9)">→ Ожидание доставки (без оповещения)</button>
                         @if (_edits[r.Id].BranchId is null)
                         {
-                            <span class="muted" style="margin-left:8px;font-size:12px">Выберите филиал, чтобы отправить оповещение</span>
+                            <span class="muted" style="font-size:12px">Выберите филиал, чтобы отправить оповещение</span>
                         }
                     </div>
                 }
