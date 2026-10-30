@@ -1145,26 +1145,26 @@ input:disabled {
 .wf-field {
     display: flex;
     flex-direction: column;
-    gap: 6px;                  /* заголовок не прилипает к полю */
+    gap: 7px;                  /* общий отступ поля от заголовка */
     min-width: 0;
 }
-/* Выделенный заголовок поля */
+/* Выделенный заголовок поля: жирный и крупный */
 .wf-label {
-    font-size: 13px;
-    font-weight: 700;
-    color: #1f2937;
+    font-size: 15px;
+    font-weight: 800;
+    color: #111827;
     letter-spacing: .2px;
 }
-/* Редактируемое многострочное поле: авто-рост высоты, нельзя тянуть вручную */
+/* Редактируемое многострочное поле: большое, растёт по содержимому,
+   без ручного изменения размера и без скролла — весь текст виден */
 .wf-area {
     display: block;
     width: 100%;
     box-sizing: border-box;
     field-sizing: content;     /* динамическая высота по содержимому (Chrome/Edge 123+) */
-    min-height: 44px;
-    max-height: 420px;
+    min-height: 56px;          /* поле больше */
     resize: none;              /* запрет ручного изменения размера */
-    overflow-y: auto;
+    overflow: hidden;          /* без скролла — высота растёт, весь текст виден */
     white-space: pre-wrap;
     overflow-wrap: break-word;
     word-break: break-word;

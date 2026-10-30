@@ -81,3 +81,14 @@ IF COL_LENGTH('dbo.RegistryItems', 'IsCall') IS NULL
     ALTER TABLE dbo.RegistryItems ADD IsCall BIT NOT NULL
         CONSTRAINT DF_RegistryItems_IsCall DEFAULT(0);
 GO
+
+-- ============================================================================
+-- 2026-10: «Номер закупки» (PurchaseNumber) в реестре и архиве.
+-- ============================================================================
+IF COL_LENGTH('dbo.RegistryItems', 'PurchaseNumber') IS NULL
+    ALTER TABLE dbo.RegistryItems ADD PurchaseNumber NVARCHAR(200) NOT NULL
+        CONSTRAINT DF_RegistryItems_PurchaseNumber DEFAULT('');
+IF COL_LENGTH('dbo.ArchiveRegistryItems', 'PurchaseNumber') IS NULL
+    ALTER TABLE dbo.ArchiveRegistryItems ADD PurchaseNumber NVARCHAR(200) NOT NULL
+        CONSTRAINT DF_ArchiveRegistryItems_PurchaseNumber DEFAULT('');
+GO

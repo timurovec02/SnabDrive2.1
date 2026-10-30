@@ -72,6 +72,22 @@ else
                         <span style="font-size:18px;line-height:1">🔗</span> ЕИС
                     </a>
                 }
+                @if (!string.IsNullOrWhiteSpace(r.PurchaseNumber))
+                {
+                    @if (!string.IsNullOrWhiteSpace(r.EisLink))
+                    {
+                        <a href="@r.EisLink" target="_blank" rel="noopener noreferrer" title="Номер закупки: @r.PurchaseNumber"
+                           style="display:inline-flex;align-items:center;gap:4px;margin:0 0 8px 16px;font-size:14px;text-decoration:none">
+                            <span style="font-size:16px;line-height:1">№</span> @r.PurchaseNumber
+                        </a>
+                    }
+                    else
+                    {
+                        <span style="display:inline-flex;align-items:center;gap:4px;margin:0 0 8px 16px;font-size:14px;color:#374151">
+                            <span style="font-size:16px;line-height:1">№</span> @r.PurchaseNumber
+                        </span>
+                    }
+                }
 
                 @* ===== Вложения и ссылки — вверху на всех этапах ===== *@
                 <div style="margin-bottom:10px">
@@ -168,18 +184,13 @@ else
                 else if (_stage == 3)
                 {
                     <div class="wf-grid">
-                        <div class="wf-field"><label class="wf-label">Наименование</label><div class="wf-readonly">@r.NameLink</div></div>
                         <div class="wf-field"><label class="wf-label">Заказчик</label><div class="wf-readonly">@r.Customer</div></div>
-                        <div class="wf-field"><label class="wf-label">Тип закупки</label><div class="wf-readonly">@r.TypeOfPurchaseName</div></div>
-                        <div class="wf-field"><label class="wf-label">Место поставки</label><div class="wf-readonly">@r.PlaceOfDelivery</div></div>
-                        <div class="wf-field"><label class="wf-label">Номер резерва</label><div class="wf-readonly">@r.ReserveNumber</div></div>
-                        <div class="wf-field"><label class="wf-label">Статус резерва B2B</label><div class="wf-readonly">@r.B2BStatusName</div></div>
-                        <div class="wf-field"><label class="wf-label">Нац режим</label><div class="wf-readonly">@r.NationalMode</div></div>
-                        <div class="wf-field"><label class="wf-label">Дата торгов</label><div class="wf-readonly">@Fmt(r.BiddingDate)</div></div>
+                        <div class="wf-field"><label class="wf-label">Место</label><div class="wf-readonly">@r.Place</div></div>
                         <div class="wf-field"><label class="wf-label">НМЦК</label><div class="wf-readonly">@r.NMCK.ToString("N2")</div></div>
+                        <div class="wf-field"><label class="wf-label">Дата торгов</label><div class="wf-readonly">@Fmt(r.BiddingDate)</div></div>
+                        <div class="wf-field"><label class="wf-label">Тип закупки</label><div class="wf-readonly">@r.TypeOfPurchaseName</div></div>
                         <div class="wf-field"><label class="wf-label">Наша минимальная сумма</label><div class="wf-readonly">@r.MinPrice.ToString("N2")</div></div>
-                        <div class="wf-field"><label class="wf-label">Срок поставки</label><div class="wf-readonly">@r.DeliveryTime</div></div>
-                        <div class="wf-field"><label class="wf-label">Примечания</label><div class="wf-readonly">@r.Note</div></div>
+                        <div class="wf-field"><label class="wf-label">Место поставки</label><div class="wf-readonly">@r.PlaceOfDelivery</div></div>
                     </div>
                 }
                 @* ===== Этап 4 «Торги»: наименование/заказчик/тип — чтение, дата торгов — редактируется;
@@ -190,6 +201,7 @@ else
                         <div class="wf-field"><label class="wf-label">Наименование</label><div class="wf-readonly">@r.NameLink</div></div>
                         <div class="wf-field"><label class="wf-label">Заказчик</label><div class="wf-readonly">@r.Customer</div></div>
                         <div class="wf-field"><label class="wf-label">Тип закупки</label><div class="wf-readonly">@r.TypeOfPurchaseName</div></div>
+                        <div class="wf-field"><label class="wf-label">НМЦК</label><div class="wf-readonly">@r.NMCK.ToString("N2")</div></div>
                         <div class="wf-field">
                             <label class="wf-label">Дата и время торгов</label>
                             <input type="datetime-local" class="wf-input" @bind="_edits[r.Id].BiddingDate" @bind:format="yyyy-MM-dd'T'HH:mm" @bind:after="() => SaveAsync(r.Id)" />

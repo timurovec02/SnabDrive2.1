@@ -13,6 +13,10 @@ public sealed record RegeditUpsertRequest
     [StringLength(1000, ErrorMessage = "Не более 1000 символов")]
     public string? EisLink { get; set; }
 
+    /// <summary>Номер закупки (реестровый номер из Контур).</summary>
+    [StringLength(200)]
+    public string PurchaseNumber { get; set; } = string.Empty;
+
     [Required(ErrorMessage = "Укажите заказчика")]
     [StringLength(500, ErrorMessage = "Не более 500 символов")]
     public string Customer { get; set; } = string.Empty;

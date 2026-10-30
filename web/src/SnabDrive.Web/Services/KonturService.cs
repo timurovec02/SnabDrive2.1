@@ -145,6 +145,7 @@ public sealed class KonturService : IKonturService
             {
                 NameLink = string.IsNullOrWhiteSpace(favorite.NameLink) ? favorite.PurchaseNumber : favorite.NameLink,
                 EisLink = favorite.EisLink,
+                PurchaseNumber = favorite.PurchaseNumber,
                 Customer = favorite.Customer,
                 NMCK = favorite.NMCK,
                 BiddingDate = favorite.BiddingDate,

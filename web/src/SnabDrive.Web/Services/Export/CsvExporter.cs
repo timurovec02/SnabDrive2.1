@@ -26,6 +26,7 @@ public static class CsvExporter
     internal static string GetValue(RegistryRowDto row, RegistryColumn column) => column.Key switch
     {
         "NameLink" => row.NameLink,
+        "PurchaseNumber" => row.PurchaseNumber,
         "Customer" => row.Customer,
         "TypeOfPurchaseId" => row.TypeOfPurchaseName ?? string.Empty,
         "PlaceOfDelivery" => row.PlaceOfDelivery,

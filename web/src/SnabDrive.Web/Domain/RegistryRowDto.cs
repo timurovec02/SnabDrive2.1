@@ -10,6 +10,7 @@ public class RegistryRowDto
 
     public string NameLink { get; set; } = string.Empty;
     public string EisLink { get; set; } = string.Empty;
+    public string PurchaseNumber { get; set; } = string.Empty;
     public string Customer { get; set; } = string.Empty;
 
     public int? TypeOfPurchaseId { get; set; }

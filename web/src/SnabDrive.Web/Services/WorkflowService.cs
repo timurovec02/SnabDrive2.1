@@ -56,7 +56,8 @@ public sealed record WorkflowRow(
     decimal MinPrice,
     string DeliveryTime,
     bool IsApproved,
-    bool IsCall);
+    bool IsCall,
+    string PurchaseNumber);
 
 /// <summary>Модель редактирования строки воркфлоу.</summary>
 public sealed class WorkflowEdit
@@ -152,7 +153,7 @@ public sealed class WorkflowService : IWorkflowService
                 r.Attachments, r.Stage, r.IsLost,
                 r.TypeOfPurchaseId, r.TypeOfPurchase != null ? r.TypeOfPurchase.NameOfPurchase : null,
                 r.B2BStatusId, r.B2BStatus != null ? r.B2BStatus.NameB2B : null,
-                r.NationalMode, r.MinPrice, r.DeliveryTime, r.IsApproved, r.IsCall))
+                r.NationalMode, r.MinPrice, r.DeliveryTime, r.IsApproved, r.IsCall, r.PurchaseNumber))
             .ToListAsync(cancellationToken);
     }
 

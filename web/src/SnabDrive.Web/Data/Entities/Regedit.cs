@@ -13,6 +13,9 @@ public class Regedit
     /// <summary>Ссылка на закупку в ЕИС (отдельно от наименования).</summary>
     public string? EisLink { get; set; }
 
+    /// <summary>Номер закупки (реестровый номер из Контур, поле «Номер»).</summary>
+    public string PurchaseNumber { get; set; } = string.Empty;
+
     public string PlaceOfDelivery { get; set; } = string.Empty;
     public string ReserveNumber { get; set; } = string.Empty;
     public string NationalMode { get; set; } = string.Empty;

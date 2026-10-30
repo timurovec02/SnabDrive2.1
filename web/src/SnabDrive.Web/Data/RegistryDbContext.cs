@@ -42,6 +42,7 @@ public class RegistryDbContext : DbContext
 
             entity.Property(x => x.NameLink).HasColumnName("NameLink").HasMaxLength(1000).IsRequired();
             entity.Property(x => x.EisLink).HasColumnName("EisLink").HasMaxLength(1000);
+            entity.Property(x => x.PurchaseNumber).HasColumnName("PurchaseNumber").HasMaxLength(200);
             entity.Property(x => x.PlaceOfDelivery).HasColumnName("PlaceOfDelivery").HasMaxLength(1000);
             entity.Property(x => x.ReserveNumber).HasColumnName("ReserveNumber").HasMaxLength(1000);
             entity.Property(x => x.NationalMode).HasColumnName("NationalMode").HasMaxLength(1000);
@@ -97,6 +98,7 @@ public class RegistryDbContext : DbContext
 
             entity.Property(x => x.NameLink).HasColumnName("NameLink").HasMaxLength(1000).IsRequired();
             entity.Property(x => x.EisLink).HasColumnName("EisLink").HasMaxLength(1000);
+            entity.Property(x => x.PurchaseNumber).HasColumnName("PurchaseNumber").HasMaxLength(200);
             entity.Property(x => x.PlaceOfDelivery).HasColumnName("PlaceOfDelivery").HasMaxLength(1000);
             entity.Property(x => x.ReserveNumber).HasColumnName("ReserveNumber").HasMaxLength(1000);
             entity.Property(x => x.NationalMode).HasColumnName("NationalMode").HasMaxLength(1000);

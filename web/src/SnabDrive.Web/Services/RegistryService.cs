@@ -98,6 +98,7 @@ public sealed class RegistryService : IRegistryService
                 IdOld = null,
                 NameLink = x.NameLink,
                 EisLink = x.EisLink ?? string.Empty,
+                PurchaseNumber = x.PurchaseNumber,
                 Customer = x.Customer,
                 TypeOfPurchaseId = x.TypeOfPurchaseId,
                 TypeOfPurchaseName = x.TypeOfPurchase != null ? x.TypeOfPurchase.NameOfPurchase : null,
@@ -164,6 +165,7 @@ public sealed class RegistryService : IRegistryService
                 IdOld = x.IdOld,
                 NameLink = x.NameLink,
                 EisLink = x.EisLink ?? string.Empty,
+                PurchaseNumber = x.PurchaseNumber,
                 Customer = x.Customer,
                 TypeOfPurchaseId = x.TypeOfPurchaseId,
                 TypeOfPurchaseName = x.TypeOfPurchase != null ? x.TypeOfPurchase.NameOfPurchase : null,
@@ -255,6 +257,7 @@ public sealed class RegistryService : IRegistryService
                 IdOld = null,
                 NameLink = x.NameLink,
                 EisLink = x.EisLink ?? string.Empty,
+                PurchaseNumber = x.PurchaseNumber,
                 Customer = x.Customer,
                 TypeOfPurchaseId = x.TypeOfPurchaseId,
                 TypeOfPurchaseName = x.TypeOfPurchase != null ? x.TypeOfPurchase.NameOfPurchase : null,
@@ -403,6 +406,9 @@ public sealed class RegistryService : IRegistryService
                 break;
             case "EisLink":
                 AddCellChange(changes, column.Title, entity.EisLink ?? string.Empty, entity.EisLink = raw);
+                break;
+            case "PurchaseNumber":
+                AddCellChange(changes, column.Title, entity.PurchaseNumber, entity.PurchaseNumber = raw);
                 break;
             case "Customer":
                 AddCellChange(changes, column.Title, entity.Customer, entity.Customer = raw);
@@ -620,6 +626,7 @@ public sealed class RegistryService : IRegistryService
             IdOld = entity.Id,
             NameLink = entity.NameLink,
             EisLink = entity.EisLink,
+            PurchaseNumber = entity.PurchaseNumber,
             PlaceOfDelivery = entity.PlaceOfDelivery,
             ReserveNumber = entity.ReserveNumber,
             NationalMode = entity.NationalMode,
@@ -671,6 +678,7 @@ public sealed class RegistryService : IRegistryService
         {
             NameLink = archive.NameLink,
             EisLink = archive.EisLink,
+            PurchaseNumber = archive.PurchaseNumber,
             PlaceOfDelivery = archive.PlaceOfDelivery,
             ReserveNumber = archive.ReserveNumber,
             NationalMode = archive.NationalMode,
@@ -728,6 +736,7 @@ public sealed class RegistryService : IRegistryService
 
         entity.NameLink = request.NameLink;
         entity.EisLink = request.EisLink;
+        entity.PurchaseNumber = request.PurchaseNumber;
         entity.Customer = request.Customer;
         entity.PlaceOfDelivery = request.PlaceOfDelivery;
         entity.ReserveNumber = request.ReserveNumber;
@@ -889,6 +898,7 @@ public sealed class RegistryService : IRegistryService
 
         if (!access.CanView("NameLink")) row.NameLink = string.Empty;
         if (!access.CanView("EisLink")) row.EisLink = string.Empty;
+        if (!access.CanView("PurchaseNumber")) row.PurchaseNumber = string.Empty;
         if (!access.CanView("Customer")) row.Customer = string.Empty;
         if (!access.CanView("TypeOfPurchaseId"))
         {
@@ -941,6 +951,7 @@ public sealed class RegistryService : IRegistryService
 
         if (!access.CanView("NameLink")) request.NameLink = string.Empty;
         if (!access.CanView("EisLink")) request.EisLink = string.Empty;
+        if (!access.CanView("PurchaseNumber")) request.PurchaseNumber = string.Empty;
         if (!access.CanView("Customer")) request.Customer = string.Empty;
         if (!access.CanView("PlaceOfDelivery")) request.PlaceOfDelivery = string.Empty;
         if (!access.CanView("ReserveNumber")) request.ReserveNumber = string.Empty;
@@ -1000,6 +1011,7 @@ public sealed class RegistryService : IRegistryService
     {
         if (access.CanEdit("NameLink")) entity.NameLink = request.NameLink.Trim();
         if (access.CanEdit("EisLink")) entity.EisLink = request.EisLink;
+        if (access.CanEdit("PurchaseNumber")) entity.PurchaseNumber = request.PurchaseNumber;
         if (access.CanEdit("Customer")) entity.Customer = request.Customer.Trim();
         if (access.CanEdit("PlaceOfDelivery")) entity.PlaceOfDelivery = request.PlaceOfDelivery;
         if (access.CanEdit("ReserveNumber")) entity.ReserveNumber = request.ReserveNumber;
@@ -1029,6 +1041,7 @@ public sealed class RegistryService : IRegistryService
     {
         NameLink = entity.NameLink,
         EisLink = entity.EisLink,
+        PurchaseNumber = entity.PurchaseNumber,
         Customer = entity.Customer,
         PlaceOfDelivery = entity.PlaceOfDelivery,
         ReserveNumber = entity.ReserveNumber,
@@ -1055,6 +1068,7 @@ public sealed class RegistryService : IRegistryService
     {
         NameLink = entity.NameLink,
         EisLink = entity.EisLink,
+        PurchaseNumber = entity.PurchaseNumber,
         Customer = entity.Customer,
         PlaceOfDelivery = entity.PlaceOfDelivery,
         ReserveNumber = entity.ReserveNumber,
@@ -1480,6 +1494,7 @@ public sealed class RegistryService : IRegistryService
         return key switch
         {
             "NameLink" => Order(x => x.NameLink),
+            "PurchaseNumber" => Order(x => x.PurchaseNumber),
             "Customer" => Order(x => x.Customer),
             "PlaceOfDelivery" => Order(x => x.PlaceOfDelivery),
             "ReserveNumber" => Order(x => x.ReserveNumber),
@@ -1514,6 +1529,7 @@ public sealed class RegistryService : IRegistryService
         return key switch
         {
             "NameLink" => Order(x => x.NameLink),
+            "PurchaseNumber" => Order(x => x.PurchaseNumber),
             "Customer" => Order(x => x.Customer),
             "PlaceOfDelivery" => Order(x => x.PlaceOfDelivery),
             "ReserveNumber" => Order(x => x.ReserveNumber),
