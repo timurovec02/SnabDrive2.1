@@ -110,7 +110,7 @@ builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
     {
-        Title = "SnabDrive Web API",
+        Title = "Снабдрайв Web API",
         Version = "v1",
         Description = "CRUD реестра закупок, справочники, аудит, онлайн-пользователи."
     });

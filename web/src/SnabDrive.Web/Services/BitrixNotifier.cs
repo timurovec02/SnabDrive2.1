@@ -88,7 +88,7 @@ public sealed class BitrixNotifier
             using var content = new FormUrlEncodedContent(new[]
             {
                 new KeyValuePair<string, string>("MESSAGE",
-                    "Тестовое уведомление SnabDrive: интеграция с Битрикс24 настроена, получение работает."),
+                    "Тестовое уведомление Снабдрайв: интеграция с Битрикс24 настроена, получение работает."),
                 new KeyValuePair<string, string>("TO", toUserId)
             });
 
