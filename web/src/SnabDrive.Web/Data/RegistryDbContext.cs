@@ -58,8 +58,7 @@ public class RegistryDbContext : DbContext
             entity.Property(x => x.MinPrice).HasColumnName("MinPrice").HasPrecision(18, 2);
             entity.Property(x => x.ResultPrice).HasColumnName("ResultPrice").HasPrecision(18, 2);
 
-            entity.Property(x => x.Winner).HasColumnName("Winner");
-            entity.Property(x => x.DeliveryTime).HasColumnName("DeliveryTime");
+            entity.Property(x => x.DeliveryDate).HasColumnName("DeliveryDate");
             entity.Property(x => x.Description).HasColumnName("Description");
             entity.Property(x => x.Note).HasColumnName("Note");
             entity.Property(x => x.Customer).HasColumnName("Customer");
@@ -75,6 +74,9 @@ public class RegistryDbContext : DbContext
             entity.Property(x => x.BranchId).HasColumnName("BranchId");
             entity.Property(x => x.BranchFilePath).HasColumnName("BranchFilePath").HasMaxLength(1000);
             entity.Property(x => x.ReturnReason).HasColumnName("ReturnReason").HasMaxLength(2000);
+            entity.Property(x => x.ContractStatusId).HasColumnName("ContractStatusId");
+            entity.Property(x => x.IsContractChecked).HasColumnName("IsContractChecked");
+            entity.Property(x => x.IsEisFilled).HasColumnName("IsEisFilled");
 
             entity.HasOne(x => x.TypeOfPurchase)
                   .WithMany()
@@ -119,8 +121,7 @@ public class RegistryDbContext : DbContext
             entity.Property(x => x.MinPrice).HasColumnName("MinPrice").HasPrecision(18, 2);
             entity.Property(x => x.ResultPrice).HasColumnName("ResultPrice").HasPrecision(18, 2);
 
-            entity.Property(x => x.Winner).HasColumnName("Winner");
-            entity.Property(x => x.DeliveryTime).HasColumnName("DeliveryTime");
+            entity.Property(x => x.DeliveryDate).HasColumnName("DeliveryDate");
             entity.Property(x => x.Description).HasColumnName("Description");
             entity.Property(x => x.Note).HasColumnName("Note");
             entity.Property(x => x.Customer).HasColumnName("Customer");

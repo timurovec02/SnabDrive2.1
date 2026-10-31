@@ -44,6 +44,14 @@
         <button class="@TabClass(st.Id)" @onclick="() => SetStage(st.Id)">@st.Name (@Count(st.Id))</button>
     }
     <div class="toolbar-spacer"></div>
+    <div style="display:flex;align-items:center;gap:6px">
+        <input class="input" style="min-width:280px" placeholder="🔍 Поиск по всем полям стадии…"
+               @bind="_search" @bind:event="oninput" />
+        @if (!string.IsNullOrEmpty(_search))
+        {
+            <button class="btn" title="Очистить поиск" @onclick="ClearSearch">×</button>
+        }
+    </div>
     <button class="btn" disabled="@_busy" @onclick="LoadAsync">Обновить</button>
 </div>
 
@@ -66,7 +74,7 @@
 }
 else if (!Rows().Any())
 {
-    <p class="muted">Нет закупок на этой стадии.</p>
+    <p class="muted">@(string.IsNullOrWhiteSpace(_search) ? "Нет закупок на этой стадии." : "Ничего не найдено по этому поиску.")</p>
 }
 else
 {
@@ -170,8 +178,8 @@ else
                             <input type="number" class="wf-input" @bind="_edits[r.Id].MinPrice" @bind:after="() => SaveAsync(r.Id)" />
                         </div>
                         <div class="wf-field">
-                            <label class="wf-label">Срок поставки</label>
-                            <input class="wf-input" @bind="_edits[r.Id].DeliveryTime" @bind:after="() => SaveAsync(r.Id)" />
+                            <label class="wf-label">Дата доставки</label>
+                            <input type="date" class="wf-input" @bind="_edits[r.Id].DeliveryDate" @bind:format="yyyy-MM-dd" @bind:after="() => SaveAsync(r.Id)" />
                         </div>
                         <div class="wf-field">
                             <label class="wf-label">Примечания</label>
@@ -204,7 +212,6 @@ else
                 {
                     <div class="wf-grid">
                         <div class="wf-field"><label class="wf-label">Заказчик</label><div class="wf-readonly">@r.Customer</div></div>
-                        <div class="wf-field"><label class="wf-label">Место</label><div class="wf-readonly">@r.Place</div></div>
                         <div class="wf-field"><label class="wf-label">НМЦК</label><div class="wf-readonly">@r.NMCK.ToString("N2")</div></div>
                         <div class="wf-field"><label class="wf-label">Дата торгов</label><div class="wf-readonly">@Fmt(r.BiddingDate)</div></div>
                         <div class="wf-field"><label class="wf-label">Тип закупки</label><div class="wf-readonly">@r.TypeOfPurchaseName</div></div>
@@ -227,7 +234,16 @@ else
                         </div>
                         <div class="wf-field">
                             <label class="wf-label">Наша минимальная сумма</label>
-                            @if (r.IsCall)
+                            @if (_isDirector)
+                            {
+                                <input type="number" class="wf-input" style="@Highlight(r.IsCall)"
+                                       @bind="_edits[r.Id].MinPrice" @bind:after="() => SaveAsync(r.Id)" />
+                                <label style="display:flex;align-items:center;gap:8px;margin-top:4px;font-size:15px;font-weight:600">
+                                    <input type="checkbox" style="width:20px;height:20px" checked="@_edits[r.Id].IsCall" @onchange="ev => OnToggleCall(r.Id, ev)" />
+                                    <span>📞 Звони</span>
+                                </label>
+                            }
+                            else if (r.IsCall)
                             {
                                 <div class="wf-readonly" style="border:2px solid #d97706;background:#fff7ed;color:#92400e;font-weight:800;font-size:17px">@r.MinPrice.ToString("N2")</div>
                                 <span style="display:inline-flex;align-items:center;gap:6px;margin-top:4px;font-size:15px;font-weight:800;color:#b45309">📞 Звони</span>
@@ -293,13 +309,58 @@ else
                         </div>
                     </div>
                 }
+                @* ===== Этап 6 «Контракт»: минимум полей + статус контракта и отметка «Проверен» ===== *@
+                else if (_stage == 6)
+                {
+                    <div class="wf-grid">
+                        <div class="wf-field">
+                            <label class="wf-label">Наименование</label>
+                            <textarea class="wf-area" @bind="_edits[r.Id].NameLink" @bind:after="() => SaveAsync(r.Id)"></textarea>
+                        </div>
+                        <div class="wf-field">
+                            <label class="wf-label">Заказчик</label>
+                            <textarea class="wf-area" @bind="_edits[r.Id].Customer" @bind:after="() => SaveAsync(r.Id)"></textarea>
+                        </div>
+                        <div class="wf-field">
+                            <label class="wf-label">Итог сумма</label>
+                            <input type="number" class="wf-input" @bind="_edits[r.Id].ResultPrice" @bind:after="() => SaveAsync(r.Id)" />
+                        </div>
+                        <div class="wf-field">
+                            <label class="wf-label">Место поставки</label>
+                            <textarea class="wf-area" @bind="_edits[r.Id].PlaceOfDelivery" @bind:after="() => SaveAsync(r.Id)"></textarea>
+                        </div>
+                        <div class="wf-field">
+                            <label class="wf-label">Статус контракта</label>
+                            <select class="wf-input" @bind="_edits[r.Id].ContractStatusId" @bind:after="() => SaveAsync(r.Id)">
+                                <option value="">— не выбран —</option>
+                                @foreach (var cs in ContractStatuses.All)
+                                {
+                                    <option value="@cs.Id">@cs.Name</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="wf-field">
+                            <label class="wf-label">Проверен</label>
+                            <label style="display:flex;align-items:center;gap:8px;font-size:15px;font-weight:600">
+                                <input type="checkbox" style="width:20px;height:20px" checked="@_edits[r.Id].IsContractChecked" @onchange="ev => OnToggleContractChecked(r.Id, ev)" />
+                                <span>✅ Проверен</span>
+                            </label>
+                        </div>
+                    </div>
+                }
                 @* ===== Этап 7 «Логистические документы»: дата доставки, файл, филиал, оповещение ===== *@
                 else if (_stage == 7)
                 {
                     <div class="wf-grid">
                         <div class="wf-field">
                             <label class="wf-label">Ожидаемая дата доставки</label>
-                            <input type="date" class="wf-input" @bind="_edits[r.Id].ExpectedDeliveryDate" @bind:format="yyyy-MM-dd" @bind:after="() => SaveAsync(r.Id)" />
+                            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                                <input type="date" class="wf-input" @bind="_edits[r.Id].ExpectedDeliveryDate" @bind:format="yyyy-MM-dd" @bind:after="() => SaveAsync(r.Id)" />
+                                <label style="display:flex;align-items:center;gap:8px;font-size:15px;font-weight:600">
+                                    <input type="checkbox" style="width:20px;height:20px" checked="@_edits[r.Id].IsEisFilled" @onchange="ev => OnToggleEisFilled(r.Id, ev)" />
+                                    <span>🧾 Заполнить в ЕИС</span>
+                                </label>
+                            </div>
                         </div>
                         <div class="wf-field">
                             <label class="wf-label">Филиал</label>
@@ -333,7 +394,38 @@ else
                         }
                     </div>
                 }
-                @* ===== Остальные этапы (6, 8, 9, 10): прежняя форма ===== *@
+                @* ===== Этап 8 «Ожидание доставки»: дата доставки подсвечивается при отметке «Заполнить в ЕИС» ===== *@
+                else if (_stage == 8)
+                {
+                    <div class="wf-grid">
+                        <div class="wf-field">
+                            <label class="wf-label">Наименование</label>
+                            <textarea class="wf-area" @bind="_edits[r.Id].NameLink" @bind:after="() => SaveAsync(r.Id)"></textarea>
+                        </div>
+                        <div class="wf-field">
+                            <label class="wf-label">Заказчик</label>
+                            <textarea class="wf-area" @bind="_edits[r.Id].Customer" @bind:after="() => SaveAsync(r.Id)"></textarea>
+                        </div>
+                        <div class="wf-field">
+                            <label class="wf-label">Ожидаемая дата доставки</label>
+                            <input type="date" class="wf-input" style="@Highlight(r.IsEisFilled)"
+                                   @bind="_edits[r.Id].ExpectedDeliveryDate" @bind:format="yyyy-MM-dd" @bind:after="() => SaveAsync(r.Id)" />
+                            @if (r.IsEisFilled)
+                            {
+                                <span style="display:inline-flex;align-items:center;gap:6px;margin-top:4px;font-size:15px;font-weight:800;color:#b45309">🧾 Заполнить в ЕИС</span>
+                            }
+                        </div>
+                        <div class="wf-field">
+                            <label class="wf-label">Место поставки</label>
+                            <textarea class="wf-area" @bind="_edits[r.Id].PlaceOfDelivery" @bind:after="() => SaveAsync(r.Id)"></textarea>
+                        </div>
+                        <div class="wf-field">
+                            <label class="wf-label">Примечание</label>
+                            <textarea class="wf-area" @bind="_edits[r.Id].Note" @bind:after="() => SaveAsync(r.Id)"></textarea>
+                        </div>
+                    </div>
+                }
+                @* ===== Остальные этапы (9, 10, «Проблемы с приемкой»): прежняя форма ===== *@
                 else
                 {
                     <div class="wf-grid">
@@ -345,14 +437,13 @@ else
                         <div class="wf-field"><label class="wf-label">Место на торгах</label><input class="wf-input" @bind="_edits[r.Id].Place" @bind:after="() => SaveAsync(r.Id)" /></div>
                         <div class="wf-field"><label class="wf-label">Место поставки</label><textarea class="wf-area" @bind="_edits[r.Id].PlaceOfDelivery" @bind:after="() => SaveAsync(r.Id)"></textarea></div>
                         <div class="wf-field"><label class="wf-label">Итог. цена</label><input type="number" class="wf-input" @bind="_edits[r.Id].ResultPrice" @bind:after="() => SaveAsync(r.Id)" /></div>
-                        <div class="wf-field"><label class="wf-label">Победитель</label><input class="wf-input" @bind="_edits[r.Id].Winner" @bind:after="() => SaveAsync(r.Id)" /></div>
                         <div class="wf-field"><label class="wf-label">Примечание</label><textarea class="wf-area" @bind="_edits[r.Id].Note" @bind:after="() => SaveAsync(r.Id)"></textarea></div>
                     </div>
                 }
 
                 @if (_stage == 13 && !string.IsNullOrWhiteSpace(r.ReturnReason))
                 {
-                    <div class="alert alert-error" style="margin-top:10px">↩ Причина возврата: @r.ReturnReason</div>
+                    <div class="alert alert-error" style="margin-top:10px">⚠ Проблема с приемкой: @r.ReturnReason</div>
                 }
 
                 <div class="toolbar" style="margin-top:10px;flex-wrap:wrap;gap:6px;align-items:center">
@@ -381,7 +472,7 @@ else
                     }
                     else if (_stage == 5)
                     {
-                        <button class="btn" @onclick="() => Advance(r.Id, 7)">Подписан →</button>
+                        <button class="btn" @onclick="() => Advance(r.Id, 7)">→ 6 Контракт</button>
                     }
                     else if (_stage == 6)
                     {
@@ -395,7 +486,7 @@ else
                     else if (_stage == 9)
                     {
                         <button class="btn" @onclick="() => Advance(r.Id, 11)">→ Оплата</button>
-                        <button class="btn btn--danger" @onclick="() => OpenReturn(r.Id)">↩ Возврат</button>
+                        <button class="btn btn--danger" @onclick="() => OpenReturn(r.Id)">⚠ Проблема с приемкой</button>
                     }
                     else if (_stage == 10)
                     {
@@ -407,19 +498,19 @@ else
     }
 }
 
-@* ===== Модальное окно «Возврат» (этап 9) ===== *@
+@* ===== Модальное окно «Проблема с приемкой» (этап 9) ===== *@
 @if (_returnFor is not null)
 {
     <div style="position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:1000" @onclick="CloseReturn">
         <div style="background:#fff;border-radius:8px;max-width:480px;width:92%;box-shadow:0 10px 40px rgba(0,0,0,.3)" @onclick:stopPropagation="true">
-            <div style="padding:16px 20px;border-bottom:1px solid #eee;font-size:18px;font-weight:800">Возврат закупки</div>
+            <div style="padding:16px 20px;border-bottom:1px solid #eee;font-size:18px;font-weight:800">Проблема с приемкой</div>
             <div style="padding:16px 20px">
-                <label class="wf-label" style="display:block;margin-bottom:6px">Причина возврата</label>
+                <label class="wf-label" style="display:block;margin-bottom:6px">Описание проблемы</label>
                 <textarea class="wf-area" style="min-height:90px" @bind="_returnReason"></textarea>
             </div>
             <div style="padding:12px 20px;border-top:1px solid #eee;display:flex;justify-content:flex-end;gap:8px">
                 <button class="btn" @onclick="CloseReturn">Отмена</button>
-                <button class="btn btn--danger" @onclick="SubmitReturn">Оформить возврат</button>
+                <button class="btn btn--danger" @onclick="SubmitReturn">Сохранить</button>
             </div>
         </div>
     </div>
@@ -431,7 +522,7 @@ else
     private IReadOnlyList<DictionaryItemDto> _types = Array.Empty<DictionaryItemDto>();
     private IReadOnlyList<DictionaryItemDto> _b2b = Array.Empty<DictionaryItemDto>();
     private IReadOnlyList<BranchDto> _branches = Array.Empty<BranchDto>();
-    private int? _returnFor;                 // Id закупки, для которой открыто окно «Возврат»
+    private int? _returnFor;                 // Id закупки, для которой открыто окно «Проблема с приемкой»
     private string _returnReason = string.Empty;
     private bool _busy;
     private bool _loading = true;
@@ -440,6 +531,8 @@ else
     private ChangeActor _actor = new("user", "Пользователь");
     private HashSet<int> _allowedStages = new();
     private bool _isTenderHead;
+    private bool _isDirector;              // Директор правит мин. сумму и «Звони» на этапе 4
+    private string _search = string.Empty;  // общий поиск по всем полям текущей стадии
     private int _biddingTomorrow;
     private int _biddingToday;
 
@@ -463,6 +556,7 @@ else
 
             // Всплывающее уведомление о предстоящих торгах — для роли «Руководитель тендерного отдела».
             _isTenderHead = state.User.IsInRole("TenderHead");
+            _isDirector = state.User.IsInRole(AppRoles.Director);
             if (_isTenderHead)
             {
                 (_biddingTomorrow, _biddingToday) = await WorkflowSvc.GetUpcomingBiddingCountsAsync();
@@ -503,7 +597,6 @@ else
                     Place = r.Place ?? string.Empty,
                     PlaceOfDelivery = r.PlaceOfDelivery,
                     ResultPrice = r.ResultPrice,
-                    Winner = r.Winner,
                     Note = r.Note,
                     Attachments = r.Attachments ?? string.Empty,
                     TypeOfPurchaseId = r.TypeOfPurchaseId,
@@ -511,11 +604,14 @@ else
                     NationalMode = r.NationalMode,
                     BiddingDate = r.BiddingDate,
                     MinPrice = r.MinPrice,
-                    DeliveryTime = r.DeliveryTime,
+                    DeliveryDate = r.DeliveryDate,
                     IsCall = r.IsCall,
                     IsByRequest = r.IsByRequest,
                     ExpectedDeliveryDate = r.ExpectedDeliveryDate,
-                    BranchId = r.BranchId
+                    BranchId = r.BranchId,
+                    ContractStatusId = r.ContractStatusId,
+                    IsContractChecked = r.IsContractChecked,
+                    IsEisFilled = r.IsEisFilled
                 };
             }
         }
@@ -523,15 +619,59 @@ else
         finally { _busy = false; _loading = false; }
     }
 
+    private void ClearSearch() => _search = string.Empty;
+
     private void SetStage(int stage) => _stage = stage;
 
     private string TabClass(int stage) => _stage == stage ? "btn btn-primary" : "btn";
 
-    private int Count(int stage) => _rows.Count(r => r.Stage == stage);
+    private int Count(int stage) => _rows.Count(r => r.Stage == stage && MatchesSearch(r));
 
-    private List<WorkflowRow> Rows() => _rows.Where(r => r.Stage == _stage).ToList();
+    private List<WorkflowRow> Rows() => _rows.Where(r => r.Stage == _stage && MatchesSearch(r)).ToList();
+
+    // Общий поиск по всем полям строки стадии: текст, суммы, даты, справочники, стадия.
+    private bool MatchesSearch(WorkflowRow r)
+    {
+        var term = _search?.Trim();
+        if (string.IsNullOrEmpty(term))
+        {
+            return true;
+        }
+
+        if (decimal.TryParse(term, NumberStyles.Number, CultureInfo.InvariantCulture, out var amount) &&
+            (r.NMCK == amount || r.MinPrice == amount || r.ResultPrice == amount))
+        {
+            return true;
+        }
+
+        if (RegistryService.TryParseDate(term, out var date) &&
+            (r.BiddingDate?.Date == date.Date || r.ExpectedDeliveryDate?.Date == date.Date || r.DeliveryDate?.Date == date.Date))
+        {
+            return true;
+        }
+
+        return Has(r.NameLink, term) || Has(r.EisLink, term) || Has(r.Customer, term) ||
+               Has(r.PurchaseNumber, term) || Has(r.ReserveNumber, term) || Has(r.Place, term) ||
+               Has(r.PlaceOfDelivery, term) || Has(r.NationalMode, term) || Has(r.Note, term) ||
+               Has(r.Attachments, term) || Has(r.ReturnReason, term) ||
+               Has(r.TypeOfPurchaseName, term) || Has(r.B2BStatusName, term) ||
+               Has(WorkflowStages.Name(r.Stage), term) || Has(ContractStatuses.Name(r.ContractStatusId), term) ||
+               Has(Fmt(r.BiddingDate), term) || Has(Fmt(r.ExpectedDeliveryDate), term) ||
+               Has(r.DeliveryDate?.ToString("dd.MM.yyyy"), term) ||
+               Has(r.NMCK.ToString("N2", CultureInfo.InvariantCulture), term) ||
+               Has(r.MinPrice.ToString("N2", CultureInfo.InvariantCulture), term) ||
+               Has(r.ResultPrice.ToString("N2", CultureInfo.InvariantCulture), term) ||
+               r.Id.ToString(CultureInfo.InvariantCulture) == term;
+    }
+
+    private static bool Has(string? value, string term) =>
+        !string.IsNullOrEmpty(value) && value.Contains(term, StringComparison.OrdinalIgnoreCase);
 
     private static string Fmt(DateTime? d) => d?.ToString("dd.MM.yyyy HH:mm") ?? string.Empty;
+
+    // Подсветка «требуется внимание»: как у флажка «Звони» (этап 4) и «Заполнить в ЕИС» (этап 8).
+    private static string Highlight(bool on) =>
+        on ? "border:2px solid #d97706;background:#fff7ed;color:#92400e;font-weight:800;font-size:17px" : string.Empty;
 
     private static string[] SplitAttachments(string value) =>
         string.IsNullOrWhiteSpace(value) ? Array.Empty<string>() : value.Split(';', StringSplitOptions.RemoveEmptyEntries);
@@ -555,6 +695,20 @@ else
     private async Task OnToggleByRequest(int id, ChangeEventArgs ev)
     {
         _edits[id].IsByRequest = ev.Value is bool b && b;
+        await SaveAsync(id);
+    }
+
+    // Флажок «Проверен» (этап 6 «Контракт»).
+    private async Task OnToggleContractChecked(int id, ChangeEventArgs ev)
+    {
+        _edits[id].IsContractChecked = ev.Value is bool b && b;
+        await SaveAsync(id);
+    }
+
+    // Флажок «Заполнить в ЕИС» (этап 7) — подсвечивает дату доставки на этапе 8.
+    private async Task OnToggleEisFilled(int id, ChangeEventArgs ev)
+    {
+        _edits[id].IsEisFilled = ev.Value is bool b && b;
         await SaveAsync(id);
     }
 
@@ -582,7 +736,7 @@ else
         await LoadAsync();
     }
 
-    // Этап 9: окно «Возврат» с причиной.
+    // Этап 9: окно «Проблема с приемкой» с описанием.
     private void OpenReturn(int id) { _returnFor = id; _returnReason = string.Empty; }
 
     private void CloseReturn() { _returnFor = null; _returnReason = string.Empty; }

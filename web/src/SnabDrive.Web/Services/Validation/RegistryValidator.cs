@@ -55,12 +55,6 @@ public static class RegistryValidator
             errors[nameof(request.ResultPrice)] = "Итоговая сумма не может быть отрицательной";
         }
 
-        if (access.CanEdit(nameof(request.Winner)) &&
-            request.ResultPrice > 0 && string.IsNullOrWhiteSpace(request.Winner))
-        {
-            errors[nameof(request.Winner)] = "Укажите победителя — заполнена итоговая сумма";
-        }
-
         if (access.CanEdit(nameof(request.MinPrice)) &&
             request.MinPrice > 0 && request.NMCK > 0 && request.MinPrice > request.NMCK)
         {

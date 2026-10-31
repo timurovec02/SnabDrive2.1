@@ -127,3 +127,77 @@ BEGIN
     INSERT INTO dbo.Branches (Name) VALUES (N'Филиал 1'), (N'Филиал 2'), (N'Филиал 3');
 END
 GO
+
+-- ============================================================================
+-- 2026-10: реестр — «Победитель» удалён; «Срок поставки» (текст) заменён на
+--          «Дата доставки» (дата); добавлены поля этапов 6-7:
+--          ContractStatusId «Статус контракта», IsContractChecked «Проверен»,
+--          IsEisFilled «Заполнить в ЕИС».
+-- Скрипт идемпотентен: можно выполнять повторно.
+-- ============================================================================
+
+-- 1. Новая колонка «Дата доставки» (реестр + архив).
+IF COL_LENGTH('dbo.RegistryItems', 'DeliveryDate') IS NULL
+    ALTER TABLE dbo.RegistryItems ADD DeliveryDate DATETIME2(3) NULL;
+IF COL_LENGTH('dbo.ArchiveRegistryItems', 'DeliveryDate') IS NULL
+    ALTER TABLE dbo.ArchiveRegistryItems ADD DeliveryDate DATETIME2(3) NULL;
+GO
+
+-- 2. Перенос текстового «Срок поставки» в дату: всё, что распознаётся как дата.
+--    Значения вида «30 дней» / «по заявкам» датой не являются и остаются пустыми.
+IF COL_LENGTH('dbo.RegistryItems', 'DeliveryTime') IS NOT NULL
+    UPDATE dbo.RegistryItems
+    SET DeliveryDate = COALESCE(
+            TRY_CONVERT(DATETIME2(3), NULLIF(LTRIM(RTRIM(DeliveryTime)), ''), 104),  -- dd.mm.yyyy
+            TRY_CONVERT(DATETIME2(3), NULLIF(LTRIM(RTRIM(DeliveryTime)), ''), 126),  -- yyyy-mm-ddThh:mm:ss
+            TRY_CONVERT(DATETIME2(3), NULLIF(LTRIM(RTRIM(DeliveryTime)), ''), 103),  -- dd/mm/yyyy
+            TRY_CONVERT(DATETIME2(3), NULLIF(LTRIM(RTRIM(DeliveryTime)), '')))       -- прочее
+    WHERE DeliveryDate IS NULL;
+
+IF COL_LENGTH('dbo.ArchiveRegistryItems', 'DeliveryTime') IS NOT NULL
+    UPDATE dbo.ArchiveRegistryItems
+    SET DeliveryDate = COALESCE(
+            TRY_CONVERT(DATETIME2(3), NULLIF(LTRIM(RTRIM(DeliveryTime)), ''), 104),
+            TRY_CONVERT(DATETIME2(3), NULLIF(LTRIM(RTRIM(DeliveryTime)), ''), 126),
+            TRY_CONVERT(DATETIME2(3), NULLIF(LTRIM(RTRIM(DeliveryTime)), ''), 103),
+            TRY_CONVERT(DATETIME2(3), NULLIF(LTRIM(RTRIM(DeliveryTime)), '')))
+    WHERE DeliveryDate IS NULL;
+GO
+
+-- 3. Удаляем старые колонки Winner и DeliveryTime (сначала их DEFAULT-ограничения, если есть).
+DECLARE @tbl SYSNAME, @col SYSNAME, @df NVARCHAR(256), @sql NVARCHAR(MAX);
+DECLARE drop_cur CURSOR LOCAL FAST_FORWARD FOR
+    SELECT t.name, c.name, dc.name
+    FROM sys.columns c
+    JOIN sys.tables t ON t.object_id = c.object_id
+    LEFT JOIN sys.default_constraints dc ON dc.object_id = c.default_object_id
+    WHERE t.name IN ('RegistryItems', 'ArchiveRegistryItems')
+      AND c.name IN ('Winner', 'DeliveryTime');
+OPEN drop_cur;
+FETCH NEXT FROM drop_cur INTO @tbl, @col, @df;
+WHILE @@FETCH_STATUS = 0
+BEGIN
+    IF @df IS NOT NULL
+    BEGIN
+        SET @sql = N'ALTER TABLE dbo.' + QUOTENAME(@tbl) + N' DROP CONSTRAINT ' + QUOTENAME(@df) + N';';
+        EXEC sp_executesql @sql;
+    END
+    SET @sql = N'ALTER TABLE dbo.' + QUOTENAME(@tbl) + N' DROP COLUMN ' + QUOTENAME(@col) + N';';
+    EXEC sp_executesql @sql;
+    FETCH NEXT FROM drop_cur INTO @tbl, @col, @df;
+END
+CLOSE drop_cur; DEALLOCATE drop_cur;
+GO
+
+-- 4. Поля этапов 6-7 (реестр).
+IF COL_LENGTH('dbo.RegistryItems', 'ContractStatusId') IS NULL
+    ALTER TABLE dbo.RegistryItems ADD ContractStatusId INT NULL;      -- 1 Снабдрайв / 2 заказчик / 3 подписан
+IF COL_LENGTH('dbo.RegistryItems', 'IsContractChecked') IS NULL
+    ALTER TABLE dbo.RegistryItems ADD IsContractChecked BIT NOT NULL CONSTRAINT DF_RegistryItems_IsContractChecked DEFAULT(0);
+IF COL_LENGTH('dbo.RegistryItems', 'IsEisFilled') IS NULL
+    ALTER TABLE dbo.RegistryItems ADD IsEisFilled BIT NOT NULL CONSTRAINT DF_RegistryItems_IsEisFilled DEFAULT(0);
+GO
+
+-- 5. Чистим права на удалённые колонки, чтобы не мешали сохранению настроек.
+DELETE FROM dbo.UserColumnPermissions WHERE ColumnKey IN ('Winner', 'DeliveryTime');
+GO

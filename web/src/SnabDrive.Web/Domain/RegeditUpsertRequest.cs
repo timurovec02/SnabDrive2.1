@@ -45,11 +45,8 @@ public sealed record RegeditUpsertRequest
     [Range(0, 999999999, ErrorMessage = "Итоговая сумма не может быть отрицательной")]
     public decimal ResultPrice { get; set; }
 
-    [StringLength(500)]
-    public string Winner { get; set; } = string.Empty;
-
-    [StringLength(200)]
-    public string DeliveryTime { get; set; } = string.Empty;
+    /// <summary>Дата доставки (бывший текстовый «Срок поставки»).</summary>
+    public DateTime? DeliveryDate { get; set; }
 
     [StringLength(2000)]
     public string Description { get; set; } = string.Empty;

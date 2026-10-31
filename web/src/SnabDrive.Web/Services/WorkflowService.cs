@@ -19,17 +19,30 @@ public static class WorkflowStages
         (3, "3. Подача заявки на площадку"),
         (4, "4. Торги"),
         (5, "5. Перемещение товара"),
-        (6, "6. Контракт подписан"),
+        (6, "6. Контракт"),
         (7, "7. Логистические документы"),
         (8, "8. Ожидание доставки"),
         (9, "9. Приемка заказчиком"),
         (10, "10. Оплата заказчиком"),
         (11, "Завершена"),
         (0, "Проиграна"),
-        (13, "Возвраты")
+        (13, "Проблемы с приемкой")
     };
 
     public static string Name(int id) => All.FirstOrDefault(x => x.Id == id).Name ?? "—";
+}
+
+/// <summary>Статусы контракта (этап 6 «Контракт»).</summary>
+public static class ContractStatuses
+{
+    public static readonly (int Id, string Name)[] All =
+    {
+        (1, "На подписании у Снабдрайв"),
+        (2, "На подписании у заказчика"),
+        (3, "Подписан")
+    };
+
+    public static string Name(int? id) => All.FirstOrDefault(x => x.Id == id).Name ?? string.Empty;
 }
 
 /// <summary>Данные закупки для вкладки «Задачи» (читаемые + редактируемые поля).</summary>
@@ -44,7 +57,6 @@ public sealed record WorkflowRow(
     string? Place,
     string PlaceOfDelivery,
     decimal ResultPrice,
-    string Winner,
     string Note,
     string? Attachments,
     int Stage,
@@ -55,7 +67,7 @@ public sealed record WorkflowRow(
     string? B2BStatusName,
     string NationalMode,
     decimal MinPrice,
-    string DeliveryTime,
+    DateTime? DeliveryDate,
     bool IsApproved,
     bool IsCall,
     string PurchaseNumber,
@@ -63,7 +75,10 @@ public sealed record WorkflowRow(
     DateTime? ExpectedDeliveryDate,
     int? BranchId,
     string? BranchFilePath,
-    string? ReturnReason);
+    string? ReturnReason,
+    int? ContractStatusId,
+    bool IsContractChecked,
+    bool IsEisFilled);
 
 /// <summary>Модель редактирования строки воркфлоу.</summary>
 public sealed class WorkflowEdit
@@ -75,7 +90,6 @@ public sealed class WorkflowEdit
     public string Place { get; set; } = string.Empty;
     public string PlaceOfDelivery { get; set; } = string.Empty;
     public decimal ResultPrice { get; set; }
-    public string Winner { get; set; } = string.Empty;
     public string Note { get; set; } = string.Empty;
     public string Attachments { get; set; } = string.Empty;
 
@@ -85,7 +99,9 @@ public sealed class WorkflowEdit
     public string NationalMode { get; set; } = string.Empty;
     public DateTime? BiddingDate { get; set; }
     public decimal MinPrice { get; set; }
-    public string DeliveryTime { get; set; } = string.Empty;
+
+    /// <summary>Дата доставки (бывший «Срок поставки»).</summary>
+    public DateTime? DeliveryDate { get; set; }
 
     /// <summary>Флажок «Звони» (стадия 2 — Согласование).</summary>
     public bool IsCall { get; set; }
@@ -98,6 +114,15 @@ public sealed class WorkflowEdit
 
     /// <summary>Выбранный филиал (этап 7).</summary>
     public int? BranchId { get; set; }
+
+    /// <summary>Статус контракта (этап 6): см. <see cref="ContractStatuses"/>.</summary>
+    public int? ContractStatusId { get; set; }
+
+    /// <summary>Флажок «Проверен» (этап 6 — контракт).</summary>
+    public bool IsContractChecked { get; set; }
+
+    /// <summary>Флажок «Заполнить в ЕИС» (этап 7) — подсвечивает дату доставки на этапе 8.</summary>
+    public bool IsEisFilled { get; set; }
 }
 
 public interface IWorkflowService
@@ -120,7 +145,7 @@ public interface IWorkflowService
     /// <summary>Этап 7: оповестить выбранный филиал в Битрикс24 (со ссылкой на файл) и перевести на следующий этап.</summary>
     Task<Result> NotifyBranchAsync(int regeditId, ChangeActor actor, CancellationToken cancellationToken = default);
 
-    /// <summary>Этап 9: оформить возврат с причиной — переводит закупку на стадию «Возвраты».</summary>
+    /// <summary>Этап 9: зафиксировать проблему с приемкой — переводит закупку на стадию «Проблемы с приемкой».</summary>
     Task<Result> ReturnAsync(int regeditId, string reason, ChangeActor actor, CancellationToken cancellationToken = default);
 
     /// <summary>Количество закупок с торгами завтра и сегодня (для всплывающего уведомления).</summary>
@@ -173,12 +198,13 @@ public sealed class WorkflowService : IWorkflowService
         return await context.Regedit.AsNoTracking()
             .OrderBy(r => r.Stage).ThenByDescending(r => r.Id)
             .Select(r => new WorkflowRow(r.Id, r.NameLink, r.EisLink, r.Customer, r.NMCK, r.BiddingDate,
-                r.ReserveNumber, r.Place, r.PlaceOfDelivery, r.ResultPrice, r.Winner, r.Note,
+                r.ReserveNumber, r.Place, r.PlaceOfDelivery, r.ResultPrice, r.Note,
                 r.Attachments, r.Stage, r.IsLost,
                 r.TypeOfPurchaseId, r.TypeOfPurchase != null ? r.TypeOfPurchase.NameOfPurchase : null,
                 r.B2BStatusId, r.B2BStatus != null ? r.B2BStatus.NameB2B : null,
-                r.NationalMode, r.MinPrice, r.DeliveryTime, r.IsApproved, r.IsCall, r.PurchaseNumber,
-                r.IsByRequest, r.ExpectedDeliveryDate, r.BranchId, r.BranchFilePath, r.ReturnReason))
+                r.NationalMode, r.MinPrice, r.DeliveryDate, r.IsApproved, r.IsCall, r.PurchaseNumber,
+                r.IsByRequest, r.ExpectedDeliveryDate, r.BranchId, r.BranchFilePath, r.ReturnReason,
+                r.ContractStatusId, r.IsContractChecked, r.IsEisFilled))
             .ToListAsync(cancellationToken);
     }
 
@@ -198,7 +224,6 @@ public sealed class WorkflowService : IWorkflowService
         item.Place = edit.Place;
         item.PlaceOfDelivery = edit.PlaceOfDelivery;
         item.ResultPrice = edit.ResultPrice;
-        item.Winner = edit.Winner;
         item.Note = edit.Note;
         item.Attachments = edit.Attachments;
 
@@ -209,11 +234,16 @@ public sealed class WorkflowService : IWorkflowService
         item.NationalMode = edit.NationalMode;
         item.BiddingDate = edit.BiddingDate;
         item.MinPrice = edit.MinPrice;
-        item.DeliveryTime = edit.DeliveryTime;
+        item.DeliveryDate = edit.DeliveryDate;
         item.IsCall = edit.IsCall;
         item.IsByRequest = edit.IsByRequest;
         item.ExpectedDeliveryDate = edit.ExpectedDeliveryDate;
         item.BranchId = edit.BranchId;
+
+        // Этап 6 «Контракт»: статус + отметка «Проверен»; этап 7 — «Заполнить в ЕИС».
+        item.ContractStatusId = edit.ContractStatusId;
+        item.IsContractChecked = edit.IsContractChecked;
+        item.IsEisFilled = edit.IsEisFilled;
 
         await context.SaveChangesAsync(cancellationToken);
         return Result.Ok();
@@ -363,7 +393,7 @@ public sealed class WorkflowService : IWorkflowService
         }
 
         var from = item.Stage;
-        item.Stage = 13;            // «Возвраты»
+        item.Stage = 13;            // «Проблемы с приемкой»
         item.ReturnReason = reason.Trim();
 
         context.RegistryWorkflowLogs.Add(new RegistryWorkflowLog
@@ -371,7 +401,7 @@ public sealed class WorkflowService : IWorkflowService
             RegeditId = regeditId,
             FromStage = from,
             ToStage = 13,
-            Action = "Возврат: " + reason.Trim(),
+            Action = "Проблема с приемкой: " + reason.Trim(),
             ByUser = actor.UserName,
             AtUtc = DateTime.UtcNow
         });

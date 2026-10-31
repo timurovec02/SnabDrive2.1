@@ -57,6 +57,17 @@
                                 }
                             </select>
                         }
+                        else if (column.Key == "Stage")
+                        {
+                            <select class="filter-input" value="@GetFilter(column.Key)"
+                                    @onchange="e => OnFilterChanged.InvokeAsync((column.Key, e.Value?.ToString() ?? string.Empty))">
+                                <option value="">все</option>
+                                @foreach (var st in WorkflowStages.All)
+                                {
+                                    <option value="@st.Id">@st.Name</option>
+                                }
+                            </select>
+                        }
                         else if (column.Kind == ColumnKind.Bool)
                         {
                             <select class="filter-input" value="@GetFilter(column.Key)"
@@ -379,8 +390,7 @@
         "PlaceOfDelivery" => row.PlaceOfDelivery,
         "ReserveNumber" => row.ReserveNumber,
         "NationalMode" => row.NationalMode,
-        "Winner" => row.Winner,
-        "DeliveryTime" => row.DeliveryTime,
+        "DeliveryDate" => row.DeliveryDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? string.Empty,
         "Description" => row.Description,
         "Note" => row.Note,
         "BiddingDate" => row.BiddingDate?.ToString("yyyy-MM-ddTHH:mm", CultureInfo.InvariantCulture) ?? string.Empty,
@@ -510,8 +520,7 @@
         "DateResults" => Date(row.DateResults),
         "DateOfConclusionOfTheContract" => Date(row.DateOfConclusionOfTheContract),
         "ArchivateDate" => Date(row.ArchivateDate),
-        "Winner" => row.Winner,
-        "DeliveryTime" => row.DeliveryTime,
+        "DeliveryDate" => Date(row.DeliveryDate),
         "Description" => row.Description,
         "Note" => row.Note,
         "B2BStatusId" => row.B2BStatusName ?? string.Empty,

@@ -114,8 +114,7 @@ public sealed class RegistryService : IRegistryService
                 NMCK = x.NMCK,
                 MinPrice = x.MinPrice,
                 ResultPrice = x.ResultPrice,
-                Winner = x.Winner,
-                DeliveryTime = x.DeliveryTime,
+                DeliveryDate = x.DeliveryDate,
                 Description = x.Description,
                 Note = x.Note,
                 B2BStatusId = x.B2BStatusId,
@@ -181,8 +180,7 @@ public sealed class RegistryService : IRegistryService
                 NMCK = x.NMCK,
                 MinPrice = x.MinPrice,
                 ResultPrice = x.ResultPrice,
-                Winner = x.Winner,
-                DeliveryTime = x.DeliveryTime,
+                DeliveryDate = x.DeliveryDate,
                 Description = x.Description,
                 Note = x.Note,
                 B2BStatusId = x.B2BStatusId,
@@ -273,8 +271,7 @@ public sealed class RegistryService : IRegistryService
                 NMCK = x.NMCK,
                 MinPrice = x.MinPrice,
                 ResultPrice = x.ResultPrice,
-                Winner = x.Winner,
-                DeliveryTime = x.DeliveryTime,
+                DeliveryDate = x.DeliveryDate,
                 Description = x.Description,
                 Note = x.Note,
                 B2BStatusId = x.B2BStatusId,
@@ -422,11 +419,8 @@ public sealed class RegistryService : IRegistryService
             case "NationalMode":
                 AddCellChange(changes, column.Title, entity.NationalMode, entity.NationalMode = raw);
                 break;
-            case "Winner":
-                AddCellChange(changes, column.Title, entity.Winner, entity.Winner = raw);
-                break;
-            case "DeliveryTime":
-                AddCellChange(changes, column.Title, entity.DeliveryTime, entity.DeliveryTime = raw);
+            case "DeliveryDate":
+                AddCellChange(changes, column.Title, FmtDate(entity.DeliveryDate), FmtDate(entity.DeliveryDate = ParseDate(raw)));
                 break;
             case "Description":
                 AddCellChange(changes, column.Title, entity.Description, entity.Description = raw);
@@ -637,9 +631,8 @@ public sealed class RegistryService : IRegistryService
             NMCK = entity.NMCK,
             MinPrice = entity.MinPrice,
             ResultPrice = entity.ResultPrice,
-            Winner = entity.Winner,
             DateOfConclusionOfTheContract = entity.DateOfConclusionOfTheContract,
-            DeliveryTime = entity.DeliveryTime,
+            DeliveryDate = entity.DeliveryDate,
             Description = entity.Description,
             Note = entity.Note,
             Customer = entity.Customer,
@@ -689,9 +682,8 @@ public sealed class RegistryService : IRegistryService
             NMCK = archive.NMCK,
             MinPrice = archive.MinPrice,
             ResultPrice = archive.ResultPrice,
-            Winner = archive.Winner,
             DateOfConclusionOfTheContract = archive.DateOfConclusionOfTheContract,
-            DeliveryTime = archive.DeliveryTime,
+            DeliveryDate = archive.DeliveryDate,
             Description = archive.Description,
             Note = archive.Note,
             Customer = archive.Customer,
@@ -749,8 +741,7 @@ public sealed class RegistryService : IRegistryService
         entity.NMCK = request.NMCK;
         entity.MinPrice = request.MinPrice;
         entity.ResultPrice = request.ResultPrice;
-        entity.Winner = request.Winner;
-        entity.DeliveryTime = request.DeliveryTime;
+        entity.DeliveryDate = request.DeliveryDate;
         entity.Description = request.Description;
         entity.Note = request.Note;
         entity.TypeOfPurchaseId = Normalize(request.TypeOfPurchaseId);
@@ -918,8 +909,7 @@ public sealed class RegistryService : IRegistryService
         if (!access.CanView("NMCK")) row.NMCK = 0m;
         if (!access.CanView("MinPrice")) row.MinPrice = 0m;
         if (!access.CanView("ResultPrice")) row.ResultPrice = 0m;
-        if (!access.CanView("Winner")) row.Winner = string.Empty;
-        if (!access.CanView("DeliveryTime")) row.DeliveryTime = string.Empty;
+        if (!access.CanView("DeliveryDate")) row.DeliveryDate = null;
         if (!access.CanView("Description")) row.Description = string.Empty;
         if (!access.CanView("Note")) row.Note = string.Empty;
 
@@ -964,8 +954,7 @@ public sealed class RegistryService : IRegistryService
         if (!access.CanView("NMCK")) request.NMCK = 0m;
         if (!access.CanView("MinPrice")) request.MinPrice = 0m;
         if (!access.CanView("ResultPrice")) request.ResultPrice = 0m;
-        if (!access.CanView("Winner")) request.Winner = string.Empty;
-        if (!access.CanView("DeliveryTime")) request.DeliveryTime = string.Empty;
+        if (!access.CanView("DeliveryDate")) request.DeliveryDate = null;
         if (!access.CanView("Description")) request.Description = string.Empty;
         if (!access.CanView("Note")) request.Note = string.Empty;
         if (!access.CanView("TypeOfPurchaseId")) request.TypeOfPurchaseId = null;
@@ -1024,8 +1013,7 @@ public sealed class RegistryService : IRegistryService
         if (access.CanEdit("NMCK")) entity.NMCK = request.NMCK;
         if (access.CanEdit("MinPrice")) entity.MinPrice = request.MinPrice;
         if (access.CanEdit("ResultPrice")) entity.ResultPrice = request.ResultPrice;
-        if (access.CanEdit("Winner")) entity.Winner = request.Winner;
-        if (access.CanEdit("DeliveryTime")) entity.DeliveryTime = request.DeliveryTime;
+        if (access.CanEdit("DeliveryDate")) entity.DeliveryDate = request.DeliveryDate;
         if (access.CanEdit("Description")) entity.Description = request.Description;
         if (access.CanEdit("Note")) entity.Note = request.Note;
         if (access.CanEdit("TypeOfPurchaseId")) entity.TypeOfPurchaseId = Normalize(request.TypeOfPurchaseId);
@@ -1054,8 +1042,7 @@ public sealed class RegistryService : IRegistryService
         NMCK = entity.NMCK,
         MinPrice = entity.MinPrice,
         ResultPrice = entity.ResultPrice,
-        Winner = entity.Winner,
-        DeliveryTime = entity.DeliveryTime,
+        DeliveryDate = entity.DeliveryDate,
         Description = entity.Description,
         Note = entity.Note,
         TypeOfPurchaseId = entity.TypeOfPurchaseId,
@@ -1081,8 +1068,7 @@ public sealed class RegistryService : IRegistryService
         NMCK = entity.NMCK,
         MinPrice = entity.MinPrice,
         ResultPrice = entity.ResultPrice,
-        Winner = entity.Winner,
-        DeliveryTime = entity.DeliveryTime,
+        DeliveryDate = entity.DeliveryDate,
         Description = entity.Description,
         Note = entity.Note,
         TypeOfPurchaseId = entity.TypeOfPurchaseId,
@@ -1114,8 +1100,7 @@ public sealed class RegistryService : IRegistryService
         Compare("НМЦК", Money(before.NMCK), Money(after.NMCK));
         Compare("Наша минимальная сумма", Money(before.MinPrice), Money(after.MinPrice));
         Compare("Итоговая сумма", Money(before.ResultPrice), Money(after.ResultPrice));
-        Compare("Победитель", before.Winner, after.Winner);
-        Compare("Срок поставки", before.DeliveryTime, after.DeliveryTime);
+        Compare("Дата доставки", Fmt(before.DeliveryDate), Fmt(after.DeliveryDate));
         Compare("Примечания", before.Description, after.Description);
         Compare("Доп записка", before.Note, after.Note);
         Compare("Тип закупки", before.TypeOfPurchaseId?.ToString(), after.TypeOfPurchaseId?.ToString());
@@ -1173,9 +1158,11 @@ public sealed class RegistryService : IRegistryService
             EF.Functions.Like(x.PlaceOfDelivery.ToLower(), like) ||
             EF.Functions.Like(x.ReserveNumber.ToLower(), like) ||
             EF.Functions.Like(x.NationalMode.ToLower(), like) ||
-            EF.Functions.Like(x.Winner.ToLower(), like) ||
+            EF.Functions.Like(x.PurchaseNumber.ToLower(), like) ||
             EF.Functions.Like(x.Description.ToLower(), like) ||
             EF.Functions.Like(x.Note.ToLower(), like) ||
+            (x.EisLink != null && EF.Functions.Like(x.EisLink.ToLower(), like)) ||
+            (x.Place != null && EF.Functions.Like(x.Place.ToLower(), like)) ||
             (x.TypeOfPurchase != null && EF.Functions.Like(x.TypeOfPurchase.NameOfPurchase.ToLower(), like)) ||
             (x.B2BStatus != null && EF.Functions.Like(x.B2BStatus.NameB2B.ToLower(), like)) ||
             (x.ExecutionStatus != null && EF.Functions.Like(x.ExecutionStatus.NameExecution.ToLower(), like)) ||
@@ -1184,12 +1171,16 @@ public sealed class RegistryService : IRegistryService
                          (x.DateOfPlacement >= dayStart && x.DateOfPlacement < dayEnd) ||
                          (x.DateOfTransferForPlacement >= dayStart && x.DateOfTransferForPlacement < dayEnd) ||
                          (x.DateResults >= dayStart && x.DateResults < dayEnd) ||
-                         (x.DateOfConclusionOfTheContract >= dayStart && x.DateOfConclusionOfTheContract < dayEnd))) ||
+                         (x.DateOfConclusionOfTheContract >= dayStart && x.DateOfConclusionOfTheContract < dayEnd) ||
+                         (x.DeliveryDate >= dayStart && x.DeliveryDate < dayEnd) ||
+                         (x.ExpectedDeliveryDate >= dayStart && x.ExpectedDeliveryDate < dayEnd))) ||
             (hasYear && ((x.BiddingDate >= yearStart && x.BiddingDate < yearEnd) ||
                          (x.DateOfPlacement >= yearStart && x.DateOfPlacement < yearEnd) ||
                          (x.DateOfTransferForPlacement >= yearStart && x.DateOfTransferForPlacement < yearEnd) ||
                          (x.DateResults >= yearStart && x.DateResults < yearEnd) ||
-                         (x.DateOfConclusionOfTheContract >= yearStart && x.DateOfConclusionOfTheContract < yearEnd))));
+                         (x.DateOfConclusionOfTheContract >= yearStart && x.DateOfConclusionOfTheContract < yearEnd) ||
+                         (x.DeliveryDate >= yearStart && x.DeliveryDate < yearEnd) ||
+                         (x.ExpectedDeliveryDate >= yearStart && x.ExpectedDeliveryDate < yearEnd))));
     }
 
     private static IQueryable<ArchiveRegedit> ApplyArchiveSearch(IQueryable<ArchiveRegedit> source, string? search)
@@ -1222,7 +1213,8 @@ public sealed class RegistryService : IRegistryService
             EF.Functions.Like(x.PlaceOfDelivery.ToLower(), like) ||
             EF.Functions.Like(x.ReserveNumber.ToLower(), like) ||
             EF.Functions.Like(x.NationalMode.ToLower(), like) ||
-            EF.Functions.Like(x.Winner.ToLower(), like) ||
+            EF.Functions.Like(x.PurchaseNumber.ToLower(), like) ||
+            (x.EisLink != null && EF.Functions.Like(x.EisLink.ToLower(), like)) ||
             EF.Functions.Like(x.Description.ToLower(), like) ||
             EF.Functions.Like(x.Note.ToLower(), like) ||
             (x.TypeOfPurchase != null && EF.Functions.Like(x.TypeOfPurchase.NameOfPurchase.ToLower(), like)) ||
@@ -1234,8 +1226,14 @@ public sealed class RegistryService : IRegistryService
                          (x.DateOfTransferForPlacement >= dayStart && x.DateOfTransferForPlacement < dayEnd) ||
                          (x.DateResults >= dayStart && x.DateResults < dayEnd) ||
                          (x.DateOfConclusionOfTheContract >= dayStart && x.DateOfConclusionOfTheContract < dayEnd) ||
+                         (x.DeliveryDate >= dayStart && x.DeliveryDate < dayEnd) ||
                          (x.ArchivateDate >= dayStart && x.ArchivateDate < dayEnd))) ||
             (hasYear && ((x.BiddingDate >= yearStart && x.BiddingDate < yearEnd) ||
+                         (x.DateOfPlacement >= yearStart && x.DateOfPlacement < yearEnd) ||
+                         (x.DateOfTransferForPlacement >= yearStart && x.DateOfTransferForPlacement < yearEnd) ||
+                         (x.DateResults >= yearStart && x.DateResults < yearEnd) ||
+                         (x.DateOfConclusionOfTheContract >= yearStart && x.DateOfConclusionOfTheContract < yearEnd) ||
+                         (x.DeliveryDate >= yearStart && x.DeliveryDate < yearEnd) ||
                          (x.ArchivateDate >= yearStart && x.ArchivateDate < yearEnd))));
     }
 
@@ -1331,8 +1329,7 @@ public sealed class RegistryService : IRegistryService
             case "PlaceOfDelivery": return q.Where(x => EF.Functions.Like(x.PlaceOfDelivery.ToLower(), like));
             case "ReserveNumber": return q.Where(x => EF.Functions.Like(x.ReserveNumber.ToLower(), like));
             case "NationalMode": return q.Where(x => EF.Functions.Like(x.NationalMode.ToLower(), like));
-            case "Winner": return q.Where(x => EF.Functions.Like(x.Winner.ToLower(), like));
-            case "DeliveryTime": return q.Where(x => EF.Functions.Like(x.DeliveryTime.ToLower(), like));
+            case "PurchaseNumber": return q.Where(x => EF.Functions.Like(x.PurchaseNumber.ToLower(), like));
             case "Description": return q.Where(x => EF.Functions.Like(x.Description.ToLower(), like));
             case "Note": return q.Where(x => EF.Functions.Like(x.Note.ToLower(), like));
 
@@ -1351,6 +1348,28 @@ public sealed class RegistryService : IRegistryService
             case "IsFinished":
                 return bool.TryParse(value, out var isFinished)
                     ? q.Where(x => x.IsFinished == isFinished)
+                    : q;
+            case "IsApproved":
+                return bool.TryParse(value, out var isApproved)
+                    ? q.Where(x => x.IsApproved == isApproved)
+                    : q;
+
+            // «Стадия»: принимаем и код стадии, и текст её названия.
+            case "Stage":
+                if (int.TryParse(value, out var stageId))
+                {
+                    return q.Where(x => x.Stage == stageId);
+                }
+
+                var stageIds = WorkflowStages.All
+                    .Where(st => st.Name.Contains(value, StringComparison.OrdinalIgnoreCase))
+                    .Select(st => st.Id)
+                    .ToArray();
+                return stageIds.Length > 0 ? q.Where(x => stageIds.Contains(x.Stage)) : q;
+
+            case "DeliveryDate":
+                return TryParseDate(value, out var deliveryDate)
+                    ? q.Where(x => x.DeliveryDate >= deliveryDate && x.DeliveryDate < deliveryDate.AddDays(1))
                     : q;
 
             case "BiddingDate":
@@ -1406,8 +1425,8 @@ public sealed class RegistryService : IRegistryService
             case "PlaceOfDelivery": return q.Where(x => EF.Functions.Like(x.PlaceOfDelivery.ToLower(), like));
             case "ReserveNumber": return q.Where(x => EF.Functions.Like(x.ReserveNumber.ToLower(), like));
             case "NationalMode": return q.Where(x => EF.Functions.Like(x.NationalMode.ToLower(), like));
-            case "Winner": return q.Where(x => EF.Functions.Like(x.Winner.ToLower(), like));
-            case "DeliveryTime": return q.Where(x => EF.Functions.Like(x.DeliveryTime.ToLower(), like));
+            case "EisLink": return q.Where(x => x.EisLink != null && EF.Functions.Like(x.EisLink.ToLower(), like));
+            case "PurchaseNumber": return q.Where(x => EF.Functions.Like(x.PurchaseNumber.ToLower(), like));
             case "Description": return q.Where(x => EF.Functions.Like(x.Description.ToLower(), like));
             case "Note": return q.Where(x => EF.Functions.Like(x.Note.ToLower(), like));
 
@@ -1432,6 +1451,42 @@ public sealed class RegistryService : IRegistryService
                 return TryParseDate(value, out var biddingDate)
                     ? q.Where(x => x.BiddingDate >= biddingDate && x.BiddingDate < biddingDate.AddDays(1))
                     : q;
+            case "DeliveryDate":
+                return TryParseDate(value, out var deliveryDate)
+                    ? q.Where(x => x.DeliveryDate >= deliveryDate && x.DeliveryDate < deliveryDate.AddDays(1))
+                    : q;
+            case "DateOfTransferForPlacement":
+                return TryParseDate(value, out var transferDate)
+                    ? q.Where(x => x.DateOfTransferForPlacement >= transferDate && x.DateOfTransferForPlacement < transferDate.AddDays(1))
+                    : q;
+            case "DateOfPlacement":
+                return TryParseDate(value, out var placementDate)
+                    ? q.Where(x => x.DateOfPlacement >= placementDate && x.DateOfPlacement < placementDate.AddDays(1))
+                    : q;
+            case "DateResults":
+                return TryParseDate(value, out var resultsDate)
+                    ? q.Where(x => x.DateResults >= resultsDate && x.DateResults < resultsDate.AddDays(1))
+                    : q;
+            case "DateOfConclusionOfTheContract":
+                return TryParseDate(value, out var contractDate)
+                    ? q.Where(x => x.DateOfConclusionOfTheContract >= contractDate && x.DateOfConclusionOfTheContract < contractDate.AddDays(1))
+                    : q;
+
+            case "NMCK":
+                return ApplyMoneyFilter(q, value,
+                    v => q.Where(x => x.NMCK == v),
+                    v => q.Where(x => x.NMCK >= v),
+                    v => q.Where(x => x.NMCK <= v));
+            case "MinPrice":
+                return ApplyMoneyFilter(q, value,
+                    v => q.Where(x => x.MinPrice == v),
+                    v => q.Where(x => x.MinPrice >= v),
+                    v => q.Where(x => x.MinPrice <= v));
+            case "ResultPrice":
+                return ApplyMoneyFilter(q, value,
+                    v => q.Where(x => x.ResultPrice == v),
+                    v => q.Where(x => x.ResultPrice >= v),
+                    v => q.Where(x => x.ResultPrice <= v));
 
             default:
                 return q;
@@ -1499,8 +1554,7 @@ public sealed class RegistryService : IRegistryService
             "PlaceOfDelivery" => Order(x => x.PlaceOfDelivery),
             "ReserveNumber" => Order(x => x.ReserveNumber),
             "NationalMode" => Order(x => x.NationalMode),
-            "Winner" => Order(x => x.Winner),
-            "DeliveryTime" => Order(x => x.DeliveryTime),
+            "DeliveryDate" => Order(x => x.DeliveryDate),
             "Description" => Order(x => x.Description),
             "Note" => Order(x => x.Note),
             "BiddingDate" => Order(x => x.BiddingDate),
@@ -1534,8 +1588,7 @@ public sealed class RegistryService : IRegistryService
             "PlaceOfDelivery" => Order(x => x.PlaceOfDelivery),
             "ReserveNumber" => Order(x => x.ReserveNumber),
             "NationalMode" => Order(x => x.NationalMode),
-            "Winner" => Order(x => x.Winner),
-            "DeliveryTime" => Order(x => x.DeliveryTime),
+            "DeliveryDate" => Order(x => x.DeliveryDate),
             "Description" => Order(x => x.Description),
             "Note" => Order(x => x.Note),
             "ArchivateDate" => Order(x => x.ArchivateDate),

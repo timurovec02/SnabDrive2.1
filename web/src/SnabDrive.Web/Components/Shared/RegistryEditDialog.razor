@@ -60,8 +60,9 @@
                 </div>
 
                 <div class="form-field">
-                    <label>Срок поставки</label>
-                    <InputText @bind-Value="Model.DeliveryTime" class="input" disabled="@ReadOnly("DeliveryTime")" />
+                    <label>Дата доставки</label>
+                    <InputDate @bind-Value="Model.DeliveryDate" class="input" disabled="@ReadOnly("DeliveryDate")" />
+                    <ValidationMessage For="() => Model.DeliveryDate" />
                 </div>
 
                 <div class="form-field">
@@ -108,12 +109,6 @@
                     <label>Итоговая сумма</label>
                     <InputNumber @bind-Value="Model.ResultPrice" class="input" disabled="@ReadOnly("ResultPrice")" />
                     <ValidationMessage For="() => Model.ResultPrice" />
-                </div>
-
-                <div class="form-field">
-                    <label>Победитель</label>
-                    <InputText @bind-Value="Model.Winner" class="input" disabled="@ReadOnly("Winner")" />
-                    <ValidationMessage For="() => Model.Winner" />
                 </div>
 
                 <div class="form-field">

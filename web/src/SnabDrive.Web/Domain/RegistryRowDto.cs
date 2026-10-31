@@ -31,8 +31,9 @@ public class RegistryRowDto
     public decimal MinPrice { get; set; }
     public decimal ResultPrice { get; set; }
 
-    public string Winner { get; set; } = string.Empty;
-    public string DeliveryTime { get; set; } = string.Empty;
+    /// <summary>Дата доставки (бывший «Срок поставки»).</summary>
+    public DateTime? DeliveryDate { get; set; }
+
     public string Description { get; set; } = string.Empty;
     public string Note { get; set; } = string.Empty;
 
