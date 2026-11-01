@@ -22,6 +22,9 @@ public class RegistryRowDto
     public string NationalMode { get; set; } = string.Empty;
 
     public DateTime? BiddingDate { get; set; }
+
+    /// <summary>Окончание приема заявок (дедлайн подачи заявки).</summary>
+    public DateTime? ApplicationEndDate { get; set; }
     public DateTime? DateOfTransferForPlacement { get; set; }
     public DateTime? DateOfPlacement { get; set; }
     public DateTime? DateResults { get; set; }

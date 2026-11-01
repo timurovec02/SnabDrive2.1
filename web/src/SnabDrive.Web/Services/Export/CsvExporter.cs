@@ -33,6 +33,7 @@ public static class CsvExporter
         "ReserveNumber" => row.ReserveNumber,
         "NationalMode" => row.NationalMode,
         "BiddingDate" => FormatDateTime(row.BiddingDate),
+        "ApplicationEndDate" => FormatDateTime(row.ApplicationEndDate),
         "DateOfTransferForPlacement" => FormatDateTime(row.DateOfTransferForPlacement),
         "DateOfPlacement" => FormatDateTime(row.DateOfPlacement),
         "DateResults" => FormatDate(row.DateResults),
@@ -49,6 +50,8 @@ public static class CsvExporter
         "IsFinished" => row.IsFinished == true ? "да" : "нет",
         "IsApproved" => row.IsApproved ? "да" : "нет",
         "Stage" => row.StageName,
+        "StageCompletedBy" => row.StageCompletedBy ?? string.Empty,
+        "StageCompletedAtUtc" => FormatDateTime(row.StageCompletedAtUtc),
         _ => string.Empty
     };
 

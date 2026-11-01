@@ -72,6 +72,12 @@
                 </div>
 
                 <div class="form-field">
+                    <label>Окончание приема заявок (с временем)</label>
+                    <input type="datetime-local" class="input" value="@ApplicationEndDateText"
+                           disabled="@ReadOnly("ApplicationEndDate")" @onchange="OnApplicationEndDateChange" />
+                </div>
+
+                <div class="form-field">
                     <label>Дата передачи на размещение</label>
                     <InputDate @bind-Value="Model.DateOfTransferForPlacement" class="input" disabled="@ReadOnly("DateOfTransferForPlacement")" />
                 </div>
@@ -186,6 +192,14 @@
     private void OnBiddingDateChange(ChangeEventArgs e)
     {
         Model.BiddingDate = DateTime.TryParse(e.Value?.ToString(), out var d) ? d : null;
+    }
+
+    private string ApplicationEndDateText =>
+        Model.ApplicationEndDate?.ToString("yyyy-MM-ddTHH:mm", System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty;
+
+    private void OnApplicationEndDateChange(ChangeEventArgs e)
+    {
+        Model.ApplicationEndDate = DateTime.TryParse(e.Value?.ToString(), out var d) ? d : null;
     }
 
     /// <summary>Blazor не рендерит атрибут, если значение null — поле останется активным.</summary>

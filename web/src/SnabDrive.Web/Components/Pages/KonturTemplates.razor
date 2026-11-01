@@ -57,6 +57,7 @@
                 <th class="th-sort" @onclick='() => SortBy("Customer")'>Заказчик @Arrow("Customer")</th>
                 <th class="th-sort th-money" @onclick='() => SortBy("NmcK")'>НМЦК @Arrow("NmcK")</th>
                 <th class="th-sort" @onclick='() => SortBy("Date")'>Дата торгов @Arrow("Date")</th>
+                <th class="th-sort" @onclick='() => SortBy("AppEnd")'>Окончание приема заявок @Arrow("AppEnd")</th>
                 <th class="th-sort" @onclick='() => SortBy("Pub")'>Дата публикации @Arrow("Pub")</th>
                 <th class="th-sort" @onclick='() => SortBy("Label")'>Метка @Arrow("Label")</th>
                 <th class="th-sort" @onclick='() => SortBy("Added")'>Добавлено @Arrow("Added")</th>
@@ -70,6 +71,7 @@
                 <th></th>
                 <th></th>
                 <th></th>
+                <th></th>
                 <th><input class="filter-input" placeholder="фильтр" value='@GetFilter("Label")' @onchange='e => SetFilter("Label", e)' /></th>
                 <th></th>
                 <th></th>
@@ -78,11 +80,11 @@
         <tbody>
             @if (_rows is null)
             {
-                <tr><td colspan="10" class="muted">Загрузка…</td></tr>
+                <tr><td colspan="11" class="muted">Загрузка…</td></tr>
             }
             else if (!_rows.Any())
             {
-                <tr><td colspan="10" class="muted">Нет выгрузок ловушки.</td></tr>
+                <tr><td colspan="11" class="muted">Нет выгрузок ловушки.</td></tr>
             }
             else
             {
@@ -104,6 +106,7 @@
                         <td class="td-text">@t.Customer</td>
                         <td class="td-money">@t.NMCK.ToString("N2")</td>
                         <td>@t.BiddingDate?.ToString("dd.MM.yyyy")</td>
+                        <td>@(t.ApplicationEndDate?.ToString("dd.MM.yyyy HH:mm") ?? "—")</td>
                         <td>@t.DateOfPlacement?.ToString("dd.MM.yyyy")</td>
                         <td class="td-text">@(string.IsNullOrWhiteSpace(t.Label) ? "—" : t.Label)</td>
                         <td>@t.AddedAt.ToString("dd.MM.yyyy HH:mm")</td>
@@ -272,6 +275,7 @@
             "Customer" => Ord(t => t.Customer),
             "NmcK" => Ord(t => t.NMCK),
             "Date" => Ord(t => t.BiddingDate),
+            "AppEnd" => Ord(t => t.ApplicationEndDate),
             "Pub" => Ord(t => t.DateOfPlacement),
             "Label" => Ord(t => t.Label),
             "Added" => Ord(t => t.AddedAt),

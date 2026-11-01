@@ -132,6 +132,18 @@ else
                     <StageHistoryTrigger RegeditId="r.Id" Label="📋 Все этапы" />
                 </div>
 
+                @* ===== Этап 3: дедлайн подачи заявки — самое важное поле, поэтому вверху
+                      карточки и ярко. Стили заданы прямо здесь, чтобы подсветка не зависела
+                      от подключения css. ===== *@
+                @if (_stage == 3)
+                {
+                    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;padding:10px 14px;margin:0 0 12px;border-radius:8px;font-size:16px;font-weight:700;@DeadlineStyle(r.ApplicationEndDate)">
+                        <span style="font-size:20px;line-height:1">⏰</span>
+                        <span>Окончание приема заявок: @(r.ApplicationEndDate is null ? "не указана" : Fmt(r.ApplicationEndDate))</span>
+                        <span style="font-size:13.5px;font-weight:600;opacity:.85">@DeadlineLeft(r.ApplicationEndDate)</span>
+                    </div>
+                }
+
                 @* ===== Этапы 1 / 1.2 / 2 (Согласование): полный набор редактируемых полей ===== *@
                 @if (_stage == 1 || _stage == 2 || _stage == 12)
                 {
@@ -181,6 +193,10 @@ else
                             <input type="datetime-local" class="wf-input" @bind="_edits[r.Id].BiddingDate" @bind:format="yyyy-MM-dd'T'HH:mm" @bind:after="() => SaveAsync(r.Id)" />
                         </div>
                         <div class="wf-field">
+                            <label class="wf-label">Окончание приема заявок</label>
+                            <input type="datetime-local" class="wf-input" @bind="_edits[r.Id].ApplicationEndDate" @bind:format="yyyy-MM-dd'T'HH:mm" @bind:after="() => SaveAsync(r.Id)" />
+                        </div>
+                        <div class="wf-field">
                             <label class="wf-label">НМЦК</label>
                             <input type="number" class="wf-input" @bind="_edits[r.Id].NMCK" @bind:after="() => SaveAsync(r.Id)" />
                         </div>
@@ -225,6 +241,7 @@ else
                         <div class="wf-field"><label class="wf-label">Заказчик</label><div class="wf-readonly">@r.Customer</div></div>
                         <div class="wf-field"><label class="wf-label">НМЦК</label><div class="wf-readonly">@r.NMCK.ToString("N2")</div></div>
                         <div class="wf-field"><label class="wf-label">Дата торгов</label><div class="wf-readonly">@Fmt(r.BiddingDate)</div></div>
+                        <div class="wf-field"><label class="wf-label">Окончание приема заявок</label><div class="wf-readonly">@Fmt(r.ApplicationEndDate)</div></div>
                         <div class="wf-field"><label class="wf-label">Тип закупки</label><div class="wf-readonly">@r.TypeOfPurchaseName</div></div>
                         <div class="wf-field"><label class="wf-label">Наша минимальная сумма</label><div class="wf-readonly">@r.MinPrice.ToString("N2")</div></div>
                         <div class="wf-field"><label class="wf-label">Место поставки</label><div class="wf-readonly">@r.PlaceOfDelivery</div></div>
@@ -638,6 +655,7 @@ else
                     B2BStatusId = r.B2BStatusId,
                     NationalMode = r.NationalMode,
                     BiddingDate = r.BiddingDate,
+                    ApplicationEndDate = r.ApplicationEndDate,
                     MinPrice = r.MinPrice,
                     DeliveryDate = r.DeliveryDate,
                     IsCall = r.IsCall,
@@ -718,7 +736,22 @@ else
 
     private int Count(int stage) => _rows.Count(r => r.Stage == stage && MatchesSearch(r));
 
-    private List<WorkflowRow> Rows() => _rows.Where(r => r.Stage == _stage && MatchesSearch(r)).ToList();
+    private List<WorkflowRow> Rows()
+    {
+        var rows = _rows.Where(r => r.Stage == _stage && MatchesSearch(r)).ToList();
+
+        // Этап 3 «Подача заявки»: очередность определяет дедлайн — сначала те,
+        // у которых прием заявок заканчивается раньше. Без даты — в конец.
+        if (_stage == 3)
+        {
+            return rows
+                .OrderBy(r => r.ApplicationEndDate ?? DateTime.MaxValue)
+                .ThenByDescending(r => r.Id)
+                .ToList();
+        }
+
+        return rows;
+    }
 
     // Общий поиск по всем полям строки стадии: текст, суммы, даты, справочники, стадия.
     private bool MatchesSearch(WorkflowRow r)
@@ -748,11 +781,50 @@ else
                Has(r.TypeOfPurchaseName, term) || Has(r.B2BStatusName, term) ||
                Has(WorkflowStages.Name(r.Stage), term) || Has(ContractStatuses.Name(r.ContractStatusId), term) ||
                Has(Fmt(r.BiddingDate), term) || Has(Fmt(r.ExpectedDeliveryDate), term) ||
+               Has(Fmt(r.ApplicationEndDate), term) ||
                Has(r.DeliveryDate?.ToString("dd.MM.yyyy"), term) ||
                Has(r.NMCK.ToString("N2", CultureInfo.InvariantCulture), term) ||
                Has(r.MinPrice.ToString("N2", CultureInfo.InvariantCulture), term) ||
                Has(r.ResultPrice.ToString("N2", CultureInfo.InvariantCulture), term) ||
                r.Id.ToString(CultureInfo.InvariantCulture) == term;
+    }
+
+    /// <summary>Яркая подсветка дедлайна: красный — срок вышел или меньше двух дней, жёлтый — в запасе.</summary>
+    private static string DeadlineStyle(DateTime? at)
+    {
+        if (at is null)
+        {
+            return "background:#fff7ed;border:2px solid #f59e0b;color:#7c2d12";
+        }
+
+        var left = at.Value - DateTime.Now;
+        if (left <= TimeSpan.FromDays(2))
+        {
+            return "background:#fee2e2;border:2px solid #dc2626;color:#7f1d1d";
+        }
+
+        return "background:#fffbeb;border:2px solid #f59e0b;color:#7c2d12";
+    }
+
+    private static string DeadlineLeft(DateTime? at)
+    {
+        if (at is null)
+        {
+            return "дата не указана";
+        }
+
+        var left = at.Value - DateTime.Now;
+        if (left <= TimeSpan.Zero)
+        {
+            return "срок истёк";
+        }
+
+        if (left < TimeSpan.FromDays(1))
+        {
+            return "осталось " + (int)Math.Ceiling(left.TotalHours) + " ч.";
+        }
+
+        return "осталось " + (int)left.TotalDays + " дн.";
     }
 
     private static bool Has(string? value, string term) =>

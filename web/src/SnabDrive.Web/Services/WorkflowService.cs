@@ -82,7 +82,8 @@ public sealed record WorkflowRow(
     DateTime? StageStartedAtUtc,
     string? StageStartedBy,
     DateTime? StageCompletedAtUtc,
-    string? StageCompletedBy);
+    string? StageCompletedBy,
+    DateTime? ApplicationEndDate);
 
 /// <summary>Модель редактирования строки воркфлоу.</summary>
 public sealed class WorkflowEdit
@@ -102,6 +103,9 @@ public sealed class WorkflowEdit
     public int? B2BStatusId { get; set; }
     public string NationalMode { get; set; } = string.Empty;
     public DateTime? BiddingDate { get; set; }
+
+    /// <summary>Окончание приема заявок (редактируется на этапах 1 / 1.2 / 2).</summary>
+    public DateTime? ApplicationEndDate { get; set; }
     public decimal MinPrice { get; set; }
 
     /// <summary>Дата доставки (бывший «Срок поставки»).</summary>
@@ -230,7 +234,8 @@ public sealed class WorkflowService : IWorkflowService
                 r.NationalMode, r.MinPrice, r.DeliveryDate, r.IsApproved, r.IsCall, r.PurchaseNumber,
                 r.IsByRequest, r.ExpectedDeliveryDate, r.BranchId, r.BranchFilePath, r.ReturnReason,
                 r.ContractStatusId, r.IsContractChecked, r.IsEisFilled,
-                r.StageStartedAtUtc, r.StageStartedBy, r.StageCompletedAtUtc, r.StageCompletedBy))
+                r.StageStartedAtUtc, r.StageStartedBy, r.StageCompletedAtUtc, r.StageCompletedBy,
+                r.ApplicationEndDate))
             .ToListAsync(cancellationToken);
     }
 
@@ -259,6 +264,7 @@ public sealed class WorkflowService : IWorkflowService
         item.B2BStatusId = edit.B2BStatusId;
         item.NationalMode = edit.NationalMode;
         item.BiddingDate = edit.BiddingDate;
+        item.ApplicationEndDate = edit.ApplicationEndDate;
         item.MinPrice = edit.MinPrice;
         item.DeliveryDate = edit.DeliveryDate;
         item.IsCall = edit.IsCall;

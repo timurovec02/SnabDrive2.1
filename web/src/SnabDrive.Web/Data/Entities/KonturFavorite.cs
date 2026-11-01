@@ -38,6 +38,9 @@ public class KonturFavorite
     /// <summary>Дата окончания подачи заявок / торгов.</summary>
     public DateTime? BiddingDate { get; set; }
 
+    /// <summary>Окончание приема заявок — отдельная колонка выгрузки Контур.</summary>
+    public DateTime? ApplicationEndDate { get; set; }
+
     /// <summary>Дата публикации (размещения).</summary>
     public DateTime? DateOfPlacement { get; set; }
 

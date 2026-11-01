@@ -25,6 +25,9 @@ public class KonturTemplate
     public string? EisLink { get; set; }
 
     public DateTime? BiddingDate { get; set; }
+
+    /// <summary>Окончание приема заявок — отдельная колонка выгрузки Контур.</summary>
+    public DateTime? ApplicationEndDate { get; set; }
     public DateTime? DateOfPlacement { get; set; }
 
     public string RawJson { get; set; } = string.Empty;

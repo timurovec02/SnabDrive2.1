@@ -51,6 +51,7 @@ public class RegistryDbContext : DbContext
             entity.Property(x => x.DateOfTransferForPlacement).HasColumnName("DateOfTransferForPlacement");
             entity.Property(x => x.DateOfPlacement).HasColumnName("DateOfPlacement");
             entity.Property(x => x.BiddingDate).HasColumnName("BiddingDate");
+            entity.Property(x => x.ApplicationEndDate).HasColumnName("ApplicationEndDate");
             entity.Property(x => x.DateResults).HasColumnName("DateResults");
             entity.Property(x => x.DateOfConclusionOfTheContract).HasColumnName("DateOfConclusionOfTheContract");
 
@@ -118,6 +119,7 @@ public class RegistryDbContext : DbContext
             entity.Property(x => x.DateOfTransferForPlacement).HasColumnName("DateOfTransferForPlacement");
             entity.Property(x => x.DateOfPlacement).HasColumnName("DateOfPlacement");
             entity.Property(x => x.BiddingDate).HasColumnName("BiddingDate");
+            entity.Property(x => x.ApplicationEndDate).HasColumnName("ApplicationEndDate");
             entity.Property(x => x.DateResults).HasColumnName("DateResults");
             entity.Property(x => x.DateOfConclusionOfTheContract).HasColumnName("DateOfConclusionOfTheContract");
 
@@ -215,6 +217,7 @@ public class RegistryDbContext : DbContext
             entity.Property(x => x.Label).HasColumnName("Label").HasMaxLength(500);
             entity.Property(x => x.EisLink).HasColumnName("EisLink").HasMaxLength(1000);
             entity.Property(x => x.BiddingDate).HasColumnName("BiddingDate");
+            entity.Property(x => x.ApplicationEndDate).HasColumnName("ApplicationEndDate");
             entity.Property(x => x.DateOfPlacement).HasColumnName("DateOfPlacement");
             entity.Property(x => x.Status).HasColumnName("Status");
             entity.Property(x => x.RegeditId).HasColumnName("RegeditId");
@@ -238,6 +241,7 @@ public class RegistryDbContext : DbContext
             entity.Property(x => x.Label).HasColumnName("Label").HasMaxLength(500);
             entity.Property(x => x.EisLink).HasColumnName("EisLink").HasMaxLength(1000);
             entity.Property(x => x.BiddingDate).HasColumnName("BiddingDate");
+            entity.Property(x => x.ApplicationEndDate).HasColumnName("ApplicationEndDate");
             entity.Property(x => x.DateOfPlacement).HasColumnName("DateOfPlacement");
             entity.Property(x => x.RawJson).HasColumnName("RawJson");
             entity.Property(x => x.AddedAt).HasColumnName("AddedAt");

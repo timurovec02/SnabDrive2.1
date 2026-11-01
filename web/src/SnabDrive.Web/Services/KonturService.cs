@@ -149,6 +149,7 @@ public sealed class KonturService : IKonturService
                 Customer = favorite.Customer,
                 NMCK = favorite.NMCK,
                 BiddingDate = favorite.BiddingDate,
+                ApplicationEndDate = favorite.ApplicationEndDate,
                 DateOfPlacement = favorite.DateOfPlacement,
                 PlaceOfDelivery = favorite.PlaceOfDelivery ?? string.Empty,
                 ResultPrice = favorite.ResultPrice
@@ -231,6 +232,7 @@ public sealed class KonturService : IKonturService
                 if (!string.IsNullOrWhiteSpace(f.Label)) existing.Label = f.Label;
                 if (!string.IsNullOrWhiteSpace(f.EisLink)) existing.EisLink = f.EisLink;
                 existing.BiddingDate = f.BiddingDate;
+                existing.ApplicationEndDate = f.ApplicationEndDate;
                 existing.DateOfPlacement = f.DateOfPlacement;
                 existing.RawJson = f.RawJson;
                 existing.UpdatedAt = DateTime.Now;
@@ -249,6 +251,7 @@ public sealed class KonturService : IKonturService
                     Label = f.Label,
                     EisLink = f.EisLink,
                     BiddingDate = f.BiddingDate,
+                    ApplicationEndDate = f.ApplicationEndDate,
                     DateOfPlacement = f.DateOfPlacement,
                     RawJson = f.RawJson,
                     AddedAt = DateTime.Now,
@@ -382,7 +385,13 @@ public sealed class KonturService : IKonturService
         var colName = Find("Название");
         var colNmck = Find("НМЦ");
         var colPlacement = Find("Дата публикации");
-        var colBidding = Find("Проведение отбора") ?? Find("Окончание приема заявок");
+        // «Окончание приема заявок» — самостоятельное поле (дедлайн подачи заявки).
+        // «Проведение отбора» — дата торгов; если её в выгрузке нет, берём, как раньше,
+        // окончание приема заявок, чтобы «Дата торгов» не пустела.
+        var colAppEnd = Find("Окончание приема заявок")
+                        ?? Find("Окончание приёма заявок")
+                        ?? FindContains("окончание приема заявок", "окончание приёма заявок");
+        var colBidding = Find("Проведение отбора") ?? colAppEnd;
         var colDelivery = Find("Место поставки");
         var colWinner = Find("Название победителя") ?? Find("Название поставщика");
         var colResult = Find("Предложение победителя") ?? Find("Цена договора");
@@ -431,6 +440,7 @@ public sealed class KonturService : IKonturService
                 Customer = Clamp(Text(sheet, row.RowNumber(), colCustomer), 1000),
                 NMCK = Money(sheet, row.RowNumber(), colNmck),
                 BiddingDate = Date(sheet, row.RowNumber(), colBidding),
+                ApplicationEndDate = Date(sheet, row.RowNumber(), colAppEnd),
                 DateOfPlacement = Date(sheet, row.RowNumber(), colPlacement),
                 PlaceOfDelivery = Clamp(Text(sheet, row.RowNumber(), colDelivery), 1000),
                 Winner = Clamp(Text(sheet, row.RowNumber(), colWinner), 500),

@@ -23,6 +23,9 @@ public class Regedit
     public DateTime? DateOfTransferForPlacement { get; set; }
     public DateTime? DateOfPlacement { get; set; }
     public DateTime? BiddingDate { get; set; }
+
+    /// <summary>Окончание приема заявок — дедлайн подачи заявки (приходит из Контур).</summary>
+    public DateTime? ApplicationEndDate { get; set; }
     public DateTime? DateResults { get; set; }
     public DateTime? DateOfConclusionOfTheContract { get; set; }
 

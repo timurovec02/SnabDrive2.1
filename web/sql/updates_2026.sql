@@ -234,3 +234,23 @@ IF COL_LENGTH('dbo.RegistryItems', 'StageCompletedAtUtc') IS NULL
 IF COL_LENGTH('dbo.RegistryItems', 'StageCompletedBy') IS NULL
     ALTER TABLE dbo.RegistryItems ADD StageCompletedBy NVARCHAR(256) NULL;
 GO
+
+-- =============================================================================
+-- Окончание приема заявок (дедлайн подачи заявки). Колонка приходит из выгрузки
+-- Контур отдельным столбцом «Окончание приема заявок», показывается в обоих
+-- Контур-таблицах, в реестре и на этапах 1 / 1.2 / 2 / 3 вкладки «Задачи».
+-- =============================================================================
+IF COL_LENGTH('dbo.RegistryItems', 'ApplicationEndDate') IS NULL
+    ALTER TABLE dbo.RegistryItems ADD ApplicationEndDate DATETIME2(3) NULL;
+IF COL_LENGTH('dbo.ArchiveRegistryItems', 'ApplicationEndDate') IS NULL
+    ALTER TABLE dbo.ArchiveRegistryItems ADD ApplicationEndDate DATETIME2(3) NULL;
+IF COL_LENGTH('dbo.KonturFavorites', 'ApplicationEndDate') IS NULL
+    ALTER TABLE dbo.KonturFavorites ADD ApplicationEndDate DATETIME2(3) NULL;
+IF COL_LENGTH('dbo.KonturTemplates', 'ApplicationEndDate') IS NULL
+    ALTER TABLE dbo.KonturTemplates ADD ApplicationEndDate DATETIME2(3) NULL;
+GO
+
+-- Сортировка реестра и отбор по дедлайну идут по этой колонке.
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_RegistryItems_ApplicationEndDate' AND object_id = OBJECT_ID('dbo.RegistryItems'))
+    CREATE NONCLUSTERED INDEX IX_RegistryItems_ApplicationEndDate ON dbo.RegistryItems(ApplicationEndDate);
+GO

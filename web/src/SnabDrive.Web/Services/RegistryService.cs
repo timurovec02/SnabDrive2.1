@@ -123,6 +123,7 @@ public sealed class RegistryService : IRegistryService
                 MinPrice = x.MinPrice,
                 ResultPrice = x.ResultPrice,
                 DeliveryDate = x.DeliveryDate,
+                ApplicationEndDate = x.ApplicationEndDate,
                 Description = x.Description,
                 Note = x.Note,
                 B2BStatusId = x.B2BStatusId,
@@ -191,6 +192,7 @@ public sealed class RegistryService : IRegistryService
                 MinPrice = x.MinPrice,
                 ResultPrice = x.ResultPrice,
                 DeliveryDate = x.DeliveryDate,
+                ApplicationEndDate = x.ApplicationEndDate,
                 Description = x.Description,
                 Note = x.Note,
                 B2BStatusId = x.B2BStatusId,
@@ -282,6 +284,7 @@ public sealed class RegistryService : IRegistryService
                 MinPrice = x.MinPrice,
                 ResultPrice = x.ResultPrice,
                 DeliveryDate = x.DeliveryDate,
+                ApplicationEndDate = x.ApplicationEndDate,
                 Description = x.Description,
                 Note = x.Note,
                 B2BStatusId = x.B2BStatusId,
@@ -448,6 +451,9 @@ public sealed class RegistryService : IRegistryService
                 break;
             case "DeliveryDate":
                 AddCellChange(changes, column.Title, FmtDate(entity.DeliveryDate), FmtDate(entity.DeliveryDate = ParseDate(raw)));
+                break;
+            case "ApplicationEndDate":
+                AddCellChange(changes, column.Title, FmtDate(entity.ApplicationEndDate), FmtDate(entity.ApplicationEndDate = ParseDate(raw)));
                 break;
             case "Description":
                 AddCellChange(changes, column.Title, entity.Description, entity.Description = raw);
@@ -774,6 +780,7 @@ public sealed class RegistryService : IRegistryService
             ResultPrice = entity.ResultPrice,
             DateOfConclusionOfTheContract = entity.DateOfConclusionOfTheContract,
             DeliveryDate = entity.DeliveryDate,
+            ApplicationEndDate = entity.ApplicationEndDate,
             Description = entity.Description,
             Note = entity.Note,
             Customer = entity.Customer,
@@ -825,6 +832,7 @@ public sealed class RegistryService : IRegistryService
             ResultPrice = archive.ResultPrice,
             DateOfConclusionOfTheContract = archive.DateOfConclusionOfTheContract,
             DeliveryDate = archive.DeliveryDate,
+            ApplicationEndDate = archive.ApplicationEndDate,
             Description = archive.Description,
             Note = archive.Note,
             Customer = archive.Customer,
@@ -885,6 +893,7 @@ public sealed class RegistryService : IRegistryService
         entity.MinPrice = request.MinPrice;
         entity.ResultPrice = request.ResultPrice;
         entity.DeliveryDate = request.DeliveryDate;
+        entity.ApplicationEndDate = request.ApplicationEndDate;
         entity.Description = request.Description;
         entity.Note = request.Note;
         entity.TypeOfPurchaseId = Normalize(request.TypeOfPurchaseId);
@@ -1053,6 +1062,7 @@ public sealed class RegistryService : IRegistryService
         if (!access.CanView("MinPrice")) row.MinPrice = 0m;
         if (!access.CanView("ResultPrice")) row.ResultPrice = 0m;
         if (!access.CanView("DeliveryDate")) row.DeliveryDate = null;
+        if (!access.CanView("ApplicationEndDate")) row.ApplicationEndDate = null;
         if (!access.CanView("StageCompletedBy")) row.StageCompletedBy = string.Empty;
         if (!access.CanView("StageCompletedAtUtc")) row.StageCompletedAtUtc = null;
         if (!access.CanView("Description")) row.Description = string.Empty;
@@ -1100,6 +1110,7 @@ public sealed class RegistryService : IRegistryService
         if (!access.CanView("MinPrice")) request.MinPrice = 0m;
         if (!access.CanView("ResultPrice")) request.ResultPrice = 0m;
         if (!access.CanView("DeliveryDate")) request.DeliveryDate = null;
+        if (!access.CanView("ApplicationEndDate")) request.ApplicationEndDate = null;
         if (!access.CanView("Description")) request.Description = string.Empty;
         if (!access.CanView("Note")) request.Note = string.Empty;
         if (!access.CanView("TypeOfPurchaseId")) request.TypeOfPurchaseId = null;
@@ -1159,6 +1170,7 @@ public sealed class RegistryService : IRegistryService
         if (access.CanEdit("MinPrice")) entity.MinPrice = request.MinPrice;
         if (access.CanEdit("ResultPrice")) entity.ResultPrice = request.ResultPrice;
         if (access.CanEdit("DeliveryDate")) entity.DeliveryDate = request.DeliveryDate;
+        if (access.CanEdit("ApplicationEndDate")) entity.ApplicationEndDate = request.ApplicationEndDate;
         if (access.CanEdit("Description")) entity.Description = request.Description;
         if (access.CanEdit("Note")) entity.Note = request.Note;
         if (access.CanEdit("TypeOfPurchaseId")) entity.TypeOfPurchaseId = Normalize(request.TypeOfPurchaseId);
@@ -1188,6 +1200,7 @@ public sealed class RegistryService : IRegistryService
         MinPrice = entity.MinPrice,
         ResultPrice = entity.ResultPrice,
         DeliveryDate = entity.DeliveryDate,
+        ApplicationEndDate = entity.ApplicationEndDate,
         Description = entity.Description,
         Note = entity.Note,
         TypeOfPurchaseId = entity.TypeOfPurchaseId,
@@ -1214,6 +1227,7 @@ public sealed class RegistryService : IRegistryService
         MinPrice = entity.MinPrice,
         ResultPrice = entity.ResultPrice,
         DeliveryDate = entity.DeliveryDate,
+        ApplicationEndDate = entity.ApplicationEndDate,
         Description = entity.Description,
         Note = entity.Note,
         TypeOfPurchaseId = entity.TypeOfPurchaseId,
@@ -1246,6 +1260,7 @@ public sealed class RegistryService : IRegistryService
         Compare("Наша минимальная сумма", Money(before.MinPrice), Money(after.MinPrice));
         Compare("Итоговая сумма", Money(before.ResultPrice), Money(after.ResultPrice));
         Compare("Дата доставки", Fmt(before.DeliveryDate), Fmt(after.DeliveryDate));
+        Compare("Окончание приема заявок", Fmt(before.ApplicationEndDate), Fmt(after.ApplicationEndDate));
         Compare("Примечания", before.Description, after.Description);
         Compare("Доп записка", before.Note, after.Note);
         Compare("Тип закупки", before.TypeOfPurchaseId?.ToString(), after.TypeOfPurchaseId?.ToString());
@@ -1334,14 +1349,16 @@ public sealed class RegistryService : IRegistryService
                          (x.DateResults >= dayStart && x.DateResults < dayEnd) ||
                          (x.DateOfConclusionOfTheContract >= dayStart && x.DateOfConclusionOfTheContract < dayEnd) ||
                          (x.DeliveryDate >= dayStart && x.DeliveryDate < dayEnd) ||
-                         (x.ExpectedDeliveryDate >= dayStart && x.ExpectedDeliveryDate < dayEnd))) ||
+                         (x.ExpectedDeliveryDate >= dayStart && x.ExpectedDeliveryDate < dayEnd) ||
+                         (x.ApplicationEndDate >= dayStart && x.ApplicationEndDate < dayEnd))) ||
             (hasYear && ((x.BiddingDate >= yearStart && x.BiddingDate < yearEnd) ||
                          (x.DateOfPlacement >= yearStart && x.DateOfPlacement < yearEnd) ||
                          (x.DateOfTransferForPlacement >= yearStart && x.DateOfTransferForPlacement < yearEnd) ||
                          (x.DateResults >= yearStart && x.DateResults < yearEnd) ||
                          (x.DateOfConclusionOfTheContract >= yearStart && x.DateOfConclusionOfTheContract < yearEnd) ||
                          (x.DeliveryDate >= yearStart && x.DeliveryDate < yearEnd) ||
-                         (x.ExpectedDeliveryDate >= yearStart && x.ExpectedDeliveryDate < yearEnd))));
+                         (x.ExpectedDeliveryDate >= yearStart && x.ExpectedDeliveryDate < yearEnd) ||
+                         (x.ApplicationEndDate >= yearStart && x.ApplicationEndDate < yearEnd))));
     }
 
     private static IQueryable<ArchiveRegedit> ApplyArchiveSearch(IQueryable<ArchiveRegedit> source, string? search)
@@ -1402,14 +1419,16 @@ public sealed class RegistryService : IRegistryService
                          (x.DateResults >= dayStart && x.DateResults < dayEnd) ||
                          (x.DateOfConclusionOfTheContract >= dayStart && x.DateOfConclusionOfTheContract < dayEnd) ||
                          (x.DeliveryDate >= dayStart && x.DeliveryDate < dayEnd) ||
-                         (x.ArchivateDate >= dayStart && x.ArchivateDate < dayEnd))) ||
+                         (x.ArchivateDate >= dayStart && x.ArchivateDate < dayEnd) ||
+                         (x.ApplicationEndDate >= dayStart && x.ApplicationEndDate < dayEnd))) ||
             (hasYear && ((x.BiddingDate >= yearStart && x.BiddingDate < yearEnd) ||
                          (x.DateOfPlacement >= yearStart && x.DateOfPlacement < yearEnd) ||
                          (x.DateOfTransferForPlacement >= yearStart && x.DateOfTransferForPlacement < yearEnd) ||
                          (x.DateResults >= yearStart && x.DateResults < yearEnd) ||
                          (x.DateOfConclusionOfTheContract >= yearStart && x.DateOfConclusionOfTheContract < yearEnd) ||
                          (x.DeliveryDate >= yearStart && x.DeliveryDate < yearEnd) ||
-                         (x.ArchivateDate >= yearStart && x.ArchivateDate < yearEnd))));
+                         (x.ArchivateDate >= yearStart && x.ArchivateDate < yearEnd) ||
+                         (x.ApplicationEndDate >= yearStart && x.ApplicationEndDate < yearEnd))));
     }
 
     // ------------------------------------------------------------------ фильтры по колонкам
@@ -1552,6 +1571,10 @@ public sealed class RegistryService : IRegistryService
                 return TryParseDate(value, out var deliveryDate)
                     ? q.Where(x => x.DeliveryDate >= deliveryDate && x.DeliveryDate < deliveryDate.AddDays(1))
                     : q;
+            case "ApplicationEndDate":
+                return TryParseDate(value, out var applicationEndDate)
+                    ? q.Where(x => x.ApplicationEndDate >= applicationEndDate && x.ApplicationEndDate < applicationEndDate.AddDays(1))
+                    : q;
 
             case "BiddingDate":
                 return TryParseDate(value, out var biddingDate)
@@ -1635,6 +1658,10 @@ public sealed class RegistryService : IRegistryService
             case "DeliveryDate":
                 return TryParseDate(value, out var deliveryDate)
                     ? q.Where(x => x.DeliveryDate >= deliveryDate && x.DeliveryDate < deliveryDate.AddDays(1))
+                    : q;
+            case "ApplicationEndDate":
+                return TryParseDate(value, out var applicationEndDate)
+                    ? q.Where(x => x.ApplicationEndDate >= applicationEndDate && x.ApplicationEndDate < applicationEndDate.AddDays(1))
                     : q;
             case "DateOfTransferForPlacement":
                 return TryParseDate(value, out var transferDate)
@@ -1739,6 +1766,7 @@ public sealed class RegistryService : IRegistryService
             "ReserveNumber" => Order(x => x.ReserveNumber),
             "NationalMode" => Order(x => x.NationalMode),
             "DeliveryDate" => Order(x => x.DeliveryDate),
+            "ApplicationEndDate" => Order(x => x.ApplicationEndDate),
             "Description" => Order(x => x.Description),
             "Note" => Order(x => x.Note),
             "BiddingDate" => Order(x => x.BiddingDate),
@@ -1775,6 +1803,7 @@ public sealed class RegistryService : IRegistryService
             "ReserveNumber" => Order(x => x.ReserveNumber),
             "NationalMode" => Order(x => x.NationalMode),
             "DeliveryDate" => Order(x => x.DeliveryDate),
+            "ApplicationEndDate" => Order(x => x.ApplicationEndDate),
             "Description" => Order(x => x.Description),
             "Note" => Order(x => x.Note),
             "ArchivateDate" => Order(x => x.ArchivateDate),
