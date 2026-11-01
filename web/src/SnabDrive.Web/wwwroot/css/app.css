@@ -1083,6 +1083,156 @@ input:disabled {
     outline: none;
 }
 
+/* --- История этапов: выпадающий список со всеми переводами закупки ---
+   Панель позиционируется fixed: ячейка лежит внутри таблицы с overflow: auto,
+   и абсолютная панель внутри неё обрезалась бы краем контейнера. Координаты
+   подставляет js/panel.js; если скрипт не загрузился, работает центрирование ниже. */
+.stage-history__toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 1px 2px;
+    border: 0;
+    border-bottom: 1px dotted transparent;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.stage-history__toggle:hover,
+.stage-history__toggle:focus {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+    outline: none;
+}
+
+.stage-history__label {
+    overflow-wrap: anywhere;
+}
+
+.stage-history__caret {
+    font-size: 10px;
+    color: var(--text-muted);
+}
+
+/* Прозрачный слой: клик мимо списка закрывает его */
+.stage-history__backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+}
+
+.stage-history__panel {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%); /* запасной вариант без js/panel.js */
+    z-index: 61;
+    width: min(560px, 92vw);
+    max-height: 70vh;
+    overflow: auto;
+    padding: 10px 12px 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 12px 32px rgba(15, 23, 42, .18);
+    font-size: 13px;
+    color: var(--text);
+}
+
+.stage-history__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.stage-history__close {
+    border: 0;
+    background: transparent;
+    padding: 0 2px;
+    font-size: 14px;
+    line-height: 1;
+    color: var(--text-muted);
+    cursor: pointer;
+}
+
+.stage-history__close:hover {
+    color: var(--danger);
+}
+
+.stage-history__now {
+    padding: 6px 8px;
+    margin-bottom: 8px;
+    background: var(--head-bg);
+    border-radius: 6px;
+    line-height: 1.5;
+}
+
+.stage-history__count {
+    margin: 0 0 4px;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.stage-history__list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.stage-history__row {
+    display: grid;
+    grid-template-columns: 108px minmax(90px, 140px) 1fr;
+    gap: 4px 10px;
+    align-items: baseline;
+    padding: 4px 6px;
+    border-radius: 4px;
+}
+
+.stage-history__row:nth-child(odd) {
+    background: #f8fafc;
+}
+
+.stage-history__when {
+    white-space: nowrap;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.stage-history__who,
+.stage-history__what {
+    overflow-wrap: anywhere;
+}
+
+.stage-history__arrow {
+    margin: 0 4px;
+    color: var(--text-muted);
+}
+
+.stage-history__action {
+    display: block;
+    margin-top: 2px;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.stage-history__note {
+    padding: 8px 2px;
+    color: var(--text-muted);
+}
+
+/* Общий класс .muted в app.css не объявлен, поэтому приглушение задаём здесь —
+   только внутри панели, чтобы не менять вид остальных страниц. */
+.stage-history__panel .muted {
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
 /* Отметка «Согласован» / «Оплачен» ставится одним кликом прямо в таблице */
 .bool-check {
     width: 18px;

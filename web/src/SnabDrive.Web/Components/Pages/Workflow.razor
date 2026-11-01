@@ -128,6 +128,8 @@ else
                 <div class="muted" style="display:flex;flex-wrap:wrap;gap:4px 18px;margin:0 0 10px;font-size:12.5px">
                     <span title="Кто и когда начал текущий этап">👤 Этап начал: <strong>@StageOwner(r.StageStartedBy, r.StageStartedAtUtc)</strong></span>
                     <span title="Кто и когда завершил предыдущий этап">✅ Предыдущий этап завершил: <strong>@StageOwner(r.StageCompletedBy, r.StageCompletedAtUtc)</strong></span>
+                    @* Выпадающий список со всеми этапами закупки, а не только с последним. *@
+                    <StageHistoryTrigger RegeditId="r.Id" Label="📋 Все этапы" />
                 </div>
 
                 @* ===== Этапы 1 / 1.2 / 2 (Согласование): полный набор редактируемых полей ===== *@

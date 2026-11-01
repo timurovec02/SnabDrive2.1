@@ -1,0 +1,180 @@
+@using System.Globalization
+@implements IDisposable
+
+@* Кнопка с выпадающим списком всех этапов закупки: не только текущий и предыдущий,
+   а вся цепочка переводов — кто и когда вёл каждый этап. Используется в реестре
+   (колонки «Этап завершил» и «Этап завершён») и в карточке задачи. *@
+
+<button type="button" class="stage-history__toggle" title="@Title"
+        @ref="_toggle"
+        @onclick="ToggleAsync" @onclick:stopPropagation="true"
+        @ondblclick="AbsorbClick" @ondblclick:stopPropagation="true">
+    <span class="stage-history__label">@(string.IsNullOrWhiteSpace(Label) ? "—" : Label)</span>
+    <span class="stage-history__caret">@(_open ? "▴" : "▾")</span>
+</button>
+
+@if (_open)
+{
+    @* Прозрачный слой под панелью: клик мимо списка закрывает его. *@
+    <div class="stage-history__backdrop" @onclick="Close" @onclick:stopPropagation="true"></div>
+
+    <div class="stage-history__panel" @ref="_panel"
+         @onclick="AbsorbClick" @onclick:stopPropagation="true">
+        <div class="stage-history__head">
+            <strong>История этапов</strong>
+            <button type="button" class="stage-history__close" title="Закрыть" @onclick="Close">✕</button>
+        </div>
+
+        @if (_data is null)
+        {
+            <div class="stage-history__note">@(_loading ? "Загрузка…" : "Историю не удалось загрузить")</div>
+        }
+        else
+        {
+            <div class="stage-history__now">
+                <div>Сейчас на этапе: <strong>@_data.StageName</strong></div>
+                <div class="muted">Этап начал: @Owner(_data.StageStartedBy, _data.StageStartedAtUtc)</div>
+                <div class="muted">Предыдущий этап завершил: @Owner(_data.StageCompletedBy, _data.StageCompletedAtUtc)</div>
+            </div>
+
+            @if (_data.Entries.Count == 0)
+            {
+                <div class="stage-history__note">
+                    Переводы по этой закупке не записаны: история наполняется с первого перевода между этапами.
+                </div>
+            }
+            else
+            {
+                <div class="stage-history__count">Пройдено этапов: @_data.Entries.Count</div>
+                <div class="stage-history__list">
+                    @foreach (var entry in _data.Entries)
+                    {
+                        <div class="stage-history__row">
+                            <div class="stage-history__when">@When(entry.AtUtc)</div>
+                            <div class="stage-history__who">@entry.ByUser</div>
+                            <div class="stage-history__what">
+                                <span>@WorkflowStages.Name(entry.FromStage)</span>
+                                <span class="stage-history__arrow">→</span>
+                                <strong>@WorkflowStages.Name(entry.ToStage)</strong>
+                                @if (!string.IsNullOrWhiteSpace(Note(entry)))
+                                {
+                                    <span class="stage-history__action">@Note(entry)</span>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        }
+    </div>
+}
+
+@code {
+    /// <summary>Id закупки в RegistryItems.</summary>
+    [Parameter] public int RegeditId { get; set; }
+
+    /// <summary>Текст на кнопке (в реестре — значение ячейки).</summary>
+    [Parameter] public string Label { get; set; } = "История этапов";
+
+    [Parameter] public string Title { get; set; } = "Показать все этапы закупки: кто и когда переводил";
+
+    [Inject] private IStageHistoryService HistorySvc { get; set; } = default!;
+    [Inject] private IJSRuntime JS { get; set; } = default!;
+
+    private ElementReference _toggle;
+    private ElementReference _panel;
+    private StageHistoryDto? _data;
+    private bool _open;
+    private bool _loading;
+    private bool _disposed;
+
+    public void Dispose() => _disposed = true;
+
+    private async Task ToggleAsync()
+    {
+        if (_open)
+        {
+            _open = false;
+            return;
+        }
+
+        _open = true;
+        _loading = _data is null;
+
+        // Сначала показываем панель (или прошлые данные), потом обновляем и прижимаем к кнопке.
+        StateHasChanged();
+        await LoadAsync();
+
+        // За время запроса пользователь мог уйти со страницы — рендерить уже нечего.
+        if (_disposed)
+        {
+            return;
+        }
+
+        StateHasChanged();
+        await AnchorAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            _data = await HistorySvc.GetAsync(RegeditId);
+        }
+        catch
+        {
+            _data = null;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    /// <summary>
+    /// Ставит панель рядом с кнопкой. Скрипт может быть недоступен — тогда панель
+    /// остаётся по центру экрана (см. .stage-history__panel в app.css), список всё равно виден.
+    /// </summary>
+    private async Task AnchorAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("snabPanel.place", _toggle, _panel);
+        }
+        catch
+        {
+            // без скрипта работает запасное центрирование
+        }
+    }
+
+    private void Close() => _open = false;
+
+    // Клик внутри панели не должен выбирать ячейку или строку реестра.
+    private static void AbsorbClick() { }
+
+    private static string When(DateTime atUtc) =>
+        atUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm", CultureInfo.InvariantCulture);
+
+    private static string Owner(string? name, DateTime? atUtc)
+    {
+        if (string.IsNullOrWhiteSpace(name) && atUtc is null)
+        {
+            return "—";
+        }
+
+        var who = string.IsNullOrWhiteSpace(name) ? "неизвестный" : name;
+        return atUtc is null ? who : who + " · " + When(atUtc.Value);
+    }
+
+    /// <summary>Подпись из журнала, если она добавляет что-то к простому названию этапа.</summary>
+    private static string Note(StageHistoryEntryDto entry)
+    {
+        var action = entry.Action?.Trim() ?? string.Empty;
+        if (action.Length == 0 || string.Equals(action, WorkflowStages.Name(entry.ToStage), StringComparison.OrdinalIgnoreCase))
+        {
+            return string.Empty;
+        }
+
+        return action;
+    }
+}

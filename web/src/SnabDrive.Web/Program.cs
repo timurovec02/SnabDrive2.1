@@ -125,6 +125,7 @@ builder.Services.AddSingleton<IPresenceService, PresenceService>();
 builder.Services.AddScoped<IAuditService, AuditService>();
 builder.Services.AddScoped<IRegistryNotifier, SignalRRegistryNotifier>();
 builder.Services.AddScoped<IRegistryService, RegistryService>();
+builder.Services.AddScoped<IStageHistoryService, StageHistoryService>();
 builder.Services.AddScoped<IKonturService, KonturService>();
 builder.Services.AddSingleton<KonturScheduleStore>();
 builder.Services.AddSingleton<KonturSchedulerState>();

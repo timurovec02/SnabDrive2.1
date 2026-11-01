@@ -247,6 +247,16 @@
                                         <LockBadge UserName="@cellLock!.UserName" />
                                     }
                                 }
+                                else if (column.Key is "StageCompletedAtUtc" or "StageCompletedBy")
+                                {
+                                    @* Значение ячейки — это кнопка: по клику открывается выпадающий
+                                       список со всеми пройденными этапами, а не только с последним. *@
+                                    <StageHistoryTrigger RegeditId="row.Id" Label="@TextValue(row, column.Key)" />
+                                    @if (lockedByOther)
+                                    {
+                                        <LockBadge UserName="@cellLock!.UserName" />
+                                    }
+                                }
                                 else
                                 {
                                     <span title="@TextValue(row, column.Key)">@TextValue(row, column.Key)</span>
