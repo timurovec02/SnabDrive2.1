@@ -77,6 +77,10 @@ public class RegistryDbContext : DbContext
             entity.Property(x => x.ContractStatusId).HasColumnName("ContractStatusId");
             entity.Property(x => x.IsContractChecked).HasColumnName("IsContractChecked");
             entity.Property(x => x.IsEisFilled).HasColumnName("IsEisFilled");
+            entity.Property(x => x.StageStartedAtUtc).HasColumnName("StageStartedAtUtc");
+            entity.Property(x => x.StageStartedBy).HasColumnName("StageStartedBy").HasMaxLength(256);
+            entity.Property(x => x.StageCompletedAtUtc).HasColumnName("StageCompletedAtUtc");
+            entity.Property(x => x.StageCompletedBy).HasColumnName("StageCompletedBy").HasMaxLength(256);
 
             entity.HasOne(x => x.TypeOfPurchase)
                   .WithMany()

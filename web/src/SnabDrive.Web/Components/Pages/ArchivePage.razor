@@ -93,8 +93,12 @@
 
         EventBus.Changed += OnRegistryChanged;
 
+        // «Этап завершил/завершён» в архиве не хранятся — колонки не показываем.
         _columns = RegistryColumns.All
-            .Where(c => c.Key != "IsFinished" && _access.CanView(c.Key))
+            .Where(c => c.Key != "IsFinished"
+                        && c.Key != "StageCompletedBy"
+                        && c.Key != "StageCompletedAtUtc"
+                        && _access.CanView(c.Key))
             .ToList();
 
         _typesOfPurchase = (await Dictionaries.GetTypesOfPurchaseAsync()).ToList();

@@ -218,3 +218,19 @@ END
 ELSE
     PRINT 'AspNetUsers.StageChangeEnabled уже существует.';
 GO
+
+-- ============================================================================
+-- 2026-11: учёт работы по этапам — кто и когда начал/завершил этап.
+--   Заполняется автоматически при любом переводе закупки между стадиями
+--   (кнопки этапов, отметки «Согласован»/«Оплачен», ручной перенос, оповещение
+--   филиала, «Проблемы с приемкой»). Нужны для контроля работы каждого сотрудника.
+-- ============================================================================
+IF COL_LENGTH('dbo.RegistryItems', 'StageStartedAtUtc') IS NULL
+    ALTER TABLE dbo.RegistryItems ADD StageStartedAtUtc DATETIME2(3) NULL;
+IF COL_LENGTH('dbo.RegistryItems', 'StageStartedBy') IS NULL
+    ALTER TABLE dbo.RegistryItems ADD StageStartedBy NVARCHAR(256) NULL;
+IF COL_LENGTH('dbo.RegistryItems', 'StageCompletedAtUtc') IS NULL
+    ALTER TABLE dbo.RegistryItems ADD StageCompletedAtUtc DATETIME2(3) NULL;
+IF COL_LENGTH('dbo.RegistryItems', 'StageCompletedBy') IS NULL
+    ALTER TABLE dbo.RegistryItems ADD StageCompletedBy NVARCHAR(256) NULL;
+GO

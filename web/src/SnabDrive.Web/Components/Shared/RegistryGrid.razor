@@ -215,6 +215,30 @@
                                         <LockBadge UserName="@cellLock!.UserName" />
                                     }
                                 }
+                                else if (column.Kind == ColumnKind.Stage)
+                                {
+                                    @if (CanChangeStage)
+                                    {
+                                        <select class="cell-input stage-select" value="@row.Stage.ToString(CultureInfo.InvariantCulture)"
+                                                title="Перевести закупку на другую стадию"
+                                                @onclick="AbsorbClick" @onclick:stopPropagation="true"
+                                                @ondblclick="AbsorbClick" @ondblclick:stopPropagation="true"
+                                                @onchange="ev => OnStageChange(row, column, ev)">
+                                            @foreach (var st in WorkflowStages.All)
+                                            {
+                                                <option value="@st.Id">@st.Name</option>
+                                            }
+                                        </select>
+                                    }
+                                    else
+                                    {
+                                        <span title="@row.StageName">@row.StageName</span>
+                                    }
+                                    @if (lockedByOther)
+                                    {
+                                        <LockBadge UserName="@cellLock!.UserName" />
+                                    }
+                                }
                                 else if (column.Kind == ColumnKind.Money)
                                 {
                                     <span class="money-cell">@MoneyValue(row, column.Key)</span>
@@ -260,6 +284,9 @@
 
     /// <summary>Проверка права на правку колонки (для интерактивных чекбоксов). null — право не проверяется.</summary>
     [Parameter] public Func<string, bool>? CanEditColumn { get; set; }
+
+    /// <summary>Право «Менять стадию закупок»: колонка «Стадия» становится выпадающим списком.</summary>
+    [Parameter] public bool CanChangeStage { get; set; }
 
     // ---- инлайн-редактирование и блокировки (как в Excel) ----
     [Parameter] public IReadOnlyList<CellEditLock> Locks { get; set; } = Array.Empty<CellEditLock>();
@@ -337,8 +364,12 @@
 
     private void BeginEdit(RegistryRowDto row, RegistryColumn column)
     {
-        // «Стадия» — только чтение: меняется переводом по воркфлоу на вкладке «Задачи».
-        if (column.Key == "Stage") { return; }
+        // Служебные поля («этап завершил», «этап завершён») заполняются автоматически.
+        if (column.ReadOnly) { return; }
+
+        // «Стадия» правится только с правом «Менять стадию закупок».
+        if (column.Kind == ColumnKind.Stage && !CanChangeStage) { return; }
+
         OnBeginEdit.InvokeAsync(new CellClickArgs(row.Id, column.Key, row));
     }
 
@@ -412,6 +443,18 @@
 
     // Клик по чекбоксу не должен выбирать ячейку и открывать инлайн-редактор (двойной клик).
     private static void AbsorbClick() { }
+
+    // Смена стадии прямо в таблице (право «Менять стадию закупок») — сохраняется одним выбором.
+    private void OnStageChange(RegistryRowDto row, RegistryColumn column, ChangeEventArgs args)
+    {
+        var value = args.Value?.ToString() ?? string.Empty;
+        if (value == row.Stage.ToString(CultureInfo.InvariantCulture))
+        {
+            return;
+        }
+
+        _ = OnCommitEdit.InvokeAsync(new CellEditCommit(row.Id, column.Key, value));
+    }
 
     private void OnBoolToggle(RegistryRowDto row, RegistryColumn column, ChangeEventArgs args)
     {
@@ -571,6 +614,8 @@
         "DateOfConclusionOfTheContract" => Date(row.DateOfConclusionOfTheContract),
         "ArchivateDate" => Date(row.ArchivateDate),
         "DeliveryDate" => Date(row.DeliveryDate),
+        "StageCompletedBy" => string.IsNullOrWhiteSpace(row.StageCompletedBy) ? "—" : row.StageCompletedBy,
+        "StageCompletedAtUtc" => row.StageCompletedAtUtc?.ToLocalTime().ToString("dd.MM.yyyy HH:mm") ?? string.Empty,
         "Description" => row.Description,
         "Note" => row.Note,
         "B2BStatusId" => row.B2BStatusName ?? string.Empty,

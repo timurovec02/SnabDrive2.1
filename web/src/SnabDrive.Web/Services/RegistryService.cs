@@ -57,6 +57,14 @@ public sealed class RegistryService : IRegistryService
     public const string EntityName = "Regedit";
     public const string ArchiveEntityName = "ArchiveRegedit";
 
+    /// <summary>Предел DECIMAL(18,2): больше 16 целых разрядов в параметр SQL Server не помещается.</summary>
+    internal const decimal MaxMoney = 9_999_999_999_999_999m;
+
+    /// <summary>Границы дат, которые имеет смысл сравнивать с DATETIME2 в базе.</summary>
+    private static readonly DateTime SqlMinDate = new(1753, 1, 1);
+    private static readonly DateTime SqlMaxDate = DateTime.MaxValue.AddDays(-1);
+    private const int SqlMaxYear = 9998;
+
     private readonly IDbContextFactory<RegistryDbContext> _factory;
     private readonly IAuditService _audit;
     private readonly IRegistryNotifier _notifier;
@@ -123,6 +131,8 @@ public sealed class RegistryService : IRegistryService
                 ExecutionStatusName = x.ExecutionStatus != null ? x.ExecutionStatus.NameExecution : null,
                 IsFinished = x.IsFinished,
                 Stage = x.Stage,
+                StageCompletedBy = x.StageCompletedBy ?? string.Empty,
+                StageCompletedAtUtc = x.StageCompletedAtUtc,
                 IsApproved = x.IsApproved,
                 ArchivateDate = null
             })
@@ -280,6 +290,8 @@ public sealed class RegistryService : IRegistryService
                 ExecutionStatusName = x.ExecutionStatus != null ? x.ExecutionStatus.NameExecution : null,
                 IsFinished = x.IsFinished,
                 Stage = x.Stage,
+                StageCompletedBy = x.StageCompletedBy ?? string.Empty,
+                StageCompletedAtUtc = x.StageCompletedAtUtc,
                 IsApproved = x.IsApproved,
                 ArchivateDate = null
             })
@@ -495,8 +507,7 @@ public sealed class RegistryService : IRegistryService
                     return Result.Ok();
                 }
 
-                entity.Stage = newStage;
-                entity.IsLost = newStage == 0;   // «Проиграна»
+                StageTracker.MoveTo(entity, newStage, actor.UserName);
                 AddCellChange(changes, column.Title, WorkflowStages.Name(oldStage), WorkflowStages.Name(newStage));
 
                 context.RegistryWorkflowLogs.Add(new RegistryWorkflowLog
@@ -579,7 +590,11 @@ public sealed class RegistryService : IRegistryService
 
         await using var context = await _factory.CreateDbContextAsync(cancellationToken);
 
-        var entity = new Regedit();
+        var entity = new Regedit
+        {
+            StageStartedAtUtc = DateTime.UtcNow,
+            StageStartedBy = actor.UserName
+        };
         context.Regedit.Add(entity);
         await context.SaveChangesAsync(cancellationToken);
 
@@ -655,7 +670,7 @@ public sealed class RegistryService : IRegistryService
             return;
         }
 
-        entity.Stage = to.Value;
+        StageTracker.MoveTo(entity, to.Value, actor.UserName);
         AddCellChange(changes, "Стадия", WorkflowStages.Name(from), WorkflowStages.Name(to.Value));
 
         context.RegistryWorkflowLogs.Add(new RegistryWorkflowLog
@@ -688,7 +703,8 @@ public sealed class RegistryService : IRegistryService
         }
 
         var normalized = raw.Replace(" ", "").Replace(",", ".");
-        return decimal.TryParse(normalized, NumberStyles.Any, CultureInfo.InvariantCulture, out value);
+        return decimal.TryParse(normalized, NumberStyles.Any, CultureInfo.InvariantCulture, out value)
+               && Math.Abs(value) <= MaxMoney;
     }
 
     private static DateTime? ParseDate(string raw) =>
@@ -815,7 +831,9 @@ public sealed class RegistryService : IRegistryService
             TypeOfPurchaseId = archive.TypeOfPurchaseId,
             B2BStatusId = archive.B2BStatusId,
             ExecutionStatusId = archive.ExecutionStatusId,
-            IsFinished = false
+            IsFinished = false,
+            StageStartedAtUtc = DateTime.UtcNow,
+            StageStartedBy = actor.UserName
         };
 
         context.Regedit.Add(restored);
@@ -1035,6 +1053,8 @@ public sealed class RegistryService : IRegistryService
         if (!access.CanView("MinPrice")) row.MinPrice = 0m;
         if (!access.CanView("ResultPrice")) row.ResultPrice = 0m;
         if (!access.CanView("DeliveryDate")) row.DeliveryDate = null;
+        if (!access.CanView("StageCompletedBy")) row.StageCompletedBy = string.Empty;
+        if (!access.CanView("StageCompletedAtUtc")) row.StageCompletedAtUtc = null;
         if (!access.CanView("Description")) row.Description = string.Empty;
         if (!access.CanView("Note")) row.Note = string.Empty;
 
@@ -1263,12 +1283,26 @@ public sealed class RegistryService : IRegistryService
 
         // Ищем без учёта регистра (как в WPF-версии) — иначе результат зависел бы от collation базы.
         var like = $"%{EscapeLike(term.ToLowerInvariant())}%";
-        var hasAmount = decimal.TryParse(term, NumberStyles.Number, CultureInfo.InvariantCulture, out var amount);
-        var isYearOnly = term.Length == 4 && int.TryParse(term, NumberStyles.Integer, CultureInfo.InvariantCulture, out _);
+
+        // Суммы хранятся как DECIMAL(18,2) — это максимум 16 целых разрядов. Длинное число
+        // в поиске (номер закупки, СНИЛС и т.п.) иначе уронит запрос ошибкой SQL Server
+        // "Parameter value '...' is out of range", поэтому заведомо непроходные значения
+        // в сравнение не берём.
+        var hasAmount = decimal.TryParse(term, NumberStyles.Number, CultureInfo.InvariantCulture, out var amount)
+                        && Math.Abs(amount) <= MaxMoney;
+
+        // yearText объявлена заранее: при коротком замыкании && out-параметр не присваивается,
+        // и «out var» дало бы ошибку CS0165 (использование неприсвоенной переменной).
+        var yearText = 0;
+        var isYearOnly = term.Length == 4 && int.TryParse(term, NumberStyles.Integer, CultureInfo.InvariantCulture, out yearText);
         DateTime date = default;
-        var hasDate = !isYearOnly && TryParseDate(term, out date);
-        var hasYear = isYearOnly;
-        var yearValue = hasYear ? int.Parse(term, CultureInfo.InvariantCulture) : 0;
+
+        // Дата из произвольной строки может оказаться на границе DateTime — тогда
+        // AddDays(1)/AddYears(1) бросят исключение, а сравнение смысла не имеет.
+        var hasDate = !isYearOnly && TryParseDate(term, out date)
+                      && date >= SqlMinDate && date <= SqlMaxDate;
+        var hasYear = isYearOnly && yearText is >= 1 and <= SqlMaxYear;
+        var yearValue = hasYear ? yearText : 0;
 
         // Сравниваем диапазоном, а не .Date/.Year: так запрос одинаково транслируется
         // и в SQL Server, и в SQLite.
@@ -1288,6 +1322,8 @@ public sealed class RegistryService : IRegistryService
             EF.Functions.Like(x.Note.ToLower(), like) ||
             (x.EisLink != null && EF.Functions.Like(x.EisLink.ToLower(), like)) ||
             (x.Place != null && EF.Functions.Like(x.Place.ToLower(), like)) ||
+            (x.StageCompletedBy != null && EF.Functions.Like(x.StageCompletedBy.ToLower(), like)) ||
+            (x.StageStartedBy != null && EF.Functions.Like(x.StageStartedBy.ToLower(), like)) ||
             (x.TypeOfPurchase != null && EF.Functions.Like(x.TypeOfPurchase.NameOfPurchase.ToLower(), like)) ||
             (x.B2BStatus != null && EF.Functions.Like(x.B2BStatus.NameB2B.ToLower(), like)) ||
             (x.ExecutionStatus != null && EF.Functions.Like(x.ExecutionStatus.NameExecution.ToLower(), like)) ||
@@ -1318,12 +1354,26 @@ public sealed class RegistryService : IRegistryService
 
         // Ищем без учёта регистра (как в WPF-версии) — иначе результат зависел бы от collation базы.
         var like = $"%{EscapeLike(term.ToLowerInvariant())}%";
-        var hasAmount = decimal.TryParse(term, NumberStyles.Number, CultureInfo.InvariantCulture, out var amount);
-        var isYearOnly = term.Length == 4 && int.TryParse(term, NumberStyles.Integer, CultureInfo.InvariantCulture, out _);
+
+        // Суммы хранятся как DECIMAL(18,2) — это максимум 16 целых разрядов. Длинное число
+        // в поиске (номер закупки, СНИЛС и т.п.) иначе уронит запрос ошибкой SQL Server
+        // "Parameter value '...' is out of range", поэтому заведомо непроходные значения
+        // в сравнение не берём.
+        var hasAmount = decimal.TryParse(term, NumberStyles.Number, CultureInfo.InvariantCulture, out var amount)
+                        && Math.Abs(amount) <= MaxMoney;
+
+        // yearText объявлена заранее: при коротком замыкании && out-параметр не присваивается,
+        // и «out var» дало бы ошибку CS0165 (использование неприсвоенной переменной).
+        var yearText = 0;
+        var isYearOnly = term.Length == 4 && int.TryParse(term, NumberStyles.Integer, CultureInfo.InvariantCulture, out yearText);
         DateTime date = default;
-        var hasDate = !isYearOnly && TryParseDate(term, out date);
-        var hasYear = isYearOnly;
-        var yearValue = hasYear ? int.Parse(term, CultureInfo.InvariantCulture) : 0;
+
+        // Дата из произвольной строки может оказаться на границе DateTime — тогда
+        // AddDays(1)/AddYears(1) бросят исключение, а сравнение смысла не имеет.
+        var hasDate = !isYearOnly && TryParseDate(term, out date)
+                      && date >= SqlMinDate && date <= SqlMaxDate;
+        var hasYear = isYearOnly && yearText is >= 1 and <= SqlMaxYear;
+        var yearValue = hasYear ? yearText : 0;
 
         // Сравниваем диапазоном, а не .Date/.Year: так запрос одинаково транслируется
         // и в SQL Server, и в SQLite.
@@ -1492,6 +1542,12 @@ public sealed class RegistryService : IRegistryService
                     .ToArray();
                 return stageIds.Length > 0 ? q.Where(x => stageIds.Contains(x.Stage)) : q;
 
+            case "StageCompletedBy":
+                return q.Where(x => x.StageCompletedBy != null && EF.Functions.Like(x.StageCompletedBy.ToLower(), like));
+            case "StageCompletedAtUtc":
+                return TryParseDate(value, out var completedDate)
+                    ? q.Where(x => x.StageCompletedAtUtc >= completedDate && x.StageCompletedAtUtc < completedDate.AddDays(1))
+                    : q;
             case "DeliveryDate":
                 return TryParseDate(value, out var deliveryDate)
                     ? q.Where(x => x.DeliveryDate >= deliveryDate && x.DeliveryDate < deliveryDate.AddDays(1))
@@ -1635,8 +1691,11 @@ public sealed class RegistryService : IRegistryService
         else if (value.StartsWith("<", StringComparison.Ordinal)) { op = "<="; text = value[1..]; }
         else if (value.StartsWith("=", StringComparison.Ordinal)) { op = "="; text = value[1..]; }
 
-        if (!decimal.TryParse(text.Trim(), NumberStyles.Number, CultureInfo.InvariantCulture, out var parsed))
+        if (!decimal.TryParse(text.Trim(), NumberStyles.Number, CultureInfo.InvariantCulture, out var parsed)
+            || Math.Abs(parsed) > MaxMoney)
         {
+            // Нечисловое или заведомо непроходимое значение (вне DECIMAL(18,2)) — фильтр игнорируем,
+            // иначе SQL Server вернёт "Parameter value ... is out of range".
             return q;
         }
 
@@ -1693,6 +1752,8 @@ public sealed class RegistryService : IRegistryService
             "IsFinished" => Order(x => x.IsFinished),
             "IsApproved" => Order(x => x.IsApproved),
             "Stage" => Order(x => x.Stage),
+            "StageCompletedBy" => Order(x => x.StageCompletedBy),
+            "StageCompletedAtUtc" => Order(x => x.StageCompletedAtUtc),
             "TypeOfPurchaseId" => Order(x => x.TypeOfPurchase == null ? string.Empty : x.TypeOfPurchase.NameOfPurchase),
             "B2BStatusId" => Order(x => x.B2BStatus == null ? string.Empty : x.B2BStatus.NameB2B),
             "ExecutionStatusId" => Order(x => x.ExecutionStatus == null ? string.Empty : x.ExecutionStatus.NameExecution),

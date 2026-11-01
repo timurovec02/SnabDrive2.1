@@ -1065,6 +1065,24 @@ input:disabled {
     outline: none;
 }
 
+/* Выбор стадии прямо в ячейке реестра (право «Менять стадию закупок») */
+.stage-select {
+    max-width: 100%;
+    padding: 1px 2px;
+    border: 1px solid transparent;
+    border-radius: 3px;
+    background: transparent;
+    font: inherit;
+    cursor: pointer;
+}
+
+.stage-select:hover,
+.stage-select:focus {
+    border-color: var(--accent, #1976d2);
+    background: #fff;
+    outline: none;
+}
+
 /* Отметка «Согласован» / «Оплачен» ставится одним кликом прямо в таблице */
 .bool-check {
     width: 18px;

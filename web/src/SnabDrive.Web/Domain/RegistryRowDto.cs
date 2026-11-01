@@ -51,6 +51,12 @@ public class RegistryRowDto
     /// <summary>Название стадии (заполняется на сервере).</summary>
     public string StageName { get; set; } = string.Empty;
 
+    /// <summary>Кто завершил предыдущий этап — для учёта работы каждого сотрудника.</summary>
+    public string StageCompletedBy { get; set; } = string.Empty;
+
+    /// <summary>Когда завершён предыдущий этап (локальное время не применяется — хранится UTC).</summary>
+    public DateTime? StageCompletedAtUtc { get; set; }
+
     /// <summary>Отметка «Согласован».</summary>
     public bool IsApproved { get; set; }
 

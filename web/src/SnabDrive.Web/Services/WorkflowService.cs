@@ -78,7 +78,11 @@ public sealed record WorkflowRow(
     string? ReturnReason,
     int? ContractStatusId,
     bool IsContractChecked,
-    bool IsEisFilled);
+    bool IsEisFilled,
+    DateTime? StageStartedAtUtc,
+    string? StageStartedBy,
+    DateTime? StageCompletedAtUtc,
+    string? StageCompletedBy);
 
 /// <summary>Модель редактирования строки воркфлоу.</summary>
 public sealed class WorkflowEdit
@@ -225,7 +229,8 @@ public sealed class WorkflowService : IWorkflowService
                 r.B2BStatusId, r.B2BStatus != null ? r.B2BStatus.NameB2B : null,
                 r.NationalMode, r.MinPrice, r.DeliveryDate, r.IsApproved, r.IsCall, r.PurchaseNumber,
                 r.IsByRequest, r.ExpectedDeliveryDate, r.BranchId, r.BranchFilePath, r.ReturnReason,
-                r.ContractStatusId, r.IsContractChecked, r.IsEisFilled))
+                r.ContractStatusId, r.IsContractChecked, r.IsEisFilled,
+                r.StageStartedAtUtc, r.StageStartedBy, r.StageCompletedAtUtc, r.StageCompletedBy))
             .ToListAsync(cancellationToken);
     }
 
@@ -305,8 +310,8 @@ public sealed class WorkflowService : IWorkflowService
             item.DateOfPlacement = now;
         }
 
-        item.Stage = tr.To;
-        item.IsLost = tr.Lost;
+        // Кто и когда завершил этап — фиксируется для учёта работы сотрудников.
+        StageTracker.MoveTo(item, tr.To, actor.UserName);
 
         context.RegistryWorkflowLogs.Add(new RegistryWorkflowLog
         {
@@ -356,8 +361,7 @@ public sealed class WorkflowService : IWorkflowService
             return Result.Ok();
         }
 
-        item.Stage = stage;
-        item.IsLost = stage == 0;   // «Проиграна»
+        StageTracker.MoveTo(item, stage, actor.UserName);
 
         context.RegistryWorkflowLogs.Add(new RegistryWorkflowLog
         {
@@ -451,7 +455,7 @@ public sealed class WorkflowService : IWorkflowService
 
         // Перевод на следующий этап: 7 «Логистические документы» -> 8 «Ожидание доставки».
         var from = item.Stage;
-        item.Stage = 8;
+        StageTracker.MoveTo(item, 8, actor.UserName);
         context.RegistryWorkflowLogs.Add(new RegistryWorkflowLog
         {
             RegeditId = regeditId,
@@ -487,7 +491,7 @@ public sealed class WorkflowService : IWorkflowService
         }
 
         var from = item.Stage;
-        item.Stage = 13;            // «Проблемы с приемкой»
+        StageTracker.MoveTo(item, 13, actor.UserName);   // «Проблемы с приемкой»
         item.ReturnReason = reason.Trim();
 
         context.RegistryWorkflowLogs.Add(new RegistryWorkflowLog

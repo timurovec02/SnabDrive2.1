@@ -6,7 +6,7 @@ namespace SnabDrive.Web.Domain;
 /// <param name="Kind">Тип значения — влияет на рендер, фильтр и формат экспорта.</param>
 /// <param name="Width">CSS-ширина колонки.</param>
 /// <param name="VisibleByDefault">Показывать ли колонку по умолчанию (настройка колонок).</param>
-public sealed record RegistryColumn(string Key, string Title, ColumnKind Kind, string Width, bool VisibleByDefault = true)
+public sealed record RegistryColumn(string Key, string Title, ColumnKind Kind, string Width, bool VisibleByDefault = true, bool ReadOnly = false)
 {
     public bool IsText => Kind == ColumnKind.Text;
     public bool IsDate => Kind == ColumnKind.Date;
@@ -36,6 +36,8 @@ public static class RegistryColumns
         new("EisLink", "ЕИС", ColumnKind.Link, "90px"),
         new("PurchaseNumber", "Номер закупки", ColumnKind.Text, "180px"),
         new("Stage", "Стадия", ColumnKind.Stage, "180px"),
+        new("StageCompletedBy", "Этап завершил", ColumnKind.Text, "150px", true, ReadOnly: true),
+        new("StageCompletedAtUtc", "Этап завершён", ColumnKind.DateTime, "160px", true, ReadOnly: true),
         new("Customer", "Заказчик", ColumnKind.Text, "180px"),
         new("TypeOfPurchaseId", "Тип закупки", ColumnKind.Dictionary, "160px"),
         new("PlaceOfDelivery", "Место поставки товара", ColumnKind.Text, "170px"),

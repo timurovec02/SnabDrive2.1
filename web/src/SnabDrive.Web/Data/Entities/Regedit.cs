@@ -76,6 +76,18 @@ public class Regedit
     // ---- Воркфлоу по стадиям (web): 1 = поиск/подготовка, 2 = участие, 3 = оформление, 4 = завершено; IsLost = проигран ----
     public int Stage { get; set; } = 1;
     public bool IsLost { get; set; }
+
+    /// <summary>Когда начался текущий этап (UTC).</summary>
+    public DateTime? StageStartedAtUtc { get; set; }
+
+    /// <summary>Кто начал текущий этап.</summary>
+    public string? StageStartedBy { get; set; }
+
+    /// <summary>Когда был завершён предыдущий этап (UTC).</summary>
+    public DateTime? StageCompletedAtUtc { get; set; }
+
+    /// <summary>Кто завершил предыдущий этап — для учёта работы каждого сотрудника.</summary>
+    public string? StageCompletedBy { get; set; }
     public string? AssignedTo { get; set; }
 
     // Дополнительные поля воркфлоу
