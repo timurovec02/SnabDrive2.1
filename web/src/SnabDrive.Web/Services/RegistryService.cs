@@ -477,7 +477,39 @@ public sealed class RegistryService : IRegistryService
                 AddCellChange(changes, column.Title, FmtBool(entity.IsApproved), FmtBool(entity.IsApproved = raw == "true"));
                 break;
             case "Stage":
-                return Result.Fail("Стадия изменяется на вкладке «Задачи».");
+            {
+                if (!actor.CanChangeStage)
+                {
+                    return Result.Fail(
+                        "Нет права переводить закупку на другую стадию. Право включается в карточке пользователя — «Менять стадию закупок».");
+                }
+
+                if (!int.TryParse(raw, out var newStage) || WorkflowStages.All.All(st => st.Id != newStage))
+                {
+                    return Result.Fail("Неизвестная стадия.");
+                }
+
+                var oldStage = entity.Stage;
+                if (oldStage == newStage)
+                {
+                    return Result.Ok();
+                }
+
+                entity.Stage = newStage;
+                entity.IsLost = newStage == 0;   // «Проиграна»
+                AddCellChange(changes, column.Title, WorkflowStages.Name(oldStage), WorkflowStages.Name(newStage));
+
+                context.RegistryWorkflowLogs.Add(new RegistryWorkflowLog
+                {
+                    RegeditId = entity.Id,
+                    FromStage = oldStage,
+                    ToStage = newStage,
+                    Action = "Перевод на стадию вручную (реестр)",
+                    ByUser = actor.UserName,
+                    AtUtc = DateTime.UtcNow
+                });
+                break;
+            }
             case "TypeOfPurchaseId":
             {
                 var old_TypeOfPurchaseId = entity.TypeOfPurchaseId?.ToString() ?? "";
@@ -581,7 +613,8 @@ public sealed class RegistryService : IRegistryService
     /// Отметки в реестре двигают закупку по стадиям воркфлоу:
     ///  • «Согласован» на стадиях 1 / 1.2 / 2 (до подачи) -> «3. Подача заявки на площадку»;
     ///  • «Оплачен» -> «Завершена» (если закупка ещё не завершена и не проиграна).
-    /// Снятие отметки стадию не откатывает — это делает ответственный на соответствующем этапе.
+    /// Снятие отметки возвращает закупку на шаг назад: «Согласован» — из «3. Подача заявки»
+    /// в «2. Согласование», «Оплачен» — из «Завершена» в «10. Оплата заказчиком».
     /// </summary>
     private static void ApplyStageForFlags(
         RegistryDbContext context, Regedit entity, Dictionary<string, FieldChange> changes, ChangeActor actor)
@@ -601,10 +634,20 @@ public sealed class RegistryService : IRegistryService
                 entity.DateOfTransferForPlacement = DateTime.Now;
             }
         }
+        else if (!entity.IsApproved && from == 3)
+        {
+            to = 12;  // сняли «Согласован» -> назад в «2. Согласование»
+            reason = "Снята отметка «Согласован»";
+        }
         else if (entity.IsFinished == true && from != 11 && from != 0)
         {
             to = 11;  // -> «Завершена»
             reason = "Оплачено";
+        }
+        else if (entity.IsFinished == false && from == 11)
+        {
+            to = 10;  // сняли «Оплачен» -> назад в «10. Оплата заказчиком»
+            reason = "Снята отметка «Оплачен»";
         }
 
         if (to is null || to.Value == from)

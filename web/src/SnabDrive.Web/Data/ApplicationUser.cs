@@ -28,6 +28,9 @@ public class ApplicationUser : IdentityUser
     /// <summary>Доступ к планировщику выгрузки Контур.</summary>
     public bool SchedulerEnabled { get; set; }
 
+    /// <summary>Право переводить закупку на любую стадию (вкладка «Задачи» и колонка «Стадия» в реестре).</summary>
+    public bool StageChangeEnabled { get; set; }
+
     /// <summary>Числовой ID сотрудника в Битрикс24 (для личных уведомлений im.notify TO=...). </summary>
     public string? BitrixUserId { get; set; }
 

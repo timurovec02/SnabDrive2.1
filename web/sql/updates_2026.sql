@@ -201,3 +201,20 @@ GO
 -- 5. Чистим права на удалённые колонки, чтобы не мешали сохранению настроек.
 DELETE FROM dbo.UserColumnPermissions WHERE ColumnKey IN ('Winner', 'DeliveryTime');
 GO
+
+-- ============================================================================
+-- 2026-11: право «Менять стадию закупок» — по образцу доступа к Контур.
+--   Флаг в карточке пользователя (/users) + клейм снабdrive.stage.
+--   Администратор и директор имеют право всегда, без флага.
+--   Право даёт: ручной перенос закупки на любую стадию во вкладке «Задачи»
+--   и редактирование колонки «Стадия» прямо в реестре.
+-- ============================================================================
+IF COL_LENGTH('dbo.AspNetUsers', 'StageChangeEnabled') IS NULL
+BEGIN
+    ALTER TABLE dbo.AspNetUsers ADD StageChangeEnabled BIT NOT NULL
+        CONSTRAINT DF_AspNetUsers_StageChangeEnabled DEFAULT(0);
+    PRINT 'AspNetUsers.StageChangeEnabled добавлена.';
+END
+ELSE
+    PRINT 'AspNetUsers.StageChangeEnabled уже существует.';
+GO

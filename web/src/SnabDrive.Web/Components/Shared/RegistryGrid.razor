@@ -134,12 +134,12 @@
                                         @if (column.Kind == ColumnKind.Bool)
                                         {
                                             <input type="checkbox" class="cell-input" checked="@_editBool"
-                                                   @onchange="OnBoolChange" @onkeydown="OnEditorKeyDown" @onblur="OnEditorBlur" />
+                                                   @onchange="OnBoolChange" @onkeydown="OnEditorKeyDown" @onblur="() => OnEditorBlur(row, column)" />
                                         }
                                         else if (column.Kind == ColumnKind.Dictionary)
                                         {
                                             <select class="cell-input" value="@_editText"
-                                                    @onchange="OnSelectChange" @onkeydown="OnEditorKeyDown" @onblur="OnEditorBlur">
+                                                    @onchange="OnSelectChange" @onkeydown="OnEditorKeyDown" @onblur="() => OnEditorBlur(row, column)">
                                                 <option value="">—</option>
                                                 @foreach (var opt in OptionsFor(column.Key))
                                                 {
@@ -147,23 +147,35 @@
                                                 }
                                             </select>
                                         }
+                                        else if (column.Kind == ColumnKind.Stage)
+                                        {
+                                            <select class="cell-input" value="@_editText"
+                                                    @onchange="OnSelectChange" @onkeydown="OnEditorKeyDown"
+                                                    @onblur="() => OnEditorBlur(row, column)">
+                                                <option value="">—</option>
+                                                @foreach (var st in WorkflowStages.All)
+                                                {
+                                                    <option value="@st.Id">@st.Name</option>
+                                                }
+                                            </select>
+                                        }
                                         else if (column.Kind == ColumnKind.DateTime)
                                         {
                                             <input type="datetime-local" class="cell-input" value="@_editText"
                                                    @oninput="OnTextInput"
-                                                   @onchange="CommitEdit" @onkeydown="OnEditorKeyDown" @onblur="OnEditorBlur" />
+                                                   @onchange="CommitEdit" @onkeydown="OnEditorKeyDown" @onblur="() => OnEditorBlur(row, column)" />
                                         }
                                         else if (column.Kind == ColumnKind.Date)
                                         {
                                             <input type="date" class="cell-input" value="@_editText"
                                                    @oninput="OnTextInput"
-                                                   @onchange="CommitEdit" @onkeydown="OnEditorKeyDown" @onblur="OnEditorBlur" />
+                                                   @onchange="CommitEdit" @onkeydown="OnEditorKeyDown" @onblur="() => OnEditorBlur(row, column)" />
                                         }
                                         else
                                         {
                                             <textarea class="cell-input cell-input--area" rows="2"
                                                       @oninput="OnTextInput"
-                                                      @onchange="CommitEdit" @onkeydown="OnEditorKeyDown" @onblur="OnEditorBlur">@_editText</textarea>
+                                                      @onchange="CommitEdit" @onkeydown="OnEditorKeyDown" @onblur="() => OnEditorBlur(row, column)">@_editText</textarea>
                                         }
                                     </div>
                                 }
@@ -255,7 +267,7 @@
     [Parameter] public (int RecordId, string ColumnKey)? EditingCell { get; set; }
     [Parameter] public EventCallback<CellClickArgs> OnBeginEdit { get; set; }
     [Parameter] public EventCallback<CellEditCommit> OnCommitEdit { get; set; }
-    [Parameter] public EventCallback OnCancelEdit { get; set; }
+    [Parameter] public EventCallback<(int RecordId, string ColumnKey)> OnCancelEdit { get; set; }
     [Parameter] public EventCallback OnEditActivity { get; set; }
 
     private string _editText = string.Empty;
@@ -336,9 +348,10 @@
         {
             CommitEdit();
         }
-        else if (e.Key == "Escape")
+        else if (e.Key == "Escape" && EditingCell is not null)
         {
-            OnCancelEdit.InvokeAsync();
+            // Отмена правки: блокировку снимаем именно с редактируемой ячейки.
+            _ = OnCancelEdit.InvokeAsync((EditingCell.Value.RecordId, EditingCell.Value.ColumnKey));
         }
     }
 
@@ -370,17 +383,19 @@
 
     private void Activity() => OnEditActivity.InvokeAsync();
 
-    private void OnEditorBlur()
+    private void OnEditorBlur(RegistryRowDto row, RegistryColumn column)
     {
         if (EditingCell is null)
         {
             return;
         }
 
-        // Вышли из ячейки, ничего не изменив — просто снимаем блокировку.
+        // Вышли из ячейки, ничего не изменив — снимаем блокировку именно с этой ячейки.
+        // Ячейку передаём явно: к моменту обработки события _editCell у родителя может
+        // уже указывать на следующую ячейку, и блокировка оставалась бы висеть до таймаута.
         if (_editText == _originalText && _editBool == _originalBool)
         {
-            OnCancelEdit.InvokeAsync();
+            _ = OnCancelEdit.InvokeAsync((row.Id, column.Key));
         }
     }
 
@@ -424,6 +439,7 @@
         "PlaceOfDelivery" => row.PlaceOfDelivery,
         "ReserveNumber" => row.ReserveNumber,
         "NationalMode" => row.NationalMode,
+        "Stage" => row.Stage.ToString(CultureInfo.InvariantCulture),
         "DeliveryDate" => row.DeliveryDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? string.Empty,
         "Description" => row.Description,
         "Note" => row.Note,

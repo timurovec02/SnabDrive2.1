@@ -21,7 +21,10 @@ public enum ColumnKind
     Money,
     Bool,
     Dictionary,
-    Link
+    Link,
+
+    /// <summary>Стадия воркфлоу: редактор — выпадающий список стадий (право «Менять стадию закупок»).</summary>
+    Stage
 }
 
 /// <summary>Набор колонок реестра — единый источник правды для UI, сортировки, фильтров и CSV-экспорта.</summary>
@@ -32,7 +35,7 @@ public static class RegistryColumns
         new("NameLink", "Наименование", ColumnKind.Text, "260px"),
         new("EisLink", "ЕИС", ColumnKind.Link, "90px"),
         new("PurchaseNumber", "Номер закупки", ColumnKind.Text, "180px"),
-        new("Stage", "Стадия", ColumnKind.Text, "180px"),
+        new("Stage", "Стадия", ColumnKind.Stage, "180px"),
         new("Customer", "Заказчик", ColumnKind.Text, "180px"),
         new("TypeOfPurchaseId", "Тип закупки", ColumnKind.Dictionary, "160px"),
         new("PlaceOfDelivery", "Место поставки товара", ColumnKind.Text, "170px"),

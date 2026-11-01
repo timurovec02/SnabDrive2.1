@@ -101,7 +101,7 @@
                       EditingCell="@_editCell"
                       OnBeginEdit="BeginEditCell"
                       OnCommitEdit="CommitEditCellAsync"
-                      OnCancelEdit="CancelEditCell"
+                      OnCancelEdit="@(cell => CancelEditCell(cell))"
                       OnEditActivity="OnEditActivity" />
     </div>
 
@@ -185,6 +185,7 @@
     private bool _busy;
     private bool _isAdmin;
     private bool _konturEnabled;
+    private bool _canChangeStage;   // право «Менять стадию закупок» — редактирование колонки «Стадия»
     private bool _columnsOpen;
     private bool _realtimeOn;
 
@@ -230,6 +231,7 @@
         var state = await AuthStateProvider.GetAuthenticationStateAsync();
         _isAdmin = state.User.IsInRole(AppRoles.Admin);
         _konturEnabled = SnabDrive.Web.Data.KonturClaim.CanUse(state.User);
+        _canChangeStage = SnabDrive.Web.Data.StageChangeClaim.CanUse(state.User);
 
         var userId = state.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "-";
         _access = await ColumnAccess.GetAsync(userId);
@@ -475,11 +477,25 @@
 
     private void BeginEditCell(CellClickArgs args)
     {
+        // Переход к следующей ячейке: своя блокировка с предыдущей снимается сразу,
+        // иначе она висела бы до истечения таймера неактивности.
+        if (_editCell is not null
+            && (_editCell.Value.RecordId != args.RecordId || _editCell.Value.ColumnKey != args.ColumnKey))
+        {
+            Locks.Release(_editCell.Value.RecordId, _editCell.Value.ColumnKey, _actor.UserId);
+        }
+
         var existing = Locks.Find(args.RecordId, args.ColumnKey);
 
         if (existing is not null && existing.UserId != _actor.UserId)
         {
             Toasts.Show($"Ячейку сейчас редактирует {existing.UserName}", ToastKind.Warning);
+            return;
+        }
+
+        if (string.Equals(args.ColumnKey, "Stage", StringComparison.OrdinalIgnoreCase) && !_canChangeStage)
+        {
+            Toasts.Show("Стадию может менять пользователь с правом «Менять стадию закупок» (карточка пользователя).", ToastKind.Warning);
             return;
         }
 
@@ -529,14 +545,18 @@
         }
     }
 
-    private void CancelEditCell()
+    private void CancelEditCell((int RecordId, string ColumnKey) cell)
     {
-        if (_editCell is not null)
-        {
-            Locks.Release(_editCell.Value.RecordId, _editCell.Value.ColumnKey, _actor.UserId);
-        }
+        // Снимаем блокировку именно с той ячейки, из которой вышел пользователь:
+        // к этому моменту _editCell может уже указывать на следующую ячейку.
+        Locks.Release(cell.RecordId, cell.ColumnKey, _actor.UserId);
 
-        _editCell = null;
+        if (_editCell is not null
+            && _editCell.Value.RecordId == cell.RecordId
+            && _editCell.Value.ColumnKey == cell.ColumnKey)
+        {
+            _editCell = null;
+        }
     }
 
     // ------------------------------------------------------------ CRUD

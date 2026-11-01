@@ -9,4 +9,7 @@ public sealed record ChangeActor(string UserId, string UserName)
     public static readonly ChangeActor System = new("system", "system");
 
     public ColumnAccessMap Access { get; init; } = ColumnAccessMap.Full;
+
+    /// <summary>Право переводить закупку на любую стадию (см. StageChangeClaim).</summary>
+    public bool CanChangeStage { get; init; }
 }

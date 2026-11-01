@@ -134,6 +134,12 @@ public interface IWorkflowService
     /// <summary>Перевести на стадию по коду перехода (см. WorkflowService.Transitions).</summary>
     Task<Result> AdvanceAsync(int regeditId, int code, ChangeActor actor, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Перевести закупку на любую стадию вручную — доступно пользователю с правом
+    /// «Менять стадию закупок» (см. StageChangeClaim).
+    /// </summary>
+    Task<Result> SetStageAsync(int regeditId, int stage, ChangeActor actor, CancellationToken cancellationToken = default);
+
     /// <summary>Сохранить файл во вложения закупки; возвращает обновлённый список имён.</summary>
     Task<Result<string>> SaveAttachmentAsync(int regeditId, string fileName, Stream content, CancellationToken cancellationToken = default);
 
@@ -321,6 +327,59 @@ public sealed class WorkflowService : IWorkflowService
             cancellationToken);
 
         _logger.LogInformation("Воркфлоу: закупка {Id} {From}->{To} ({User})", regeditId, from, tr.To, actor.UserName);
+        return Result.Ok();
+    }
+
+    public async Task<Result> SetStageAsync(int regeditId, int stage, ChangeActor actor, CancellationToken cancellationToken = default)
+    {
+        if (!actor.CanChangeStage)
+        {
+            return Result.Fail(
+                "Нет права переводить закупку на другую стадию. Право включается в карточке пользователя — «Менять стадию закупок».");
+        }
+
+        if (WorkflowStages.All.All(st => st.Id != stage))
+        {
+            return Result.Fail("Неизвестная стадия.");
+        }
+
+        await using var context = await _factory.CreateDbContextAsync(cancellationToken);
+        var item = await context.Regedit.FirstOrDefaultAsync(r => r.Id == regeditId, cancellationToken);
+        if (item is null)
+        {
+            return Result.Fail("Запись не найдена.");
+        }
+
+        var from = item.Stage;
+        if (from == stage)
+        {
+            return Result.Ok();
+        }
+
+        item.Stage = stage;
+        item.IsLost = stage == 0;   // «Проиграна»
+
+        context.RegistryWorkflowLogs.Add(new RegistryWorkflowLog
+        {
+            RegeditId = regeditId,
+            FromStage = from,
+            ToStage = stage,
+            Action = $"Перевод на стадию вручную: {WorkflowStages.Name(from)} → {WorkflowStages.Name(stage)}",
+            ByUser = actor.UserName,
+            AtUtc = DateTime.UtcNow
+        });
+
+        await context.SaveChangesAsync(cancellationToken);
+
+        // Ответственные за новую стадию получают уведомление, как при обычном переходе.
+        await NotifyStageOwnersAsync(stage, item, cancellationToken);
+
+        await NotifyAsync(regeditId, actor.UserName,
+            $"{actor.UserName}: «{ShortName(item.NameLink)}» переведена вручную на «{WorkflowStages.Name(stage)}» (была «{WorkflowStages.Name(from)}»)",
+            cancellationToken);
+
+        _logger.LogInformation("Воркфлоу: закупка {Id} вручную {From}->{To} ({User})",
+            regeditId, from, stage, actor.UserName);
         return Result.Ok();
     }
 

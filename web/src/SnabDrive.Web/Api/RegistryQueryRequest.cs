@@ -11,7 +11,10 @@ public static class ActorExtensions
     {
         var userId = principal.FindFirstValue(ClaimTypes.NameIdentifier) ?? "-";
         var userName = principal.Identity?.Name ?? "неизвестный";
-        return new ChangeActor(userId, userName);
+        return new ChangeActor(userId, userName)
+        {
+            CanChangeStage = SnabDrive.Web.Data.StageChangeClaim.CanUse(principal)
+        };
     }
 
     /// <summary>Актор вместе с его правами на колонки реестра.</summary>

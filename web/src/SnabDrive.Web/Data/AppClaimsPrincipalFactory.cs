@@ -29,6 +29,11 @@ public class AppClaimsPrincipalFactory : UserClaimsPrincipalFactory<ApplicationU
             identity.AddClaim(new Claim(SchedulerClaim.Type, "1"));
         }
 
+        if (user.StageChangeEnabled)
+        {
+            identity.AddClaim(new Claim(StageChangeClaim.Type, "1"));
+        }
+
         return identity;
     }
 }
@@ -48,6 +53,17 @@ public static class Access
     public static bool IsAdmin(ClaimsPrincipal? user) => user is not null && user.IsInRole(SnabDrive.Web.Services.AppRoles.Admin);
     public static bool IsDirector(ClaimsPrincipal? user) => user is not null && user.IsInRole(SnabDrive.Web.Services.AppRoles.Director);
     public static bool Full(ClaimsPrincipal? user) => IsAdmin(user) || IsDirector(user);
+}
+
+public static class StageChangeClaim
+{
+    public const string Type = "snabdrive.stage";
+
+    /// <summary>Перевод закупки на любую стадию: администратор, директор или пользователь с отметкой в карточке.</summary>
+    public static bool CanUse(ClaimsPrincipal? user) =>
+        user is not null && (user.IsInRole(SnabDrive.Web.Services.AppRoles.Admin)
+            || user.IsInRole(SnabDrive.Web.Services.AppRoles.Director)
+            || user.HasClaim(Type, "1"));
 }
 
 public static class SchedulerClaim

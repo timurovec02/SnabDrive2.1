@@ -126,6 +126,9 @@
                         <label class="checkbox-label">
                             <input type="checkbox" @bind="_model.SchedulerEnabled" /> Доступ к планировщику
                         </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" @bind="_model.StageChangeEnabled" /> Менять стадию закупок
+                        </label>
                     </div>
                 </div>
 
@@ -213,7 +216,7 @@
 
 @code {
     private sealed record UserRow(string Id, string UserName, string? DisplayName, string? Email,
-                                  bool IsAdmin, bool IsBlocked, bool IsOnline, DateTime? LastLoginUtc, bool KonturEnabled, bool SchedulerEnabled, string Role, string? BitrixUserId);
+                                  bool IsAdmin, bool IsBlocked, bool IsOnline, DateTime? LastLoginUtc, bool KonturEnabled, bool SchedulerEnabled, bool StageChangeEnabled, string Role, string? BitrixUserId);
 
     private sealed class UserModel
     {
@@ -226,6 +229,7 @@
         public bool IsBlocked { get; set; }
         public bool KonturEnabled { get; set; }
         public bool SchedulerEnabled { get; set; }
+        public bool StageChangeEnabled { get; set; }
         public string? BitrixUserId { get; set; }
     }
 
@@ -284,6 +288,7 @@
                 user.LastLoginUtc,
                 user.KonturEnabled,
                 user.SchedulerEnabled,
+                user.StageChangeEnabled,
                 role,
                 user.BitrixUserId));
         }
@@ -325,6 +330,7 @@
             IsBlocked = user.IsBlocked,
             KonturEnabled = user.KonturEnabled,
             SchedulerEnabled = user.SchedulerEnabled,
+            StageChangeEnabled = user.StageChangeEnabled,
             BitrixUserId = user.BitrixUserId
         };
         _formError = null;
@@ -388,6 +394,7 @@
             IsBlocked = _model.IsBlocked,
             KonturEnabled = _model.KonturEnabled,
             SchedulerEnabled = _model.SchedulerEnabled,
+            StageChangeEnabled = _model.StageChangeEnabled,
             BitrixUserId = string.IsNullOrWhiteSpace(_model.BitrixUserId) ? null : _model.BitrixUserId.Trim()
         };
 
@@ -419,6 +426,7 @@
         user.IsBlocked = _model.IsBlocked;
         user.KonturEnabled = _model.KonturEnabled;
         user.SchedulerEnabled = _model.SchedulerEnabled;
+        user.StageChangeEnabled = _model.StageChangeEnabled;
         user.BitrixUserId = string.IsNullOrWhiteSpace(_model.BitrixUserId) ? null : _model.BitrixUserId.Trim();
 
         if (!string.IsNullOrWhiteSpace(_model.Email))
