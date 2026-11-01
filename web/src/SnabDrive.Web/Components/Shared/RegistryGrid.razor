@@ -161,7 +161,7 @@
                                         }
                                         else
                                         {
-                                            <textarea class="cell-input cell-input--area" rows="4"
+                                            <textarea class="cell-input cell-input--area" rows="2"
                                                       @oninput="OnTextInput"
                                                       @onchange="CommitEdit" @onkeydown="OnEditorKeyDown" @onblur="OnEditorBlur">@_editText</textarea>
                                         }
@@ -185,7 +185,19 @@
                                 }
                                 else if (column.Kind == ColumnKind.Bool)
                                 {
-                                    <span class="bool-cell">@(BoolValue(row, column.Key) ? "✔" : "—")</span>
+                                    @if (BoolEditable(column.Key))
+                                    {
+                                        <input type="checkbox" class="bool-check" checked="@BoolValue(row, column.Key)"
+                                               disabled="@lockedByOther"
+                                               title="@(lockedByOther ? $"Редактирует {cellLock!.UserName}" : "Клик — поставить или снять отметку")"
+                                               @onclick="AbsorbClick" @onclick:stopPropagation="true"
+                                               @ondblclick="AbsorbClick" @ondblclick:stopPropagation="true"
+                                               @onchange="ev => OnBoolToggle(row, column, ev)" />
+                                    }
+                                    else
+                                    {
+                                        <span class="bool-cell">@(BoolValue(row, column.Key) ? "✔" : "—")</span>
+                                    }
                                     @if (lockedByOther)
                                     {
                                         <LockBadge UserName="@cellLock!.UserName" />
@@ -233,6 +245,9 @@
     [Parameter] public IReadOnlyCollection<int> SelectedIds { get; set; } = Array.Empty<int>();
     [Parameter] public string? SelectedCellKey { get; set; }
     [Parameter] public bool IsLoading { get; set; }
+
+    /// <summary>Проверка права на правку колонки (для интерактивных чекбоксов). null — право не проверяется.</summary>
+    [Parameter] public Func<string, bool>? CanEditColumn { get; set; }
 
     // ---- инлайн-редактирование и блокировки (как в Excel) ----
     [Parameter] public IReadOnlyList<CellEditLock> Locks { get; set; } = Array.Empty<CellEditLock>();
@@ -373,6 +388,25 @@
     {
         _editText = e.Value?.ToString() ?? string.Empty;
         CommitEdit();
+    }
+
+    // Отметку можно ставить прямо в таблице, если страница умеет сохранять ячейки
+    // (в архиве OnCommitEdit не подключён — там только просмотр) и есть право на правку колонки.
+    private bool BoolEditable(string columnKey) =>
+        OnCommitEdit.HasDelegate && (CanEditColumn is null || CanEditColumn(columnKey));
+
+    // Клик по чекбоксу не должен выбирать ячейку и открывать инлайн-редактор (двойной клик).
+    private static void AbsorbClick() { }
+
+    private void OnBoolToggle(RegistryRowDto row, RegistryColumn column, ChangeEventArgs args)
+    {
+        var value = args.Value is bool b && b;
+        if (value == BoolValue(row, column.Key))
+        {
+            return;
+        }
+
+        _ = OnCommitEdit.InvokeAsync(new CellEditCommit(row.Id, column.Key, value ? "true" : "false"));
     }
 
     private static bool BoolValue(RegistryRowDto row, string key) => key switch

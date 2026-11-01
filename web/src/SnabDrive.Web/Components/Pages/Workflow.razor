@@ -9,10 +9,12 @@
 @inject IRolePermissionService RolePerms
 @inject IDictionaryService DictSvc
 @inject IBranchService BranchSvc
+@inject IRegistryEventBus EventBus
+@implements IDisposable
 @inject AuthenticationStateProvider AuthStateProvider
 
 <h1 class="page-title">Задачи по закупкам</h1>
-<p class="page-subtitle">Воркфлоу по стадиям. Поля редактируются, кнопка переводит закупку на следующую стадию.</p>
+<p class="page-subtitle">Воркфлоу по стадиям. Поля редактируются, кнопка переводит закупку на следующую стадию. Список обновляется автоматически при изменениях других пользователей.</p>
 
 @if (_error is not null)
 {
@@ -78,6 +80,7 @@ else if (!Rows().Any())
 }
 else
 {
+    <div class="wf-live" @onfocusin="OnFocusIn" @onfocusout="OnFocusOutAsync">
     @foreach (var r in Rows())
     {
         <div class="card" style="margin-bottom:12px">
@@ -496,6 +499,7 @@ else
             </div>
         </div>
     }
+    </div>
 }
 
 @* ===== Модальное окно «Проблема с приемкой» (этап 9) ===== *@
@@ -532,6 +536,9 @@ else
     private HashSet<int> _allowedStages = new();
     private bool _isTenderHead;
     private bool _isDirector;              // Директор правит мин. сумму и «Звони» на этапе 4
+    private bool _subscribed;              // подписка на шину событий реестра
+    private bool _focused;                 // пользователь сейчас в поле ввода карточки
+    private bool _pendingReload;           // событие пришло во время ввода — обновим после ухода
     private string _search = string.Empty;  // общий поиск по всем полям текущей стадии
     private int _biddingTomorrow;
     private int _biddingToday;
@@ -540,6 +547,8 @@ else
     {
         try
         {
+            Subscribe();
+
             var state = await AuthStateProvider.GetAuthenticationStateAsync();
             var name = state.User.Identity?.Name ?? "Пользователь";
             _actor = new ChangeActor(name, name);
@@ -619,6 +628,61 @@ else
         finally { _busy = false; _loading = false; }
     }
 
+    // ------------------------------------------------------------ realtime
+
+    private void Subscribe()
+    {
+        if (_subscribed)
+        {
+            return;
+        }
+
+        EventBus.Changed += OnRegistryChanged;
+        _subscribed = true;
+    }
+
+    /// <summary>
+    /// Любое изменение (реестр или задачи любого пользователя) мгновенно обновляет список.
+    /// Если пользователь в этот момент печатает в поле — обновление откладывается до ухода из поля,
+    /// чтобы не потерять введённый текст.
+    /// </summary>
+    private void OnRegistryChanged(RegistryChangeEvent changeEvent)
+    {
+        _ = InvokeAsync(async () =>
+        {
+            if (_focused)
+            {
+                _pendingReload = true;
+                return;
+            }
+
+            await LoadAsync();
+            StateHasChanged();
+        });
+    }
+
+    private void OnFocusIn() => _focused = true;
+
+    private async Task OnFocusOutAsync()
+    {
+        _focused = false;
+
+        if (_pendingReload)
+        {
+            _pendingReload = false;
+            await LoadAsync();
+        }
+    }
+
+    public void Dispose()
+    {
+        if (_subscribed)
+        {
+            EventBus.Changed -= OnRegistryChanged;
+            _subscribed = false;
+        }
+    }
+
     private void ClearSearch() => _search = string.Empty;
 
     private void SetStage(int stage) => _stage = stage;
@@ -680,7 +744,7 @@ else
     private async Task SaveAsync(int id)
     {
         _error = null;
-        var result = await WorkflowSvc.UpdateAsync(id, _edits[id]);
+        var result = await WorkflowSvc.UpdateAsync(id, _edits[id], _actor);
         if (!result.Success) { _error = result.Error; }
     }
 

@@ -89,6 +89,7 @@
                       TypesOfPurchase="@_typesOfPurchase"
                       B2BStatuses="@_b2bStatuses"
                       ExecutionStatuses="@_executionStatuses"
+                      CanEditColumn="@(key => _access.CanEdit(key))"
                       CellColors="@_colors"
                       SelectedIds="@_selectedIds"
                       SelectedCellKey="@_selectedCellKey"
@@ -503,6 +504,9 @@
             if (!result.Success)
             {
                 Toasts.Show(result.Error ?? "Не удалось сохранить ячейку", ToastKind.Error);
+
+                // Отметка/значение не сохранились — возвращаем таблице состояние из базы.
+                await ReloadAsync();
             }
         }
         catch (Exception ex)

@@ -354,15 +354,30 @@ public sealed class RegistryService : IRegistryService
 
         var before = ToRequest(entity);
         Apply(entity, request, actor.Access);
+
+        // Отметка «Оплачен» в форме записи тоже переводит закупку в «Завершена».
+        var stageChanges = new Dictionary<string, FieldChange>(StringComparer.Ordinal);
+        ApplyStageForFlags(context, entity, stageChanges, actor);
+
         await context.SaveChangesAsync(cancellationToken);
 
         var row = await LoadRowAsync(id, cancellationToken) ?? new RegistryRowDto { Id = id };
         var changes = BuildChanges(before, request);
+        foreach (var pair in stageChanges)
+        {
+            changes[pair.Key] = pair.Value;
+        }
 
         if (changes.Count > 0)
         {
+            var formSummary = $"Изменена запись «{Short(entity.NameLink)}»";
+            if (stageChanges.TryGetValue("Стадия", out var stageChange))
+            {
+                formSummary += $" — стадия: {stageChange.Old} → {stageChange.New}";
+            }
+
             await _audit.WriteAsync(AuditAction.Updated, EntityName, id, actor, changes,
-                $"Изменена запись «{Short(entity.NameLink)}»", cancellationToken);
+                formSummary, cancellationToken);
 
             await _notifier.PublishAsync(new RegistryChangeEvent(
                 ChangeKind.Updated, EntityName, id, actor.UserName, DateTime.UtcNow,
@@ -488,6 +503,12 @@ public sealed class RegistryService : IRegistryService
                 return Result.Fail($"Колонка «{column.Title}» не поддерживает инлайн-редактирование.");
         }
 
+        // Отметки «Согласован» и «Оплачен», поставленные прямо в реестре, двигают закупку по стадиям.
+        if (columnKey is "IsApproved" or "IsFinished")
+        {
+            ApplyStageForFlags(context, entity, changes, actor);
+        }
+
         if (changes.Count == 0)
         {
             return Result.Ok();
@@ -495,12 +516,24 @@ public sealed class RegistryService : IRegistryService
 
         await context.SaveChangesAsync(cancellationToken);
 
-        await _audit.WriteAsync(AuditAction.Updated, EntityName, id, actor, changes,
-            $"Изменена запись «{Short(entity.NameLink)}»", cancellationToken);
+        var summary = $"Изменена запись «{Short(entity.NameLink)}»";
+        changes.TryGetValue("Стадия", out var stageChange);
+        if (stageChange is not null)
+        {
+            summary += $" — стадия: {stageChange.Old} → {stageChange.New}";
+        }
+
+        await _audit.WriteAsync(AuditAction.Updated, EntityName, id, actor, changes, summary, cancellationToken);
+
+        var notified = $"{actor.UserName}: {column.Title} → {(column.Kind == ColumnKind.Bool ? (raw == "true" ? "да" : "нет") : raw)}";
+        if (stageChange is not null)
+        {
+            notified += $"; стадия: {stageChange.Old} → {stageChange.New}";
+        }
 
         await _notifier.PublishAsync(new RegistryChangeEvent(
             ChangeKind.Updated, EntityName, id, actor.UserName, DateTime.UtcNow,
-            $"{actor.UserName}: {column.Title} → {raw}", null), cancellationToken);
+            notified, null), cancellationToken);
 
         return Result.Ok();
     }
@@ -542,6 +575,55 @@ public sealed class RegistryService : IRegistryService
         {
             context.CellColors.RemoveRange(colors);
         }
+    }
+
+    /// <summary>
+    /// Отметки в реестре двигают закупку по стадиям воркфлоу:
+    ///  • «Согласован» на стадиях 1 / 1.2 / 2 (до подачи) -> «3. Подача заявки на площадку»;
+    ///  • «Оплачен» -> «Завершена» (если закупка ещё не завершена и не проиграна).
+    /// Снятие отметки стадию не откатывает — это делает ответственный на соответствующем этапе.
+    /// </summary>
+    private static void ApplyStageForFlags(
+        RegistryDbContext context, Regedit entity, Dictionary<string, FieldChange> changes, ChangeActor actor)
+    {
+        var from = entity.Stage;
+        int? to = null;
+        var reason = string.Empty;
+
+        if (entity.IsApproved && (from == 1 || from == 2 || from == 12))
+        {
+            to = 3;   // «1. Контур и подготовка» / «1.2 Резерв» / «2. Согласование» -> «3. Подача заявки на площадку»
+            reason = "Согласовано";
+
+            // Как при обычном переходе с этапа 1 — фиксируем дату передачи на размещение.
+            if (from == 1 && entity.DateOfTransferForPlacement is null)
+            {
+                entity.DateOfTransferForPlacement = DateTime.Now;
+            }
+        }
+        else if (entity.IsFinished == true && from != 11 && from != 0)
+        {
+            to = 11;  // -> «Завершена»
+            reason = "Оплачено";
+        }
+
+        if (to is null || to.Value == from)
+        {
+            return;
+        }
+
+        entity.Stage = to.Value;
+        AddCellChange(changes, "Стадия", WorkflowStages.Name(from), WorkflowStages.Name(to.Value));
+
+        context.RegistryWorkflowLogs.Add(new RegistryWorkflowLog
+        {
+            RegeditId = entity.Id,
+            FromStage = from,
+            ToStage = to.Value,
+            Action = $"{reason} (отметка в реестре)",
+            ByUser = actor.UserName,
+            AtUtc = DateTime.UtcNow
+        });
     }
 
     private static void AddCellChange(Dictionary<string, FieldChange> changes, string title, string old, string @new)

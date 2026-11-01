@@ -129,7 +129,7 @@ public interface IWorkflowService
 {
     Task<IReadOnlyList<WorkflowRow>> GetAsync(CancellationToken cancellationToken = default);
 
-    Task<Result> UpdateAsync(int regeditId, WorkflowEdit edit, CancellationToken cancellationToken = default);
+    Task<Result> UpdateAsync(int regeditId, WorkflowEdit edit, ChangeActor? actor = null, CancellationToken cancellationToken = default);
 
     /// <summary>Перевести на стадию по коду перехода (см. WorkflowService.Transitions).</summary>
     Task<Result> AdvanceAsync(int regeditId, int code, ChangeActor actor, CancellationToken cancellationToken = default);
@@ -179,10 +179,12 @@ public sealed class WorkflowService : IWorkflowService
     private readonly ILogger<WorkflowService> _logger;
     private readonly IRolePermissionService _rolePerms;
     private readonly UserManager<ApplicationUser> _users;
+    private readonly IRegistryNotifier _notifier;
 
     public WorkflowService(IDbContextFactory<RegistryDbContext> factory, BitrixNotifier bitrix,
         IWebHostEnvironment env, ILogger<WorkflowService> logger,
-        IRolePermissionService rolePerms, UserManager<ApplicationUser> users)
+        IRolePermissionService rolePerms, UserManager<ApplicationUser> users,
+        IRegistryNotifier notifier)
     {
         _factory = factory;
         _bitrix = bitrix;
@@ -190,7 +192,20 @@ public sealed class WorkflowService : IWorkflowService
         _logger = logger;
         _rolePerms = rolePerms;
         _users = users;
+        _notifier = notifier;
     }
+
+    /// <summary>
+    /// Рассылает событие изменения: по внутрипроцессной шине мгновенно обновляются открытые
+    /// страницы («Задачи», «Реестр»), параллельно событие уходит клиентам SignalR.
+    /// </summary>
+    private Task NotifyAsync(int regeditId, string userName, string summary, CancellationToken cancellationToken) =>
+        _notifier.PublishAsync(new RegistryChangeEvent(
+            ChangeKind.Updated, RegistryService.EntityName, regeditId, userName, DateTime.UtcNow, summary),
+            cancellationToken);
+
+    private static string ShortName(string value) =>
+        string.IsNullOrWhiteSpace(value) ? "без наименования" : (value.Length <= 60 ? value : value[..57] + "…");
 
     public async Task<IReadOnlyList<WorkflowRow>> GetAsync(CancellationToken cancellationToken = default)
     {
@@ -208,7 +223,7 @@ public sealed class WorkflowService : IWorkflowService
             .ToListAsync(cancellationToken);
     }
 
-    public async Task<Result> UpdateAsync(int regeditId, WorkflowEdit edit, CancellationToken cancellationToken = default)
+    public async Task<Result> UpdateAsync(int regeditId, WorkflowEdit edit, ChangeActor? actor = null, CancellationToken cancellationToken = default)
     {
         await using var context = await _factory.CreateDbContextAsync(cancellationToken);
         var item = await context.Regedit.FirstOrDefaultAsync(r => r.Id == regeditId, cancellationToken);
@@ -246,6 +261,12 @@ public sealed class WorkflowService : IWorkflowService
         item.IsEisFilled = edit.IsEisFilled;
 
         await context.SaveChangesAsync(cancellationToken);
+
+        var who = actor?.UserName ?? "Пользователь";
+        await NotifyAsync(regeditId, who,
+            $"{who} изменил(а) закупку «{ShortName(item.NameLink)}» (этап «{WorkflowStages.Name(item.Stage)}»)",
+            cancellationToken);
+
         return Result.Ok();
     }
 
@@ -295,6 +316,10 @@ public sealed class WorkflowService : IWorkflowService
 
         await NotifyStageOwnersAsync(tr.To, item, cancellationToken);
 
+        await NotifyAsync(regeditId, actor.UserName,
+            $"{actor.UserName}: «{ShortName(item.NameLink)}» → стадия «{WorkflowStages.Name(tr.To)}»",
+            cancellationToken);
+
         _logger.LogInformation("Воркфлоу: закупка {Id} {From}->{To} ({User})", regeditId, from, tr.To, actor.UserName);
         return Result.Ok();
     }
@@ -327,6 +352,11 @@ public sealed class WorkflowService : IWorkflowService
 
         item.BranchFilePath = $"/attachments/{file.Id}/{safeName}";
         await context.SaveChangesAsync(cancellationToken);
+
+        await NotifyAsync(regeditId, "Пользователь",
+            $"Прикреплён файл для оповещения филиала: {safeName} (закупка «{ShortName(item.NameLink)}»)",
+            cancellationToken);
+
         return Result<string>.Ok(item.BranchFilePath);
     }
 
@@ -375,6 +405,11 @@ public sealed class WorkflowService : IWorkflowService
         await context.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Воркфлоу: оповещён филиал {Branch} по закупке {Id} ({User})", branchName, regeditId, actor.UserName);
+
+        await NotifyAsync(regeditId, actor.UserName,
+            $"{actor.UserName}: оповещён филиал «{branchName}», «{ShortName(item.NameLink)}» → «{WorkflowStages.Name(8)}»",
+            cancellationToken);
+
         return Result.Ok();
     }
 
@@ -408,6 +443,11 @@ public sealed class WorkflowService : IWorkflowService
         await context.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Воркфлоу: возврат закупки {Id} ({User}): {Reason}", regeditId, actor.UserName, reason);
+
+        await NotifyAsync(regeditId, actor.UserName,
+            $"{actor.UserName}: «{ShortName(item.NameLink)}» → «{WorkflowStages.Name(13)}»",
+            cancellationToken);
+
         return Result.Ok();
     }
 
@@ -500,6 +540,9 @@ public sealed class WorkflowService : IWorkflowService
         item.Attachments = list;
         await context.SaveChangesAsync(cancellationToken);
 
+        await NotifyAsync(regeditId, "Пользователь",
+            $"Добавлено вложение: {safeName} (закупка «{ShortName(item.NameLink)}»)", cancellationToken);
+
         return Result<string>.Ok(list);
     }
 
@@ -580,6 +623,10 @@ public sealed class WorkflowService : IWorkflowService
         item.Attachments = string.Join(";", parts);
 
         await context.SaveChangesAsync(cancellationToken);
+
+        await NotifyAsync(regeditId, "Пользователь",
+            $"Удалено вложение (закупка «{ShortName(item.NameLink)}»)", cancellationToken);
+
         return Result.Ok();
     }
 

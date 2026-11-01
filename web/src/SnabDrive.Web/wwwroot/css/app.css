@@ -1065,18 +1065,35 @@ input:disabled {
     outline: none;
 }
 
-/* Многострочное поле редактирования: занимает всю ячейку, текст переносится и виден целиком */
+/* Отметка «Согласован» / «Оплачен» ставится одним кликом прямо в таблице */
+.bool-check {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    cursor: pointer;
+    accent-color: var(--accent, #1976d2);
+    vertical-align: middle;
+}
+
+.bool-check:disabled {
+    cursor: not-allowed;
+    opacity: .55;
+}
+
+/* Многострочное поле редактирования: занимает всю ячейку и растёт по содержимому —
+   ровно как поля в карточках стадий (.wf-area): без ограничения высоты, без скролла,
+   без ручной растяжки. В браузерах без field-sizing высоту подбирает js/autosize.js. */
 .cell-input--area {
     display: block;
     field-sizing: content;   /* авто-рост высоты по содержимому (Chrome/Edge 123+) */
-    min-height: 84px;
-    max-height: 340px;
+    min-height: 56px;        /* как у полей в стадиях */
     max-width: 100%;
-    resize: vertical;
+    resize: none;            /* размер только автоматический */
+    overflow: hidden;        /* высота растёт — весь текст виден, скролла нет */
     white-space: pre-wrap;
     overflow-wrap: break-word;
     word-break: break-word;
-    line-height: 1.35;
+    line-height: 1.4;
 }
 
 .cell-editing {
