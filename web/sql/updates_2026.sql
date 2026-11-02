@@ -270,6 +270,27 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_RegistryItems_Applicat
 GO
 
 -- ============================================================================
+-- Журнал стадий: [Action] расширена с nvarchar(50) до nvarchar(200).
+--   Подпись «Перевод на стадию вручную: 1. Контур и подготовка → 4. Торги» в 50
+--   символов не влезала, и SQL Server отклонял запись ошибкой «String or binary
+--   data would be truncated» — из-за этого во вкладке «Задачи» не сохранялся
+--   ручной перенос стадии (в реестре подпись короче, поэтому там проходило).
+--   Подробности события теперь пишутся в [Comment] (nvarchar(max)) без обрезки.
+--   sys.columns.max_length для nvarchar указан в байтах: nvarchar(200) = 400.
+-- ============================================================================
+IF EXISTS (SELECT 1 FROM sys.columns
+            WHERE object_id = OBJECT_ID('dbo.WorkflowLogs')
+              AND name = 'Action'
+              AND max_length > 0 AND max_length < 400)
+BEGIN
+    ALTER TABLE dbo.WorkflowLogs ALTER COLUMN [Action] NVARCHAR(200) NOT NULL;
+    PRINT 'WorkflowLogs.Action расширена до nvarchar(200).';
+END
+ELSE
+    PRINT 'WorkflowLogs.Action уже нужной длины (или таблицы нет).';
+GO
+
+-- ============================================================================
 -- Самопроверка: какие из нужных колонок так и не появились.
 -- Пустой результат = схема соответствует текущей версии приложения.
 -- ============================================================================
@@ -298,4 +319,9 @@ ELSE
 
 IF COL_LENGTH('dbo.AspNetUsers','StageChangeEnabled') IS NULL
     PRINT 'ВНИМАНИЕ: нет AspNetUsers.StageChangeEnabled.';
+
+IF EXISTS (SELECT 1 FROM sys.columns
+            WHERE object_id = OBJECT_ID('dbo.WorkflowLogs') AND name = 'Action'
+              AND max_length > 0 AND max_length < 400)
+    PRINT 'ВНИМАНИЕ: WorkflowLogs.Action короче nvarchar(200) — перенос стадии не сохранится.';
 GO

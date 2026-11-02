@@ -257,7 +257,7 @@ public class RegistryDbContext : DbContext
             entity.Property(x => x.RegeditId).HasColumnName("RegeditId");
             entity.Property(x => x.FromStage).HasColumnName("FromStage");
             entity.Property(x => x.ToStage).HasColumnName("ToStage");
-            entity.Property(x => x.Action).HasColumnName("Action").HasMaxLength(50);
+            entity.Property(x => x.Action).HasColumnName("Action").HasMaxLength(RegistryWorkflowLog.ActionMaxLength);
             entity.Property(x => x.Comment).HasColumnName("Comment");
             entity.Property(x => x.AtUtc).HasColumnName("AtUtc");
             entity.Property(x => x.ByUser).HasColumnName("ByUser").HasMaxLength(256);

@@ -521,7 +521,8 @@ public sealed class RegistryService : IRegistryService
                     RegeditId = entity.Id,
                     FromStage = oldStage,
                     ToStage = newStage,
-                    Action = "Перевод на стадию вручную (реестр)",
+                    Action = JournalText.Action("Перевод на стадию вручную (реестр)"),
+                    Comment = JournalText.Comment($"«{WorkflowStages.Name(oldStage)}» → «{WorkflowStages.Name(newStage)}»"),
                     ByUser = actor.UserName,
                     AtUtc = DateTime.UtcNow
                 });
@@ -684,7 +685,8 @@ public sealed class RegistryService : IRegistryService
             RegeditId = entity.Id,
             FromStage = from,
             ToStage = to.Value,
-            Action = $"{reason} (отметка в реестре)",
+            Action = JournalText.Action($"{reason} (отметка в реестре)"),
+            Comment = JournalText.Comment(reason),
             ByUser = actor.UserName,
             AtUtc = DateTime.UtcNow
         });

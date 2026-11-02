@@ -45,7 +45,7 @@ BEGIN
         RegeditId int            NOT NULL,
         FromStage int            NOT NULL,
         ToStage   int            NOT NULL,
-        [Action]  nvarchar(50)   NOT NULL,
+        [Action]  nvarchar(200)  NOT NULL,   -- 50 не хватало: подпись переноса стадии длиннее
         [Comment] nvarchar(max)  NULL,
         AtUtc     datetime2(7)   NOT NULL CONSTRAINT DF_RegistryWorkflowLog_AtUtc DEFAULT(SYSUTCDATETIME()),
         ByUser    nvarchar(256)  NULL

@@ -332,7 +332,7 @@ public sealed class WorkflowService : IWorkflowService
             RegeditId = regeditId,
             FromStage = from,
             ToStage = tr.To,
-            Action = WorkflowStages.Name(tr.To),
+            Action = JournalText.Action(WorkflowStages.Name(tr.To)),
             ByUser = actor.UserName,
             AtUtc = DateTime.UtcNow
         });
@@ -390,7 +390,9 @@ public sealed class WorkflowService : IWorkflowService
             RegeditId = regeditId,
             FromStage = from,
             ToStage = stage,
-            Action = $"Перевод на стадию вручную: {WorkflowStages.Name(from)} → {WorkflowStages.Name(stage)}",
+            // Подпись усекается: колонка [Action] ограничена, а два названия этапов в неё не влезают.
+            Action = JournalText.Action($"Перевод на стадию вручную: {WorkflowStages.Name(from)} → {WorkflowStages.Name(stage)}"),
+            Comment = JournalText.Comment($"«{WorkflowStages.Name(from)}» → «{WorkflowStages.Name(stage)}»"),
             ByUser = actor.UserName,
             AtUtc = DateTime.UtcNow
         });
@@ -491,7 +493,8 @@ public sealed class WorkflowService : IWorkflowService
             RegeditId = regeditId,
             FromStage = from,
             ToStage = 8,
-            Action = "Оповещён филиал " + branchName,
+            Action = JournalText.Action("Оповещён филиал " + branchName),
+            Comment = JournalText.Comment(branchName),
             ByUser = actor.UserName,
             AtUtc = DateTime.UtcNow
         });
@@ -521,6 +524,13 @@ public sealed class WorkflowService : IWorkflowService
             return Result.Fail("Укажите причину возврата.");
         }
 
+        // ReturnReason в базе — nvarchar(2000); длинный текст SQL Server отклонит
+        // ошибкой «String or binary data would be truncated».
+        if (reason.Length > 2000)
+        {
+            return Result.Fail("Причина не должна быть длиннее 2000 символов (сейчас " + reason.Length + ").");
+        }
+
         await using var context = await _factory.CreateDbContextAsync(cancellationToken);
         var item = await context.Regedit.FirstOrDefaultAsync(r => r.Id == regeditId, cancellationToken);
         if (item is null)
@@ -537,7 +547,8 @@ public sealed class WorkflowService : IWorkflowService
             RegeditId = regeditId,
             FromStage = from,
             ToStage = 13,
-            Action = "Проблема с приемкой: " + reason.Trim(),
+            Action = JournalText.Action("Проблема с приемкой: " + reason.Trim()),
+            Comment = JournalText.Comment(reason),
             ByUser = actor.UserName,
             AtUtc = DateTime.UtcNow
         });
