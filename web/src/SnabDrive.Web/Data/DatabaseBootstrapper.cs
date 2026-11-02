@@ -1,7 +1,5 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Storage;
 using SnabDrive.Web.Data;
 using SnabDrive.Web.Data.Entities;
 
@@ -55,7 +53,7 @@ public static class AppPolicies
 /// <summary>
 /// Подготовка базы при старте приложения:
 /// — веб-таблицы (Identity + AuditLog + UserColumnPermission) создаются EF-миграцией;
-/// — существующие таблицы реестра НЕ изменяются (для SQLite-dev создаются с нуля);
+/// — существующие таблицы реестра НЕ изменяются;
 /// — создаются роли Admin/Operator и учётка администратора;
 /// — опционально импортируются пользователи из старой таблицы [User].
 /// </summary>
@@ -105,21 +103,14 @@ public static class DatabaseBootstrapper
                     }
                 }
             }
-            else if (options.IsSqlServer)
+            else
             {
-                // Продовая база создаётся ТОЛЬКО миграцией — вручную таблицы не создаём.
+                // База создаётся ТОЛЬКО миграцией — вручную таблицы не создаём.
                 logger.LogError(
                     "В сборке нет миграций веб-схемы. Выполните: " +
                     "cd web/src/SnabDrive.Web && " +
                     "dotnet ef migrations add InitialWebSchema --context AppIdentityDbContext && " +
                     "dotnet ef database update --context AppIdentityDbContext");
-            }
-            else
-            {
-                // Dev-SQLite: миграции ещё не сгенерированы, создаём недостающие таблицы модели.
-                // EnsureCreated здесь не подходит — он ничего не делает, если в базе уже есть
-                // хоть одна таблица (а таблицы реестра там уже есть).
-                await EnsureModelTablesAsync(context, "AspNetUsers", logger, "веб-схемы (Identity + AuditLog)");
             }
         }
 
@@ -141,18 +132,6 @@ public static class DatabaseBootstrapper
         await using var context = await factory.CreateDbContextAsync();
 
         var exists = await context.Database.CanConnectAsync();
-
-        if (options.EnsureLegacySchema && options.IsSqlite)
-        {
-            await EnsureModelTablesAsync(context, "RegistryItems", logger, "реестра (dev SQLite)");
-
-            if (options.SeedDictionaries)
-            {
-                await SeedDictionariesAsync(context, logger);
-            }
-
-            return;
-        }
 
         if (!exists)
         {
@@ -177,40 +156,16 @@ public static class DatabaseBootstrapper
         }
     }
 
-    /// <summary>
-    /// Создаёт таблицы модели конкретного контекста, если их ещё нет.
-    /// В отличие от EnsureCreated, работает даже когда в базе уже есть чужие таблицы.
-    /// </summary>
-    private static async Task EnsureModelTablesAsync(DbContext context, string probeTable, ILogger logger, string schemaLabel)
-    {
-        var creator = context.Database.GetService<IRelationalDatabaseCreator>();
-
-        if (!creator.Exists())
-        {
-            creator.Create();
-        }
-
-        if (await TableExistsAsync(context, probeTable))
-        {
-            return;
-        }
-
-        creator.CreateTables();
-        logger.LogInformation("Созданы таблицы {Schema}", schemaLabel);
-    }
-
     private static async Task<bool> TableExistsAsync(DbContext context, string tableName)
     {
         try
         {
             var connection = context.Database.GetDbConnection();
             await using var command = connection.CreateCommand();
-            command.CommandText = context.Database.IsSqlite()
-                ? "SELECT count(*) FROM sqlite_master WHERE type='table' AND name = $name"
-                : "SELECT count(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = @name";
+            command.CommandText = "SELECT count(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = @name";
 
             var parameter = command.CreateParameter();
-            parameter.ParameterName = context.Database.IsSqlite() ? "$name" : "@name";
+            parameter.ParameterName = "@name";
             parameter.Value = tableName;
             command.Parameters.Add(parameter);
 
@@ -237,33 +192,6 @@ public static class DatabaseBootstrapper
         {
             return false;
         }
-    }
-
-    private static async Task SeedDictionariesAsync(RegistryDbContext context, ILogger logger)
-    {
-        if (await context.TypesOfPurchase.AnyAsync())
-        {
-            return;
-        }
-
-        context.TypesOfPurchase.AddRange(
-            new TypeOfPurchase { NameOfPurchase = "Электронный аукцион", ColorCode = "#FF4CAF50" },
-            new TypeOfPurchase { NameOfPurchase = "Запрос котировок", ColorCode = "#FF2196F3" },
-            new TypeOfPurchase { NameOfPurchase = "Открытый конкурс", ColorCode = "#FFFFC107" });
-
-        context.B2BStatuses.AddRange(
-            new B2BStatus { NameB2B = "Не подан" },
-            new B2BStatus { NameB2B = "Подан" },
-            new B2BStatus { NameB2B = "Отклонён" },
-            new B2BStatus { NameB2B = "Победа" });
-
-        context.ExecutionStatuses.AddRange(
-            new ExecutionStatus { NameExecution = "Не начато" },
-            new ExecutionStatus { NameExecution = "В работе" },
-            new ExecutionStatus { NameExecution = "Завершено" });
-
-        await context.SaveChangesAsync();
-        logger.LogInformation("Справочники заполнены демо-значениями");
     }
 
     private static async Task SeedRolesAsync(IServiceProvider services, ILogger logger)

@@ -14,22 +14,13 @@ var builder = WebApplication.CreateBuilder(args);
 // ------------------------------------------------------------------ конфигурация
 
 builder.Services.Configure<DatabaseOptions>(builder.Configuration.GetSection(DatabaseOptions.SectionName));
-var databaseOptions = builder.Configuration.GetSection(DatabaseOptions.SectionName).Get<DatabaseOptions>() ?? new DatabaseOptions();
 
 var registryConnection = builder.Configuration.GetConnectionString("Registry")
                          ?? throw new InvalidOperationException("Не задана строка подключения ConnectionStrings:Registry");
 
+// Провайдер базы один — SQL Server.
 Action<DbContextOptionsBuilder> configureProvider = options =>
-{
-    if (databaseOptions.IsSqlServer)
-    {
-        options.UseSqlServer(registryConnection, sql => sql.EnableRetryOnFailure(3));
-    }
-    else
-    {
-        options.UseSqlite(registryConnection);
-    }
-};
+    options.UseSqlServer(registryConnection, sql => sql.EnableRetryOnFailure(3));
 
 // ------------------------------------------------------------------ данные
 

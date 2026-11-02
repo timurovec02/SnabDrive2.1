@@ -1321,8 +1321,8 @@ public sealed class RegistryService : IRegistryService
         var hasYear = isYearOnly && yearText is >= 1 and <= SqlMaxYear;
         var yearValue = hasYear ? yearText : 0;
 
-        // Сравниваем диапазоном, а не .Date/.Year: так запрос одинаково транслируется
-        // и в SQL Server, и в SQLite.
+        // Сравниваем диапазоном, а не .Date/.Year: так условие транслируется в SQL
+        // целиком, без вычислений на стороне клиента.
         var dayStart = date.Date;
         var dayEnd = dayStart.AddDays(1);
         var yearStart = new DateTime(yearValue == 0 ? 1 : yearValue, 1, 1);
@@ -1394,8 +1394,8 @@ public sealed class RegistryService : IRegistryService
         var hasYear = isYearOnly && yearText is >= 1 and <= SqlMaxYear;
         var yearValue = hasYear ? yearText : 0;
 
-        // Сравниваем диапазоном, а не .Date/.Year: так запрос одинаково транслируется
-        // и в SQL Server, и в SQLite.
+        // Сравниваем диапазоном, а не .Date/.Year: так условие транслируется в SQL
+        // целиком, без вычислений на стороне клиента.
         var dayStart = date.Date;
         var dayEnd = dayStart.AddDays(1);
         var yearStart = new DateTime(yearValue == 0 ? 1 : yearValue, 1, 1);
