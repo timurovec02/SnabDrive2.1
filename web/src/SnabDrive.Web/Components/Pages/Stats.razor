@@ -6,20 +6,21 @@
 @inject IDbContextFactory<AppIdentityDbContext> IdentityFactory
 @inject IDbContextFactory<RegistryDbContext> RegistryFactory
 
-<h1 class="page-title">Статистика активности</h1>
-<p class="page-subtitle">Кто и сколько выполнил операций: добавление, изменение, удаление, архивация и переводы по стадиям воркфлоу.</p>
-
-<div class="toolbar" style="margin:12px 0;gap:10px;flex-wrap:wrap;align-items:end">
-    <label style="display:flex;flex-direction:column;gap:2px">
-        <span>С</span>
-        <input type="date" class="input" @bind="_from" />
-    </label>
-    <label style="display:flex;flex-direction:column;gap:2px">
-        <span>По</span>
-        <input type="date" class="input" @bind="_to" />
-    </label>
-    <button class="btn btn-primary" @onclick="LoadAsync" disabled="@_loading">Показать</button>
-</div>
+<PageHeader Icon="📈"
+            Title="Статистика активности"
+            Subtitle="Кто и сколько выполнил операций: добавление, изменение, удаление, архивация и переводы по стадиям воркфлоу.">
+    <Actions>
+        <label class="form-label" style="margin:0">
+            С
+            <input type="date" class="input" @bind="_from" />
+        </label>
+        <label class="form-label" style="margin:0">
+            По
+            <input type="date" class="input" @bind="_to" />
+        </label>
+        <button class="btn btn--primary" @onclick="LoadAsync" disabled="@_loading">Показать</button>
+    </Actions>
+</PageHeader>
 
 @if (_error is not null)
 {
@@ -28,15 +29,44 @@
 
 @if (_loading)
 {
-    <p>Загрузка…</p>
+    <div class="page-loading">Загрузка…</div>
 }
 else if (_rows.Count == 0)
 {
-    <div class="alert alert-info">За выбранный период операций не найдено.</div>
+    <div class="empty-state">
+        <div class="empty-state__icon">📭</div>
+        <div class="empty-state__title">За выбранный период операций нет</div>
+        <div>Измените диапазон дат и нажмите «Показать».</div>
+    </div>
 }
 else
 {
-    <table class="table" style="width:auto;min-width:640px">
+    <div class="stat-grid">
+        <div class="stat-tile">
+            <div class="stat-tile__label">Операций всего</div>
+            <div class="stat-tile__value">@_rows.Sum(r => r.Total)</div>
+            <div class="stat-tile__hint">сотрудников в отчёте: @_rows.Count</div>
+        </div>
+        <div class="stat-tile stat-tile--ok">
+            <div class="stat-tile__label">Добавлено</div>
+            <div class="stat-tile__value">@_rows.Sum(r => r.Created)</div>
+        </div>
+        <div class="stat-tile">
+            <div class="stat-tile__label">Изменено</div>
+            <div class="stat-tile__value">@_rows.Sum(r => r.Updated)</div>
+        </div>
+        <div class="stat-tile stat-tile--warn">
+            <div class="stat-tile__label">Переводов стадий</div>
+            <div class="stat-tile__value">@_rows.Sum(r => r.StageChanges)</div>
+        </div>
+        <div class="stat-tile stat-tile--danger">
+            <div class="stat-tile__label">Удалено / в архив</div>
+            <div class="stat-tile__value">@(_rows.Sum(r => r.Deleted) + _rows.Sum(r => r.Archived))</div>
+            <div class="stat-tile__hint">удалено @_rows.Sum(r => r.Deleted) · архив @_rows.Sum(r => r.Archived)</div>
+        </div>
+    </div>
+
+    <table class="data-table" style="min-width:640px">
         <thead>
             <tr>
                 <th>Пользователь</th>

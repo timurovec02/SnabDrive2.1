@@ -11,13 +11,8 @@
 <PageTitle>Архив — Снабдрайв</PageTitle>
 
 <div class="page">
-    <div class="page__header">
-        <div>
-            <h1>Архив</h1>
-            <p class="page__hint">Найдено @_data.TotalCount архивных записей · архив только для чтения — данные не изменяются</p>
-        </div>
-
-        <div class="toolbar">
+    <PageHeader Icon="🗄" Title="Архив" Subtitle="@ArchiveHint()">
+        <Actions>
             <div class="search">
                 <input type="search" class="input" placeholder="Поиск по архиву…"
                        value="@_query.Search" @oninput="OnSearchInput" />
@@ -25,9 +20,9 @@
 
             <button type="button" class="btn" @onclick="RestoreSelectedAsync" disabled="@(_busy || _selected is null)">↩ Вернуть в реестр</button>
             <button type="button" class="btn btn--danger" @onclick="AskDelete" disabled="@(_busy || _selected is null)">🗑 Удалить</button>
-            <button type="button" class="btn btn--ghost" @onclick="ReloadAsync">⟳</button>
-        </div>
-    </div>
+            <button type="button" class="btn btn--ghost" @onclick="ReloadAsync" title="Обновить">⟳</button>
+        </Actions>
+    </PageHeader>
 
     <div class="page__section">
         <RegistryGrid Rows="@_data.Items"
@@ -64,6 +59,10 @@
 }
 
 @code {
+    /// <summary>Подпись под заголовком: сколько записей найдено и что архив только для чтения.</summary>
+    private string ArchiveHint() =>
+        $"Найдено {_data.TotalCount} архивных записей · архив только для чтения — данные не изменяются";
+
     private ColumnAccessMap _access = ColumnAccessMap.Full;
     private RegistryQuery _query = new() { SortBy = "ArchivateDate", SortDescending = true };
     private Dictionary<string, string> _filters = new(StringComparer.OrdinalIgnoreCase);

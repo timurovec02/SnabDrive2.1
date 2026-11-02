@@ -11,31 +11,45 @@
 @inject IPresenceService Presence
 @inject IRegistryEventBus EventBus
 
-<h1 class="page-title">Обзор директора</h1>
-<p class="page-subtitle">Сводная аналитика по закупкам и выгрузкам «Контур ловушка».</p>
+<PageHeader Icon="📊"
+            Title="Обзор директора"
+            Subtitle="Сводная аналитика по закупкам, активности сотрудников и выгрузкам «Контур ловушка»." />
 
 @if (_error is not null)
 {
     <div class="alert alert-error">@_error</div>
 }
 
-<div class="cards" style="display:flex;flex-wrap:wrap;gap:12px;margin:16px 0">
-    <div class="card" style="min-width:180px"><div class="card-body">
-        <div class="muted">Записей в реестре</div><div style="font-size:24px;font-weight:600">@_registryCount</div>
-    </div></div>
-    <div class="card" style="min-width:180px"><div class="card-body">
-        <div class="muted">Записей в архиве</div><div style="font-size:24px;font-weight:600">@_archiveCount</div>
-    </div></div>
-    <div class="card" style="min-width:180px"><div class="card-body">
-        <div class="muted">Пользователей онлайн</div><div style="font-size:24px;font-weight:600">@_online.Count</div>
-        @if (_online.Count > 0)
-        {
-            <div class="muted" style="font-size:12px;margin-top:4px">@string.Join(", ", _online.Select(u => u.UserName))</div>
-        }
-    </div></div>
-    <div class="card" style="min-width:180px"><div class="card-body">
-        <div class="muted">Время сервера</div><div style="font-size:24px;font-weight:600">@_serverTime.ToString("HH:mm")</div>
-    </div></div>
+<div class="stat-grid">
+    <div class="stat-tile">
+        <div class="stat-tile__label">Записей в реестре</div>
+        <div class="stat-tile__value">@_registryCount</div>
+        <div class="stat-tile__hint">активные закупки</div>
+    </div>
+    <div class="stat-tile stat-tile--ok">
+        <div class="stat-tile__label">Записей в архиве</div>
+        <div class="stat-tile__value">@_archiveCount</div>
+        <div class="stat-tile__hint">завершённые и закрытые</div>
+    </div>
+    <div class="stat-tile stat-tile--warn">
+        <div class="stat-tile__label">Сейчас онлайн</div>
+        <div class="stat-tile__value">@_online.Count</div>
+        <div class="stat-tile__hint">
+            @if (_online.Count > 0)
+            {
+                @string.Join(", ", _online.Select(u => u.UserName))
+            }
+            else
+            {
+                <span>кроме вас никого нет</span>
+            }
+        </div>
+    </div>
+    <div class="stat-tile">
+        <div class="stat-tile__label">Время сервера</div>
+        <div class="stat-tile__value">@_serverTime.ToString("HH:mm")</div>
+        <div class="stat-tile__hint">данные обновляются автоматически</div>
+    </div>
 </div>
 
 <div class="toolbar" style="flex-wrap:wrap;gap:8px;margin:12px 0">
@@ -56,26 +70,33 @@
 }
 else
 {
-    <div class="cards" style="display:flex;flex-wrap:wrap;gap:12px;margin:16px 0">
-        <div class="card" style="min-width:180px"><div class="card-body">
-            <div class="muted">Всего закупок</div><div style="font-size:24px;font-weight:600">@_total</div>
-        </div></div>
-        <div class="card" style="min-width:180px"><div class="card-body">
-            <div class="muted">Сумма НМЦК</div><div style="font-size:24px;font-weight:600">@_sumNmc.ToString("N0")</div>
-        </div></div>
-        <div class="card" style="min-width:180px"><div class="card-body">
-            <div class="muted">Сумма итоговых цен</div><div style="font-size:24px;font-weight:600">@_sumResult.ToString("N0")</div>
-        </div></div>
-        <div class="card" style="min-width:180px"><div class="card-body">
-            <div class="muted">Ловушка: записей</div><div style="font-size:24px;font-weight:600">@_templatesTotal</div>
-        </div></div>
-        <div class="card" style="min-width:180px"><div class="card-body">
-            <div class="muted">Ловушка: «Интересно»</div><div style="font-size:24px;font-weight:600">@_templatesInteresting</div>
-        </div></div>
+    <div class="stat-grid">
+        <div class="stat-tile">
+            <div class="stat-tile__label">Всего закупок</div>
+            <div class="stat-tile__value">@_total</div>
+            <div class="stat-tile__hint">за выбранный период</div>
+        </div>
+        <div class="stat-tile">
+            <div class="stat-tile__label">Сумма НМЦК</div>
+            <div class="stat-tile__value">@_sumNmc.ToString("N0")</div>
+        </div>
+        <div class="stat-tile stat-tile--ok">
+            <div class="stat-tile__label">Сумма итоговых цен</div>
+            <div class="stat-tile__value">@_sumResult.ToString("N0")</div>
+        </div>
+        <div class="stat-tile stat-tile--warn">
+            <div class="stat-tile__label">Ловушка: записей</div>
+            <div class="stat-tile__value">@_templatesTotal</div>
+        </div>
+        <div class="stat-tile stat-tile--warn">
+            <div class="stat-tile__label">Ловушка: «Интересно»</div>
+            <div class="stat-tile__value">@_templatesInteresting</div>
+            <div class="stat-tile__hint">отмечено меткой</div>
+        </div>
     </div>
 
-    <h2 class="h5" style="margin:20px 0 8px">По месяцам (дата торгов)</h2>
-    <table class="table table-sm">
+    <h2 class="section-title" style="margin:22px 0 10px">По месяцам (дата торгов)</h2>
+    <table class="data-table">
         <thead><tr><th>Месяц</th><th>Кол-во</th><th>Сумма НМЦК</th></tr></thead>
         <tbody>
             @if (!_byMonth.Any())
@@ -89,8 +110,8 @@ else
         </tbody>
     </table>
 
-    <h2 class="h5" style="margin:20px 0 8px">Топ заказчиков</h2>
-    <table class="table table-sm">
+    <h2 class="section-title" style="margin:22px 0 10px">Топ заказчиков</h2>
+    <table class="data-table">
         <thead><tr><th>Заказчик</th><th>Кол-во</th><th>Сумма НМЦК</th></tr></thead>
         <tbody>
             @if (!_topCustomers.Any())

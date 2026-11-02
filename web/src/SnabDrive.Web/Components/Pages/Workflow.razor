@@ -13,17 +13,28 @@
 @implements IDisposable
 @inject AuthenticationStateProvider AuthStateProvider
 
-<h1 class="page-title">Задачи по закупкам</h1>
-<p class="page-subtitle">Воркфлоу по стадиям. Поля редактируются, кнопка переводит закупку на следующую стадию. Список обновляется автоматически при изменениях других пользователей.</p>
+<PageHeader Icon="➤"
+            Title="Задачи по закупкам"
+            Subtitle="Воркфлоу по стадиям: поля в карточке сохраняются автоматически, кнопки внизу переводят закупку дальше. Список обновляется сам, когда закупку меняет другой сотрудник." />
 
 @if (_error is not null)
 {
-    <div class="alert alert-error">@_error</div>
+    <div class="alert alert-error" role="alert">
+        <span>⚠ @_error</span>
+        <button type="button" class="alert__close" @onclick="() => _error = null" title="Скрыть">✕</button>
+    </div>
+}
+@if (_notice is not null)
+{
+    <div class="alert alert-ok" role="status">
+        <span>✔ @_notice</span>
+        <button type="button" class="alert__close" @onclick="() => _notice = null" title="Скрыть">✕</button>
+    </div>
 }
 
 @if (_isTenderHead && (_biddingTomorrow > 0 || _biddingToday > 0))
 {
-    <div class="alert alert-info" style="border-left:4px solid #d97706;background:#fffbeb;color:#92400e;margin:12px 0">
+    <div class="alert alert--warn">
         🔔 <strong>Предстоящие торги:</strong>
         @if (_biddingTomorrow > 0)
         {
@@ -40,26 +51,30 @@
     </div>
 }
 
-<div class="toolbar" style="flex-wrap:wrap;gap:6px;margin:12px 0">
+@* Этапы — табы-пилюли со счётчиком закупок на каждом *@
+<div class="pill-tabs">
     @foreach (var st in WorkflowStages.All.Where(s => _allowedStages.Contains(s.Id)))
     {
-        <button class="@TabClass(st.Id)" @onclick="() => SetStage(st.Id)">@st.Name (@Count(st.Id))</button>
+        <button class="@TabClass(st.Id)" @onclick="() => SetStage(st.Id)">@st.Name<span class="tab__count">@Count(st.Id)</span></button>
     }
-    <div class="toolbar-spacer"></div>
+</div>
+
+<div class="toolbar" style="flex-wrap:wrap;gap:8px;margin:0 0 16px">
     <div style="display:flex;align-items:center;gap:6px">
         <input class="input" style="min-width:280px" placeholder="🔍 Поиск по всем полям стадии…"
                @bind="_search" @bind:event="oninput" />
         @if (!string.IsNullOrEmpty(_search))
         {
-            <button class="btn" title="Очистить поиск" @onclick="ClearSearch">×</button>
+            <button class="btn btn--small" title="Очистить поиск" @onclick="ClearSearch">✕</button>
         }
     </div>
-    <button class="btn" disabled="@_busy" @onclick="LoadAsync">Обновить</button>
+    <div class="toolbar-spacer"></div>
+    <button class="btn" disabled="@_busy" @onclick="LoadAsync">⟳ Обновить</button>
 </div>
 
 @if (!_loading && _allowedStages.Contains(_stage))
 {
-    <div class="alert alert-info" style="margin:0 0 12px;font-size:16px;display:flex;align-items:center;gap:8px">
+    <div class="hint" style="display:flex;align-items:center;gap:8px;margin:0 0 14px;font-size:14.5px">
         <span style="font-size:18px">📂</span>
         <span>Открытая стадия: <strong>@WorkflowStages.Name(_stage)</strong></span>
     </div>
@@ -525,7 +540,9 @@ else
                     {
                         <span style="margin-left:auto;display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap">
                             <span class="muted" style="font-size:12px">Перенести на стадию:</span>
-                            <select class="wf-input" style="width:auto;min-width:250px" @bind="_stageMoves[r.Id]">
+                            <select class="wf-input" style="width:auto;min-width:250px" value="@_stageMoves[r.Id]"
+                                    title="Выберите стадию и нажмите «Переместить»"
+                                    @onchange="ev => OnStageMovePick(r.Id, ev)">
                                 @foreach (var st in WorkflowStages.All)
                                 {
                                     <option value="@st.Id">@st.Name</option>
@@ -573,6 +590,7 @@ else
     private bool _loading = true;
     private int _stage = 1;
     private string? _error;
+    private string? _notice;               // короткое сообщение об успехе (например, перенос стадии)
     private ChangeActor _actor = new("user", "Пользователь");
     private HashSet<int> _allowedStages = new();
     private bool _isTenderHead;
@@ -637,6 +655,11 @@ else
         {
             _rows = (await WorkflowSvc.GetAsync()).ToList();
             _edits.Clear();
+
+            // Список перезагружается по любому событию из шины, в том числе между выбором
+            // стадии и нажатием «Переместить». Полный сброс обнулял выбор, и перенос
+            // молча не выполнялся — поэтому несохранённый выбор сохраняем.
+            var picked = new Dictionary<int, int>(_stageMoves);
             _stageMoves.Clear();
             foreach (var r in _rows)
             {
@@ -666,7 +689,9 @@ else
                     IsContractChecked = r.IsContractChecked,
                     IsEisFilled = r.IsEisFilled
                 };
-                _stageMoves[r.Id] = r.Stage;
+                _stageMoves[r.Id] = picked.TryGetValue(r.Id, out var wanted) && wanted != r.Stage
+                    ? wanted
+                    : r.Stage;
             }
         }
         catch (Exception ex) { _error = ex.Message; }
@@ -732,7 +757,7 @@ else
 
     private void SetStage(int stage) => _stage = stage;
 
-    private string TabClass(int stage) => _stage == stage ? "btn btn-primary" : "btn";
+    private string TabClass(int stage) => _stage == stage ? "tab tab--active" : "tab";
 
     private int Count(int stage) => _rows.Count(r => r.Stage == stage && MatchesSearch(r));
 
@@ -933,24 +958,57 @@ else
         await LoadAsync();
     }
 
+    /// <summary>Выбор стадии для ручного переноса (хранится до нажатия «Переместить»).</summary>
+    private void OnStageMovePick(int id, ChangeEventArgs ev)
+    {
+        if (int.TryParse(ev.Value?.ToString(), out var stage))
+        {
+            _stageMoves[id] = stage;
+        }
+    }
+
     // Ручной перенос закупки на любую стадию (право «Менять стадию закупок»).
     private async Task MoveToStage(int id)
     {
         _error = null;
+        _notice = null;
 
         var row = _rows.FirstOrDefault(x => x.Id == id);
-        if (row is null || !_stageMoves.TryGetValue(id, out var stage) || stage == row.Stage)
+        if (row is null)
         {
+            _error = "Запись не найдена — обновите страницу и попробуйте снова.";
             return;
         }
 
-        var result = await WorkflowSvc.SetStageAsync(id, stage, _actor);
-        if (!result.Success)
+        if (!_stageMoves.TryGetValue(id, out var stage))
         {
-            _error = result.Error;
+            _error = "Сначала выберите стадию в списке «Перенести на стадию».";
             return;
         }
 
+        if (stage == row.Stage)
+        {
+            _error = $"Закупка уже на стадии «{WorkflowStages.Name(stage)}» — выберите другую.";
+            return;
+        }
+
+        try
+        {
+            var result = await WorkflowSvc.SetStageAsync(id, stage, _actor);
+            if (!result.Success)
+            {
+                _error = result.Error;
+                return;
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = "Не удалось перенести закупку: " + ex.Message;
+            return;
+        }
+
+        _stageMoves.Remove(id);
+        _notice = $"Закупка #{id} переведена на стадию «{WorkflowStages.Name(stage)}».";
         await LoadAsync();
     }
 

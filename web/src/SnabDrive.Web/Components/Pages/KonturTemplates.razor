@@ -14,8 +14,9 @@
 @inject AuthenticationStateProvider AuthStateProvider
 @inject SnabDrive.Web.Services.IRolePermissionService RolePerms
 
-<h1 class="page-title">Контур ловушка <span class="muted">(--templates)</span></h1>
-<p class="page-subtitle">Выгрузка в начале и конце рабочего дня; метка проставляется автоматически при повторной выгрузке (вручную не редактируется).</p>
+<PageHeader Icon="🎯"
+            Title="Контур ловушка"
+            Subtitle="Выгрузка в начале и конце рабочего дня (--templates). Метка проставляется автоматически при повторной выгрузке и вручную не редактируется." />
 
 @if (_denied)
 {

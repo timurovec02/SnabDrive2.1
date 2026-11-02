@@ -10,15 +10,13 @@
 <PageTitle>Справочники — Снабдрайв</PageTitle>
 
 <div class="page">
-    <div class="page__header">
-        <div>
-            <h1>Справочники</h1>
-            <p class="page__hint">Значения используются в выпадающих списках реестра. Изменения сразу видны всем пользователям.</p>
-        </div>
-        <div class="toolbar">
-            <button type="button" class="btn btn--ghost" @onclick="LoadAsync">⟳</button>
-        </div>
-    </div>
+    <PageHeader Icon="☰"
+                Title="Справочники"
+                Subtitle="Типы закупок, статусы B2B и статусы исполнения. Значения попадают в выпадающие списки реестра — изменения сразу видны всем.">
+        <Actions>
+            <button type="button" class="btn btn--ghost" @onclick="LoadAsync" title="Обновить">⟳</button>
+        </Actions>
+    </PageHeader>
 
     <div class="dict-layout">
         <DictionarySection Title="Тип закупки" Items="@_typesOfPurchase" WithColor="true"

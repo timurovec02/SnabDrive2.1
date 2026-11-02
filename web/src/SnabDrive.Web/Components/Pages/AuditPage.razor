@@ -5,12 +5,16 @@
 <PageTitle>Журнал изменений — Снабдрайв</PageTitle>
 
 <div class="page">
-    <div class="page__header">
-        <div>
-            <h1>Журнал изменений</h1>
-            <p class="page__hint">Кто, когда и что менял в реестре, справочниках и пользователях.</p>
-        </div>
-        <div class="toolbar">
+    <PageHeader Icon="🕓"
+                Title="Журнал изменений"
+                Subtitle="Кто, когда и что менял в реестре, справочниках и пользователях. Записи не удаляются и не редактируются.">
+        <Actions>
+            <button type="button" class="btn btn--ghost" @onclick="LoadAsync" title="Обновить">⟳</button>
+        </Actions>
+    </PageHeader>
+
+    <div class="toolbar" style="flex-wrap:wrap;gap:8px;margin:0 0 16px">
+
             <select class="input input--small" value="@_entityName" @onchange="OnEntityChanged">
                 <option value="">все сущности</option>
                 <option value="Regedit">Реестр</option>
@@ -34,8 +38,6 @@
             </select>
 
             <input class="input input--small" placeholder="пользователь" value="@_userName" @onchange="OnUserChanged" />
-            <button type="button" class="btn btn--ghost" @onclick="LoadAsync">⟳</button>
-        </div>
     </div>
 
     <div class="page__section">

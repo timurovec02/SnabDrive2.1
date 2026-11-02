@@ -6,10 +6,11 @@
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = AppRoles.Admin)]
 
 <PageTitle>Настройка ролей</PageTitle>
-<h1 class="page__title">Настройка ролей</h1>
-<p class="muted">Права задаются для роли: доступ к вкладкам и к колонкам реестра. Все пользователи роли получают эти права (личный override настраивается на странице «Пользователи»).</p>
+<PageHeader Icon="🛡"
+            Title="Настройка ролей"
+            Subtitle="Права задаются для роли: доступ к вкладкам, к колонкам реестра и к стадиям воркфлоу. Все пользователи роли получают эти права." />
 
-<div class="mb-3" style="max-width:420px">
+<div class="section-card" style="max-width:560px">
     <label class="form-label">Роль</label>
     <select class="form-select" @bind="SelectedRole" @bind:after="LoadRoleAsync">
         @foreach (var r in _roles)
@@ -17,64 +18,79 @@
             <option value="@r">@AppRoles.DisplayName(r)</option>
         }
     </select>
+    <p class="section-card__hint" style="margin:9px 0 0">
+        Личные исключения для отдельного сотрудника настраиваются на странице «Пользователи».
+    </p>
 </div>
 
 @if (_set is not null)
 {
-    <h3>Доступ к вкладкам</h3>
-    <div class="d-flex flex-wrap gap-3 mb-3">
-        @foreach (var f in AppFeatures.All)
-        {
-            var key = f.Key;
-            <label class="form-check">
-                <input type="checkbox" class="form-check-input" checked="@_set.FeatureEnabled(key)"
-                       @onchange="@(e => ToggleFeature(key, e.Value is bool b && b))" />
-                <span class="form-check-label">@f.Title</span>
-            </label>
-        }
+    <div class="section-card">
+        <h2>Доступ к вкладкам</h2>
+        <p class="section-card__hint">Какие разделы меню видит роль.</p>
+        <div class="check-grid">
+            @foreach (var f in AppFeatures.All)
+            {
+                var key = f.Key;
+                <label class="form-check">
+                    <input type="checkbox" class="form-check-input" checked="@_set.FeatureEnabled(key)"
+                           @onchange="@(e => ToggleFeature(key, e.Value is bool b && b))" />
+                    <span class="form-check-label">@f.Title</span>
+                </label>
+            }
+        </div>
     </div>
 
-    <h3>Колонки реестра</h3>
-    <p class="muted">Если ничего не отмечено — роль видит все колонки. Отметьте нужные: «Видна» и/или «Правка».</p>
-    <div style="max-height:420px;overflow:auto;border:1px solid #ddd;border-radius:6px">
-        <table class="table table-sm mb-0">
-            <thead style="position:sticky;top:0;background:#fff">
-                <tr><th>Колонка</th><th style="width:90px">Видна</th><th style="width:90px">Правка</th></tr>
-            </thead>
-            <tbody>
-                @foreach (var col in RegistryColumns.All)
-                {
-                    var p = _set.Columns.FirstOrDefault(c => c.Key == col.Key);
-                    var canView = p?.CanView ?? false;
-                    var canEdit = p?.CanEdit ?? false;
-                    var k = col.Key;
-                    <tr>
-                        <td>@col.Title</td>
-                        <td><input type="checkbox" checked="@canView" @onchange="@(e => SetCol(k, e.Value is bool b && b, canEdit))" /></td>
-                        <td><input type="checkbox" checked="@canEdit" @onchange="@(e => SetCol(k, canView, e.Value is bool b && b))" /></td>
-                    </tr>
-                }
-            </tbody>
-        </table>
+    <div class="section-card">
+        <h2>Колонки реестра</h2>
+        <p class="section-card__hint">
+            Если ничего не отмечено — роль видит все колонки. Отметьте нужные: «Видна» и/или «Правка».
+        </p>
+        <div class="table-wrap" style="max-height:430px;overflow:auto">
+            <table class="data-table">
+                <thead>
+                    <tr><th>Колонка</th><th style="width:90px">Видна</th><th style="width:90px">Правка</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var col in RegistryColumns.All)
+                    {
+                        var p = _set.Columns.FirstOrDefault(c => c.Key == col.Key);
+                        var canView = p?.CanView ?? false;
+                        var canEdit = p?.CanEdit ?? false;
+                        var k = col.Key;
+                        <tr>
+                            <td>@col.Title</td>
+                            <td><input type="checkbox" checked="@canView" @onchange="@(e => SetCol(k, e.Value is bool b && b, canEdit))" /></td>
+                            <td><input type="checkbox" checked="@canEdit" @onchange="@(e => SetCol(k, canView, e.Value is bool b && b))" /></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
     </div>
 
-    <h3>Стадии воркфлоу</h3>
-    <p class="muted">Если ничего не отмечено — роль отвечает за все стадии. Отметьте стадии, за которые отвечает роль (используется в «Задачах» и для уведомлений).</p>
-    <div class="d-flex flex-wrap gap-3 mb-3">
-        @foreach (var stage in WorkflowStages.All)
-        {
-            var sid = stage.Id;
-            <label class="form-check">
-                <input type="checkbox" class="form-check-input" checked="@_set.StageEnabled(sid)"
-                       @onchange="@(e => ToggleStage(sid, e.Value is bool b && b))" />
-                <span class="form-check-label">@stage.Name</span>
-            </label>
-        }
+    <div class="section-card">
+        <h2>Стадии воркфлоу</h2>
+        <p class="section-card__hint">
+            Если ничего не отмечено — роль отвечает за все стадии. Отмеченные стадии показываются
+            на вкладке «Задачи» и используются для уведомлений.
+        </p>
+        <div class="check-grid">
+            @foreach (var stage in WorkflowStages.All)
+            {
+                var sid = stage.Id;
+                <label class="form-check">
+                    <input type="checkbox" class="form-check-input" checked="@_set.StageEnabled(sid)"
+                           @onchange="@(e => ToggleStage(sid, e.Value is bool b && b))" />
+                    <span class="form-check-label">@stage.Name</span>
+                </label>
+            }
+        </div>
     </div>
 
-    <div class="mt-3">
-        <button class="btn btn--primary" @onclick="SaveAsync">Сохранить</button>
-        <button class="btn" @onclick="ResetAsync">Сбросить к значениям по умолчанию</button>
+    <div class="toolbar" style="gap:8px;margin-top:2px">
+        <button class="btn btn--primary" @onclick="SaveAsync">💾 Сохранить</button>
+        <button class="btn" @onclick="ResetAsync">↺ Сбросить к значениям по умолчанию</button>
     </div>
 }
 
