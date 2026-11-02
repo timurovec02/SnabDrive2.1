@@ -133,7 +133,8 @@ GO
 --          «Дата доставки» (дата); добавлены поля этапов 6-7:
 --          ContractStatusId «Статус контракта», IsContractChecked «Проверен»,
 --          IsEisFilled «Заполнить в ЕИС».
--- Скрипт идемпотентен: можно выполнять повторно.
+-- Скрипт идемпотентен: выполняется повторно без ошибок, в том числе после
+-- частичного выполнения (см. примечание про динамический SQL у переноса DeliveryTime).
 -- ============================================================================
 
 -- 1. Новая колонка «Дата доставки» (реестр + архив).
@@ -145,23 +146,35 @@ GO
 
 -- 2. Перенос текстового «Срок поставки» в дату: всё, что распознаётся как дата.
 --    Значения вида «30 дней» / «по заявкам» датой не являются и остаются пустыми.
+--    ВАЖНО: перенос выполняется через sp_executesql. SQL Server компилирует батч
+--    целиком ДО выполнения, поэтому обычная проверка IF COL_LENGTH(...) не спасает:
+--    если колонки DeliveryTime уже нет (её удалил шаг 3 при первом запуске скрипта,
+--    либо база создана сразу с DeliveryDate), батч падал с «Invalid column name».
+--    Внутри динамического SQL имена разрешаются в момент выполнения — блок просто
+--    пропускается, и скрипт можно выполнять повторно без ошибок.
 IF COL_LENGTH('dbo.RegistryItems', 'DeliveryTime') IS NOT NULL
+    EXEC sys.sp_executesql N'
     UPDATE dbo.RegistryItems
-    SET DeliveryDate = COALESCE(
-            TRY_CONVERT(DATETIME2(3), NULLIF(LTRIM(RTRIM(DeliveryTime)), ''), 104),  -- dd.mm.yyyy
-            TRY_CONVERT(DATETIME2(3), NULLIF(LTRIM(RTRIM(DeliveryTime)), ''), 126),  -- yyyy-mm-ddThh:mm:ss
-            TRY_CONVERT(DATETIME2(3), NULLIF(LTRIM(RTRIM(DeliveryTime)), ''), 103),  -- dd/mm/yyyy
-            TRY_CONVERT(DATETIME2(3), NULLIF(LTRIM(RTRIM(DeliveryTime)), '')))       -- прочее
-    WHERE DeliveryDate IS NULL;
+       SET DeliveryDate = COALESCE(
+               TRY_CONVERT(DATETIME2(3), NULLIF(LTRIM(RTRIM(DeliveryTime)), ''''), 104),
+               TRY_CONVERT(DATETIME2(3), NULLIF(LTRIM(RTRIM(DeliveryTime)), ''''), 126),
+               TRY_CONVERT(DATETIME2(3), NULLIF(LTRIM(RTRIM(DeliveryTime)), ''''), 103),
+               TRY_CONVERT(DATETIME2(3), NULLIF(LTRIM(RTRIM(DeliveryTime)), '''')))
+     WHERE DeliveryDate IS NULL;';
+ELSE
+    PRINT 'RegistryItems.DeliveryTime отсутствует — переносить нечего.';
 
 IF COL_LENGTH('dbo.ArchiveRegistryItems', 'DeliveryTime') IS NOT NULL
+    EXEC sys.sp_executesql N'
     UPDATE dbo.ArchiveRegistryItems
-    SET DeliveryDate = COALESCE(
-            TRY_CONVERT(DATETIME2(3), NULLIF(LTRIM(RTRIM(DeliveryTime)), ''), 104),
-            TRY_CONVERT(DATETIME2(3), NULLIF(LTRIM(RTRIM(DeliveryTime)), ''), 126),
-            TRY_CONVERT(DATETIME2(3), NULLIF(LTRIM(RTRIM(DeliveryTime)), ''), 103),
-            TRY_CONVERT(DATETIME2(3), NULLIF(LTRIM(RTRIM(DeliveryTime)), '')))
-    WHERE DeliveryDate IS NULL;
+       SET DeliveryDate = COALESCE(
+               TRY_CONVERT(DATETIME2(3), NULLIF(LTRIM(RTRIM(DeliveryTime)), ''''), 104),
+               TRY_CONVERT(DATETIME2(3), NULLIF(LTRIM(RTRIM(DeliveryTime)), ''''), 126),
+               TRY_CONVERT(DATETIME2(3), NULLIF(LTRIM(RTRIM(DeliveryTime)), ''''), 103),
+               TRY_CONVERT(DATETIME2(3), NULLIF(LTRIM(RTRIM(DeliveryTime)), '''')))
+     WHERE DeliveryDate IS NULL;';
+ELSE
+    PRINT 'ArchiveRegistryItems.DeliveryTime отсутствует — переносить нечего.';
 GO
 
 -- 3. Удаляем старые колонки Winner и DeliveryTime (сначала их DEFAULT-ограничения, если есть).
@@ -199,7 +212,8 @@ IF COL_LENGTH('dbo.RegistryItems', 'IsEisFilled') IS NULL
 GO
 
 -- 5. Чистим права на удалённые колонки, чтобы не мешали сохранению настроек.
-DELETE FROM dbo.UserColumnPermissions WHERE ColumnKey IN ('Winner', 'DeliveryTime');
+IF OBJECT_ID('dbo.UserColumnPermissions', 'U') IS NOT NULL
+    DELETE FROM dbo.UserColumnPermissions WHERE ColumnKey IN ('Winner', 'DeliveryTime');
 GO
 
 -- ============================================================================
@@ -253,4 +267,35 @@ GO
 -- Сортировка реестра и отбор по дедлайну идут по этой колонке.
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_RegistryItems_ApplicationEndDate' AND object_id = OBJECT_ID('dbo.RegistryItems'))
     CREATE NONCLUSTERED INDEX IX_RegistryItems_ApplicationEndDate ON dbo.RegistryItems(ApplicationEndDate);
+GO
+
+-- ============================================================================
+-- Самопроверка: какие из нужных колонок так и не появились.
+-- Пустой результат = схема соответствует текущей версии приложения.
+-- ============================================================================
+DECLARE @need TABLE (TableName SYSNAME, ColumnName SYSNAME);
+INSERT INTO @need VALUES
+ ('RegistryItems','EisLink'),('RegistryItems','IsApproved'),('RegistryItems','IsCall'),
+ ('RegistryItems','PurchaseNumber'),('RegistryItems','IsByRequest'),('RegistryItems','ExpectedDeliveryDate'),
+ ('RegistryItems','BranchId'),('RegistryItems','BranchFilePath'),('RegistryItems','ReturnReason'),
+ ('RegistryItems','DeliveryDate'),('RegistryItems','ContractStatusId'),
+ ('RegistryItems','IsContractChecked'),('RegistryItems','IsEisFilled'),
+ ('RegistryItems','StageStartedAtUtc'),('RegistryItems','StageStartedBy'),
+ ('RegistryItems','StageCompletedAtUtc'),('RegistryItems','StageCompletedBy'),
+ ('RegistryItems','ApplicationEndDate'),
+ ('ArchiveRegistryItems','EisLink'),('ArchiveRegistryItems','PurchaseNumber'),
+ ('ArchiveRegistryItems','DeliveryDate'),('ArchiveRegistryItems','ApplicationEndDate'),
+ ('KonturFavorites','ApplicationEndDate'),('KonturTemplates','ApplicationEndDate');
+
+IF EXISTS (SELECT 1 FROM @need n WHERE COL_LENGTH('dbo.' + n.TableName, n.ColumnName) IS NULL)
+BEGIN
+    PRINT 'ВНИМАНИЕ: не хватает колонок:';
+    SELECT TableName, ColumnName FROM @need
+     WHERE COL_LENGTH('dbo.' + TableName, ColumnName) IS NULL;
+END
+ELSE
+    PRINT 'Проверка схемы: все нужные колонки на месте.';
+
+IF COL_LENGTH('dbo.AspNetUsers','StageChangeEnabled') IS NULL
+    PRINT 'ВНИМАНИЕ: нет AspNetUsers.StageChangeEnabled.';
 GO
