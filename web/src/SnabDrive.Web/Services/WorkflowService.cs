@@ -283,7 +283,7 @@ public sealed class WorkflowService : IWorkflowService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Не удалось сохранить изменения закупки {RegeditId}");
+            _logger.LogError(ex, "Не удалось сохранить изменения закупки {RegeditId}", regeditId);
             return Result.Fail("Не удалось сохранить изменения: " + ErrorText.Describe(ex));
         }
 
@@ -343,7 +343,7 @@ public sealed class WorkflowService : IWorkflowService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Не удалось сохранить перевод закупки {RegeditId} на следующий этап");
+            _logger.LogError(ex, "Не удалось сохранить перевод закупки {RegeditId} на этап {ToStage}", regeditId, tr.To);
             return Result.Fail("Не удалось перевести закупку на следующий этап: " + ErrorText.Describe(ex));
         }
 
@@ -401,7 +401,7 @@ public sealed class WorkflowService : IWorkflowService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Не удалось сохранить перевод закупки {RegeditId} на стадию {Stage}");
+            _logger.LogError(ex, "Не удалось сохранить перевод закупки {RegeditId} на стадию {Stage}", regeditId, stage);
             return Result.Fail("Не удалось перенести закупку на стадию: " + ErrorText.Describe(ex));
         }
 
@@ -501,7 +501,7 @@ public sealed class WorkflowService : IWorkflowService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Не удалось сохранить оповещение филиала по закупке {RegeditId}");
+            _logger.LogError(ex, "Не удалось сохранить оповещение филиала {Branch} по закупке {RegeditId}", branchName, regeditId);
             return Result.Fail("Не удалось оповестить филиал: " + ErrorText.Describe(ex));
         }
 
@@ -547,7 +547,7 @@ public sealed class WorkflowService : IWorkflowService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Не удалось сохранить возврат закупки {RegeditId}");
+            _logger.LogError(ex, "Не удалось сохранить возврат закупки {RegeditId}", regeditId);
             return Result.Fail("Не удалось оформить проблему с приемкой: " + ErrorText.Describe(ex));
         }
 
