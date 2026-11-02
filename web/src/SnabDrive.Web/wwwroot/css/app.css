@@ -1321,9 +1321,6 @@ input:disabled {
 
 /* --- таблица Контур: боковой скролл и сортировка --- */
 .table-wrap { overflow-x: auto; }
-.registry-grid--wide { min-width: 1200px; }
-.th-sort { cursor: pointer; user-select: none; white-space: nowrap; }
-.th-sort:hover { text-decoration: underline; }
 
 /* --- горизонтальный скролл всегда виден снизу окна (реестр и контур) --- */
 .grid-wrapper,
@@ -1347,11 +1344,15 @@ input:disabled {
     gap: 7px;                  /* общий отступ поля от заголовка */
     min-width: 0;
 }
-/* Выделенный заголовок поля: жирный и крупный */
+/* Названия полей во вкладке «Задачи» — крупные, жирные и тёмные.
+   Правило намеренно отделено от .form-label: раньше оба класса стояли в одном
+   селекторе ниже по файлу, и слабый вариант (12px/600) перекрывал этот. */
 .wf-label {
+    display: block;
+    margin-bottom: 5px;
     font-size: 15px;
     font-weight: 800;
-    color: #111827;
+    color: #101828;
     letter-spacing: .2px;
 }
 /* Редактируемое многострочное поле: большое, растёт по содержимому,
@@ -1799,8 +1800,7 @@ body {
     cursor: not-allowed;
 }
 
-.form-label,
-.wf-label {
+.form-label {
     display: block;
     margin-bottom: 4px;
     font-size: 12px;
@@ -2256,9 +2256,6 @@ body {
     color: #344054;
 }
 
-.th-money, .td-money { text-align: right; }
-.td-num { font-variant-numeric: tabular-nums; }
-.td-text { max-width: 340px; overflow-wrap: anywhere; }
 
 /* Статистика: раскрывающийся список выполненных стадий по сотруднику */
 .expand-toggle {

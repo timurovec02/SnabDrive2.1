@@ -49,7 +49,7 @@
 </div>
 
 <div class="grid-wrapper">
-    <table class="registry-grid registry-grid--wide">
+    <table class="registry-grid">
         <thead>
             <tr class="registry-grid__head">
                 <th style="width:36px"><input type="checkbox" checked="@AllSelected" @onchange="ToggleAll" title="Выделить все" /></th>
@@ -137,38 +137,38 @@
         <tbody>
             @if (_rows is null)
             {
-                <tr><td colspan="12" class="muted">Загрузка…</td></tr>
+                <tr><td colspan="12" class="registry-grid__empty">Загрузка…</td></tr>
             }
             else if (!_rows.Any())
             {
-                <tr><td colspan="12" class="muted">Нет выгрузок ловушки.</td></tr>
+                <tr><td colspan="12" class="registry-grid__empty">Нет выгрузок ловушки.</td></tr>
             }
             else
             {
                 foreach (var (t, index) in Sorted().Select((x, n) => (x, n + 1)))
                 {
                     <tr>
-                        <td><input type="checkbox" checked="@_selected.Contains(t.Id)" @onchange="e => Toggle(t.Id, e.Value is bool b && b)" /></td>
+                        <td class="registry-grid__cell"><input type="checkbox" checked="@_selected.Contains(t.Id)" @onchange="e => Toggle(t.Id, e.Value is bool b && b)" /></td>
                         <td class="registry-grid__index">@index</td>
-                        <td class="td-num">@t.PurchaseNumber</td>
-                        <td class="td-text">
+                        <td class="registry-grid__cell">@t.PurchaseNumber</td>
+                        <td class="registry-grid__cell">
                             @if (!string.IsNullOrWhiteSpace(t.EisLink))
                             {
-                                <a href="@t.EisLink" target="_blank" rel="noopener">@t.NameLink</a>
+                                <a class="registry-grid__link" href="@t.EisLink" target="_blank" rel="noopener">@t.NameLink</a>
                             }
                             else
                             {
                                 @t.NameLink
                             }
                         </td>
-                        <td class="td-text">@t.Customer</td>
-                        <td class="td-money">@t.NMCK.ToString("N2")</td>
-                        <td>@t.BiddingDate?.ToString("dd.MM.yyyy")</td>
-                        <td>@(t.ApplicationEndDate?.ToString("dd.MM.yyyy HH:mm") ?? "—")</td>
-                        <td>@t.DateOfPlacement?.ToString("dd.MM.yyyy")</td>
-                        <td class="td-text">@(string.IsNullOrWhiteSpace(t.Label) ? "—" : t.Label)</td>
-                        <td>@t.AddedAt.ToString("dd.MM.yyyy HH:mm")</td>
-                        <td>
+                        <td class="registry-grid__cell">@t.Customer</td>
+                        <td class="registry-grid__cell"><span class="money-cell">@MoneyFormat.Money(t.NMCK)</span></td>
+                        <td class="registry-grid__cell">@(t.BiddingDate?.ToString("dd.MM.yyyy") ?? "—")</td>
+                        <td class="registry-grid__cell">@(t.ApplicationEndDate?.ToString("dd.MM.yyyy HH:mm") ?? "—")</td>
+                        <td class="registry-grid__cell">@(t.DateOfPlacement?.ToString("dd.MM.yyyy") ?? "—")</td>
+                        <td class="registry-grid__cell">@(string.IsNullOrWhiteSpace(t.Label) ? "—" : t.Label)</td>
+                        <td class="registry-grid__cell">@t.AddedAt.ToString("dd.MM.yyyy HH:mm")</td>
+                        <td class="registry-grid__cell">
                             <button class="btn btn-link btn-sm btn--danger" @onclick="() => DeleteAsync(t)">Удалить</button>
                         </td>
                     </tr>

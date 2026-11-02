@@ -604,8 +604,8 @@
         _ => string.Empty
     };
 
-    private static string Format(decimal value) =>
-        value == 0 ? "—" : value.ToString("#,0.##", CultureInfo.InvariantCulture);
+    // Формат сумм общий с таблицами Контур — см. MoneyFormat.
+    private static string Format(decimal value) => MoneyFormat.Money(value);
 
     private string TextValue(RegistryRowDto row, string key) => key switch
     {

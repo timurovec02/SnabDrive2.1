@@ -50,7 +50,7 @@
         }
 
         <div class="grid-wrapper">
-            <table class="registry-grid registry-grid--wide">
+            <table class="registry-grid">
                 <thead>
                     <tr class="registry-grid__head">
                         <th style="width:36px"><input type="checkbox" checked="@AllSelected" @onchange="ToggleAll" title="Выделить все" /></th>
@@ -163,7 +163,7 @@
                         @foreach (var (f, index) in Sorted().Select((x, n) => (x, n + 1)))
                         {
                             <tr class="@(f.Status == KonturFavoriteStatus.Imported ? "is-finished" : "")">
-                                <td>
+                                <td class="registry-grid__cell">
                                     @if (f.Status == KonturFavoriteStatus.New)
                                     {
                                         <input type="checkbox" checked="@_selected.Contains(f.Id)"
@@ -171,18 +171,18 @@
                                     }
                                 </td>
                                 <td class="registry-grid__index">@index</td>
-                                <td>@f.PurchaseNumber</td>
-                                <td>@f.NameLink</td>
-                                <td>@f.Customer</td>
-                                <td class="money-cell">@f.NMCK.ToString("# ##0.00")</td>
-                                <td>@(f.BiddingDate?.ToString("dd.MM.yyyy HH:mm") ?? "—")</td>
-                                <td>@(f.ApplicationEndDate?.ToString("dd.MM.yyyy HH:mm") ?? "—")</td>
-                                <td>@(f.DateOfPlacement?.ToString("dd.MM.yyyy") ?? "—")</td>
-                                <td>@(f.PlaceOfDelivery ?? "")</td>
-                                <td>@(f.Winner ?? "")</td>
-                                <td class="money-cell">@f.ResultPrice.ToString("# ##0.00")</td>
-                                <td>@(f.Label ?? "")</td>
-                                <td>
+                                <td class="registry-grid__cell">@f.PurchaseNumber</td>
+                                <td class="registry-grid__cell">@f.NameLink</td>
+                                <td class="registry-grid__cell">@f.Customer</td>
+                                <td class="registry-grid__cell"><span class="money-cell">@MoneyFormat.Money(f.NMCK)</span></td>
+                                <td class="registry-grid__cell">@(f.BiddingDate?.ToString("dd.MM.yyyy HH:mm") ?? "—")</td>
+                                <td class="registry-grid__cell">@(f.ApplicationEndDate?.ToString("dd.MM.yyyy HH:mm") ?? "—")</td>
+                                <td class="registry-grid__cell">@(f.DateOfPlacement?.ToString("dd.MM.yyyy") ?? "—")</td>
+                                <td class="registry-grid__cell">@(f.PlaceOfDelivery ?? "")</td>
+                                <td class="registry-grid__cell">@(f.Winner ?? "")</td>
+                                <td class="registry-grid__cell"><span class="money-cell">@MoneyFormat.Money(f.ResultPrice)</span></td>
+                                <td class="registry-grid__cell">@(f.Label ?? "")</td>
+                                <td class="registry-grid__cell">
                                     @if (!string.IsNullOrWhiteSpace(f.EisLink))
                                     {
                                         <a class="registry-grid__link" href="@f.EisLink" target="_blank" rel="noopener noreferrer">ЕИС</a>
@@ -192,7 +192,7 @@
                                         <span>—</span>
                                     }
                                 </td>
-                                <td>
+                                <td class="registry-grid__cell">
                                     @switch (f.Status)
                                     {
                                         case KonturFavoriteStatus.Imported:
