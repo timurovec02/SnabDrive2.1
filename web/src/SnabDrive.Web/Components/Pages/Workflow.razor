@@ -126,7 +126,7 @@ else
 
                 @* ===== Вложения и ссылки — вверху на всех этапах ===== *@
                 <div style="margin-bottom:10px">
-                    <label class="form-label">Вложения</label>
+                    <label class="form-label">Вложения <span class="muted" style="font-weight:400">(@AttachmentLimits.Hint)</span></label>
                     <div>
                         @foreach (var a in SplitAttachments(_edits[r.Id].Attachments))
                         {
@@ -423,7 +423,8 @@ else
                                     <a href="@r.BranchFilePath" target="_blank" rel="noopener">@System.IO.Path.GetFileName(r.BranchFilePath)</a>
                                 </div>
                             }
-                            <InputFile OnChange="ev => OnBranchFileAsync(ev, r.Id)" class="form-control" />
+                            <InputFile OnChange="ev => OnBranchFileAsync(ev, r.Id)" class="form-control"
+                                     title="Файл @AttachmentLimits.Hint" />
                         </div>
                     </div>
                     <div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center">
@@ -918,7 +919,15 @@ else
         try
         {
             var file = ev.File;
-            await using var stream = file.OpenReadStream(20 * 1024 * 1024);
+
+            // Проверяем размер до чтения: на превышении Blazor бросает исключение на английском.
+            if (AttachmentLimits.IsTooBig(file.Size))
+            {
+                _error = AttachmentLimits.TooBigMessage(file.Name, file.Size);
+                return;
+            }
+
+            await using var stream = file.OpenReadStream(AttachmentLimits.MaxFileSizeBytes);
             var result = await WorkflowSvc.SaveBranchFileAsync(id, file.Name, stream);
             if (!result.Success) { _error = result.Error; }
             await LoadAsync();
@@ -1027,7 +1036,14 @@ else
         {
             foreach (var file in ev.GetMultipleFiles(10))
             {
-                await using var stream = file.OpenReadStream(20 * 1024 * 1024);
+                // Проверяем размер до чтения: на превышении Blazor бросает исключение на английском.
+                if (AttachmentLimits.IsTooBig(file.Size))
+                {
+                    _error = AttachmentLimits.TooBigMessage(file.Name, file.Size);
+                    continue;
+                }
+
+                await using var stream = file.OpenReadStream(AttachmentLimits.MaxFileSizeBytes);
                 var result = await WorkflowSvc.SaveAttachmentAsync(id, file.Name, stream);
                 if (!result.Success) { _error = result.Error; }
             }

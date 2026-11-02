@@ -429,9 +429,11 @@ public sealed class WorkflowService : IWorkflowService
         }
 
         var safeName = Path.GetFileName(fileName);
-        using var ms = new MemoryStream();
-        await content.CopyToAsync(ms, cancellationToken);
-        var bytes = ms.ToArray();
+        var (bytes, sizeError) = await AttachmentLimits.ReadAtMostAsync(content, safeName, cancellationToken);
+        if (bytes is null)
+        {
+            return Result<string>.Fail(sizeError ?? AttachmentLimits.TooBigMessage(safeName, 0));
+        }
 
         var file = new AttachmentFile
         {
@@ -637,9 +639,12 @@ public sealed class WorkflowService : IWorkflowService
         var safeName = Path.GetFileName(fileName);
 
         // Содержимое сохраняем в БД (таблица [Attachments]), а не в wwwroot — файлы не зависят от IIS.
-        using var ms = new MemoryStream();
-        await content.CopyToAsync(ms, cancellationToken);
-        var bytes = ms.ToArray();
+        // Размер проверяется на сервере, а не только в браузере: большой файл не вычитывается до конца.
+        var (bytes, sizeError) = await AttachmentLimits.ReadAtMostAsync(content, safeName, cancellationToken);
+        if (bytes is null)
+        {
+            return Result<string>.Fail(sizeError ?? AttachmentLimits.TooBigMessage(safeName, 0));
+        }
 
         var file = new AttachmentFile
         {
@@ -710,11 +715,12 @@ public sealed class WorkflowService : IWorkflowService
 
         if (ParseAttachmentId(attachmentPath) is int fileId)
         {
-            // Новое вложение в БД — удаляем двоичное содержимое.
-            var file = await context.Attachments.FirstOrDefaultAsync(a => a.Id == fileId, cancellationToken);
-            if (file is not null)
+            // Новое вложение в БД. Строку помечаем на удаление по первичному ключу,
+            // НЕ загружая её: FirstOrDefaultAsync вычитывал в память весь файл (до 20 МБ)
+            // только ради удаления — отсюда и медленное удаление.
+            if (await context.Attachments.AnyAsync(a => a.Id == fileId, cancellationToken))
             {
-                context.Attachments.Remove(file);
+                context.Entry(new AttachmentFile { Id = fileId }).State = EntityState.Deleted;
             }
         }
         else

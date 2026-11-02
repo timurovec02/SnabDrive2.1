@@ -176,14 +176,60 @@ app.MapAccountEndpoints();
 
 // Скачивание вложений из БД (таблица [Attachments]) — файлы не лежат на файловой системе IIS.
 // Защищено глобальным FallbackPolicy (RequireAuthenticatedUser): cookie аутентификации приходит вместе с запросом.
+// Файл отдаётся потоково: раньше EF вычитывал всё содержимое в память (20 МБ на каждое
+// скачивание), из-за чего отдача больших вложений была заметно медленнее загрузки.
 app.MapGet("/attachments/{id:int}/{**name}", async (int id, CancellationToken ct, IDbContextFactory<RegistryDbContext> factory) =>
 {
-    await using var db = await factory.CreateDbContextAsync(ct);
-    var file = await db.Attachments.AsNoTracking().FirstOrDefaultAsync(a => a.Id == id, ct);
-    IResult response = file is null
-        ? Results.NotFound()
-        : Results.File(file.Content, file.ContentType, file.FileName);
-    return response;
+    // Контекс намеренно без using: при потоковой отдаче его закрывает DbBlobStream,
+    // когда клиент докачает файл. На путях с ошибкой освобождаем явно.
+    var db = await factory.CreateDbContextAsync(ct);
+    var streamed = false;
+    try
+    {
+        // Метаданные — отдельным запросом и без [Content].
+        var meta = await db.Attachments.AsNoTracking()
+            .Where(a => a.Id == id)
+            .Select(a => new { a.FileName, a.ContentType })
+            .FirstOrDefaultAsync(ct);
+        if (meta is null)
+        {
+            return Results.NotFound();
+        }
+
+        var connection = db.Database.GetDbConnection();
+        await connection.OpenAsync(ct);
+
+        // Команду не освобождаем здесь: она нужна, пока открыт читатель.
+        var command = connection.CreateCommand();
+        command.CommandText = "SELECT [Content] FROM [Attachments] WHERE [Id] = @id";
+        var parameter = command.CreateParameter();
+        parameter.ParameterName = "@id";
+        parameter.Value = id;
+        command.Parameters.Add(parameter);
+
+        // SequentialAccess: BLOB читается кусками по мере отдачи клиенту.
+        var reader = await command.ExecuteReaderAsync(System.Data.CommandBehavior.SequentialAccess, ct);
+        if (!await reader.ReadAsync(ct))
+        {
+            await reader.DisposeAsync();
+            await command.DisposeAsync();
+            return Results.NotFound();
+        }
+
+        streamed = true;
+        return Results.Stream(
+            new DbBlobStream(reader.GetStream(0), reader, command, db),
+            string.IsNullOrWhiteSpace(meta.ContentType) ? "application/octet-stream" : meta.ContentType,
+            meta.FileName);
+    }
+    finally
+    {
+        // При потоковой отдаче контекст закроет DbBlobStream, когда клиент докачает файл.
+        if (!streamed)
+        {
+            await db.DisposeAsync();
+        }
+    }
 });
 
 app.MapRazorComponents<App>()
