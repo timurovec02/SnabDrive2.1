@@ -2259,3 +2259,62 @@ body {
 .th-money, .td-money { text-align: right; }
 .td-num { font-variant-numeric: tabular-nums; }
 .td-text { max-width: 340px; overflow-wrap: anywhere; }
+
+/* Статистика: раскрывающийся список выполненных стадий по сотруднику */
+.expand-toggle {
+    width: 20px;
+    height: 20px;
+    margin-right: 6px;
+    padding: 0;
+    border: 1px solid var(--border-strong);
+    border-radius: 5px;
+    background: var(--surface);
+    color: #475467;
+    font-size: 11px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.expand-toggle:hover {
+    background: var(--primary-soft);
+    border-color: var(--primary);
+    color: var(--primary-dark);
+}
+
+.detail-row > td {
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 12px 12px 38px;
+}
+
+.stage-breakdown {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+}
+
+.stage-breakdown__title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-muted);
+    margin-right: 4px;
+}
+
+.stage-breakdown__count {
+    display: inline-block;
+    min-width: 20px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: var(--primary-soft);
+    color: var(--primary-dark);
+    font-weight: 700;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Отсортированная колонка подсвечивается — в реестре и в таблицах Контур */
+.registry-grid thead th.is-sorted {
+    background: var(--primary-soft);
+    color: var(--primary-dark);
+}

@@ -48,23 +48,79 @@
     <span class="muted">Записей: @(_rows?.Count ?? 0)</span>
 </div>
 
-<div class="table-wrap">
+<div class="grid-wrapper">
     <table class="registry-grid registry-grid--wide">
         <thead>
-            <tr>
+            <tr class="registry-grid__head">
                 <th style="width:36px"><input type="checkbox" checked="@AllSelected" @onchange="ToggleAll" title="Выделить все" /></th>
-                <th class="th-sort" @onclick='() => SortBy("Num")'>Номер @Arrow("Num")</th>
-                <th class="th-sort" @onclick='() => SortBy("Name")'>Наименование @Arrow("Name")</th>
-                <th class="th-sort" @onclick='() => SortBy("Customer")'>Заказчик @Arrow("Customer")</th>
-                <th class="th-sort th-money" @onclick='() => SortBy("NmcK")'>НМЦК @Arrow("NmcK")</th>
-                <th class="th-sort" @onclick='() => SortBy("Date")'>Дата торгов @Arrow("Date")</th>
-                <th class="th-sort" @onclick='() => SortBy("AppEnd")'>Окончание приема заявок @Arrow("AppEnd")</th>
-                <th class="th-sort" @onclick='() => SortBy("Pub")'>Дата публикации @Arrow("Pub")</th>
-                <th class="th-sort" @onclick='() => SortBy("Label")'>Метка @Arrow("Label")</th>
-                <th class="th-sort" @onclick='() => SortBy("Added")'>Добавлено @Arrow("Added")</th>
-                <th>Действия</th>
+                <th class="registry-grid__index">#</th>
+                <th class='@HeadClass("Num")' title="Сортировать по «Номер»" @onclick='() => SortBy("Num")'>
+                    <span class="registry-grid__head-text">Номер</span>
+                    @if (_sortKey == "Num")
+                    {
+                        <span class="registry-grid__sort">@Arrow("Num")</span>
+                    }
+                </th>
+                <th class='@HeadClass("Name")' title="Сортировать по «Наименование»" @onclick='() => SortBy("Name")'>
+                    <span class="registry-grid__head-text">Наименование</span>
+                    @if (_sortKey == "Name")
+                    {
+                        <span class="registry-grid__sort">@Arrow("Name")</span>
+                    }
+                </th>
+                <th class='@HeadClass("Customer")' title="Сортировать по «Заказчик»" @onclick='() => SortBy("Customer")'>
+                    <span class="registry-grid__head-text">Заказчик</span>
+                    @if (_sortKey == "Customer")
+                    {
+                        <span class="registry-grid__sort">@Arrow("Customer")</span>
+                    }
+                </th>
+                <th class='@HeadClass("NmcK")' title="Сортировать по «НМЦК»" @onclick='() => SortBy("NmcK")'>
+                    <span class="registry-grid__head-text">НМЦК</span>
+                    @if (_sortKey == "NmcK")
+                    {
+                        <span class="registry-grid__sort">@Arrow("NmcK")</span>
+                    }
+                </th>
+                <th class='@HeadClass("Date")' title="Сортировать по «Дата торгов»" @onclick='() => SortBy("Date")'>
+                    <span class="registry-grid__head-text">Дата торгов</span>
+                    @if (_sortKey == "Date")
+                    {
+                        <span class="registry-grid__sort">@Arrow("Date")</span>
+                    }
+                </th>
+                <th class='@HeadClass("AppEnd")' title="Сортировать по «Окончание приема заявок»" @onclick='() => SortBy("AppEnd")'>
+                    <span class="registry-grid__head-text">Окончание приема заявок</span>
+                    @if (_sortKey == "AppEnd")
+                    {
+                        <span class="registry-grid__sort">@Arrow("AppEnd")</span>
+                    }
+                </th>
+                <th class='@HeadClass("Pub")' title="Сортировать по «Дата публикации»" @onclick='() => SortBy("Pub")'>
+                    <span class="registry-grid__head-text">Дата публикации</span>
+                    @if (_sortKey == "Pub")
+                    {
+                        <span class="registry-grid__sort">@Arrow("Pub")</span>
+                    }
+                </th>
+                <th class='@HeadClass("Label")' title="Сортировать по «Метка»" @onclick='() => SortBy("Label")'>
+                    <span class="registry-grid__head-text">Метка</span>
+                    @if (_sortKey == "Label")
+                    {
+                        <span class="registry-grid__sort">@Arrow("Label")</span>
+                    }
+                </th>
+                <th class='@HeadClass("Added")' title="Сортировать по «Добавлено»" @onclick='() => SortBy("Added")'>
+                    <span class="registry-grid__head-text">Добавлено</span>
+                    @if (_sortKey == "Added")
+                    {
+                        <span class="registry-grid__sort">@Arrow("Added")</span>
+                    }
+                </th>
+                <th><span class="registry-grid__head-text">Действия</span></th>
             </tr>
             <tr class="registry-grid__filters">
+                <th></th>
                 <th></th>
                 <th><input class="filter-input" placeholder="фильтр" value='@GetFilter("Num")' @onchange='e => SetFilter("Num", e)' /></th>
                 <th><input class="filter-input" placeholder="фильтр" value='@GetFilter("Name")' @onchange='e => SetFilter("Name", e)' /></th>
@@ -81,18 +137,19 @@
         <tbody>
             @if (_rows is null)
             {
-                <tr><td colspan="11" class="muted">Загрузка…</td></tr>
+                <tr><td colspan="12" class="muted">Загрузка…</td></tr>
             }
             else if (!_rows.Any())
             {
-                <tr><td colspan="11" class="muted">Нет выгрузок ловушки.</td></tr>
+                <tr><td colspan="12" class="muted">Нет выгрузок ловушки.</td></tr>
             }
             else
             {
-                foreach (var t in Sorted())
+                foreach (var (t, index) in Sorted().Select((x, n) => (x, n + 1)))
                 {
                     <tr>
                         <td><input type="checkbox" checked="@_selected.Contains(t.Id)" @onchange="e => Toggle(t.Id, e.Value is bool b && b)" /></td>
+                        <td class="registry-grid__index">@index</td>
                         <td class="td-num">@t.PurchaseNumber</td>
                         <td class="td-text">
                             @if (!string.IsNullOrWhiteSpace(t.EisLink))
@@ -239,7 +296,10 @@
         else { _sortKey = key; _sortDesc = false; }
     }
 
-    private string Arrow(string key) => _sortKey != key ? "↕" : (_sortDesc ? "↓" : "↑");
+    /// <summary>Как в реестре: стрелка показывается только у отсортированной колонки.</summary>
+    private string Arrow(string key) => _sortKey == key ? (_sortDesc ? "▼" : "▲") : string.Empty;
+
+    private string HeadClass(string key) => _sortKey == key ? "is-sorted" : string.Empty;
 
     private string GetFilter(string key) => _filters.TryGetValue(key, out var v) ? v : string.Empty;
 

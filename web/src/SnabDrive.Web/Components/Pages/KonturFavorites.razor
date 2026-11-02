@@ -49,26 +49,94 @@
             <div class="alert @(_messageOk ? "alert--ok" : "alert--warn")">@_message</div>
         }
 
-        <div class="table-wrap">
+        <div class="grid-wrapper">
             <table class="registry-grid registry-grid--wide">
                 <thead>
-                    <tr>
+                    <tr class="registry-grid__head">
                         <th style="width:36px"><input type="checkbox" checked="@AllSelected" @onchange="ToggleAll" title="Выделить все" /></th>
-                        <th class="th-sort" @onclick='() => SortBy("PurchaseNumber")'>Номер @Arrow("PurchaseNumber")</th>
-                        <th>Наименование</th>
-                        <th>Заказчик</th>
-                        <th class="th-sort" @onclick='() => SortBy("NMCK")'>НМЦК @Arrow("NMCK")</th>
-                        <th class="th-sort" @onclick='() => SortBy("BiddingDate")'>Дата торгов @Arrow("BiddingDate")</th>
-                        <th class="th-sort" @onclick='() => SortBy("ApplicationEndDate")'>Окончание приема заявок @Arrow("ApplicationEndDate")</th>
-                        <th class="th-sort" @onclick='() => SortBy("DateOfPlacement")'>Дата публикации @Arrow("DateOfPlacement")</th>
-                        <th>Место поставки</th>
-                        <th>Победитель</th>
-                        <th class="th-sort" @onclick='() => SortBy("ResultPrice")'>Итог @Arrow("ResultPrice")</th>
-                        <th class="th-sort" @onclick='() => SortBy("Label")'>Статус @Arrow("Label")</th>
-                        <th>Ссылка на ЕИС</th>
-                        <th>Обработка</th>
+                        <th class="registry-grid__index">#</th>
+                        <th class='@HeadClass("PurchaseNumber")' title="Сортировать по «Номер»" @onclick='() => SortBy("PurchaseNumber")'>
+                            <span class="registry-grid__head-text">Номер</span>
+                            @if (_sortKey == "PurchaseNumber")
+                            {
+                                <span class="registry-grid__sort">@Arrow("PurchaseNumber")</span>
+                            }
+                        </th>
+                        <th class='@HeadClass("NameLink")' title="Сортировать по «Наименование»" @onclick='() => SortBy("NameLink")'>
+                            <span class="registry-grid__head-text">Наименование</span>
+                            @if (_sortKey == "NameLink")
+                            {
+                                <span class="registry-grid__sort">@Arrow("NameLink")</span>
+                            }
+                        </th>
+                        <th class='@HeadClass("Customer")' title="Сортировать по «Заказчик»" @onclick='() => SortBy("Customer")'>
+                            <span class="registry-grid__head-text">Заказчик</span>
+                            @if (_sortKey == "Customer")
+                            {
+                                <span class="registry-grid__sort">@Arrow("Customer")</span>
+                            }
+                        </th>
+                        <th class='@HeadClass("NMCK")' title="Сортировать по «НМЦК»" @onclick='() => SortBy("NMCK")'>
+                            <span class="registry-grid__head-text">НМЦК</span>
+                            @if (_sortKey == "NMCK")
+                            {
+                                <span class="registry-grid__sort">@Arrow("NMCK")</span>
+                            }
+                        </th>
+                        <th class='@HeadClass("BiddingDate")' title="Сортировать по «Дата торгов»" @onclick='() => SortBy("BiddingDate")'>
+                            <span class="registry-grid__head-text">Дата торгов</span>
+                            @if (_sortKey == "BiddingDate")
+                            {
+                                <span class="registry-grid__sort">@Arrow("BiddingDate")</span>
+                            }
+                        </th>
+                        <th class='@HeadClass("ApplicationEndDate")' title="Сортировать по «Окончание приема заявок»" @onclick='() => SortBy("ApplicationEndDate")'>
+                            <span class="registry-grid__head-text">Окончание приема заявок</span>
+                            @if (_sortKey == "ApplicationEndDate")
+                            {
+                                <span class="registry-grid__sort">@Arrow("ApplicationEndDate")</span>
+                            }
+                        </th>
+                        <th class='@HeadClass("DateOfPlacement")' title="Сортировать по «Дата публикации»" @onclick='() => SortBy("DateOfPlacement")'>
+                            <span class="registry-grid__head-text">Дата публикации</span>
+                            @if (_sortKey == "DateOfPlacement")
+                            {
+                                <span class="registry-grid__sort">@Arrow("DateOfPlacement")</span>
+                            }
+                        </th>
+                        <th class='@HeadClass("PlaceOfDelivery")' title="Сортировать по «Место поставки»" @onclick='() => SortBy("PlaceOfDelivery")'>
+                            <span class="registry-grid__head-text">Место поставки</span>
+                            @if (_sortKey == "PlaceOfDelivery")
+                            {
+                                <span class="registry-grid__sort">@Arrow("PlaceOfDelivery")</span>
+                            }
+                        </th>
+                        <th class='@HeadClass("Winner")' title="Сортировать по «Победитель»" @onclick='() => SortBy("Winner")'>
+                            <span class="registry-grid__head-text">Победитель</span>
+                            @if (_sortKey == "Winner")
+                            {
+                                <span class="registry-grid__sort">@Arrow("Winner")</span>
+                            }
+                        </th>
+                        <th class='@HeadClass("ResultPrice")' title="Сортировать по «Итог»" @onclick='() => SortBy("ResultPrice")'>
+                            <span class="registry-grid__head-text">Итог</span>
+                            @if (_sortKey == "ResultPrice")
+                            {
+                                <span class="registry-grid__sort">@Arrow("ResultPrice")</span>
+                            }
+                        </th>
+                        <th class='@HeadClass("Label")' title="Сортировать по «Статус»" @onclick='() => SortBy("Label")'>
+                            <span class="registry-grid__head-text">Статус</span>
+                            @if (_sortKey == "Label")
+                            {
+                                <span class="registry-grid__sort">@Arrow("Label")</span>
+                            }
+                        </th>
+                        <th><span class="registry-grid__head-text">Ссылка на ЕИС</span></th>
+                        <th><span class="registry-grid__head-text">Обработка</span></th>
                     </tr>
                     <tr class="registry-grid__filters">
+                        <th></th>
                         <th></th>
                         <th><input class="filter-input" placeholder="фильтр" value='@GetFilter("PurchaseNumber")' @onchange='e => SetFilter("PurchaseNumber", e)' /></th>
                         <th><input class="filter-input" placeholder="фильтр" value='@GetFilter("NameLink")' @onchange='e => SetFilter("NameLink", e)' /></th>
@@ -88,11 +156,11 @@
                 <tbody>
                     @if (_favorites.Count == 0)
                     {
-                        <tr><td colspan="14" class="registry-grid__empty">Нет строк. Нажмите «Выгрузить сейчас».</td></tr>
+                        <tr><td colspan="15" class="registry-grid__empty">Нет строк. Нажмите «Выгрузить сейчас».</td></tr>
                     }
                     else
                     {
-                        @foreach (var f in Sorted())
+                        @foreach (var (f, index) in Sorted().Select((x, n) => (x, n + 1)))
                         {
                             <tr class="@(f.Status == KonturFavoriteStatus.Imported ? "is-finished" : "")">
                                 <td>
@@ -102,6 +170,7 @@
                                                @onchange="e => Toggle(f.Id, e.Value is bool b && b)" />
                                     }
                                 </td>
+                                <td class="registry-grid__index">@index</td>
                                 <td>@f.PurchaseNumber</td>
                                 <td>@f.NameLink</td>
                                 <td>@f.Customer</td>
@@ -279,7 +348,10 @@
         }
     }
 
-    private string Arrow(string key) => _sortKey == key ? (_sortDesc ? "▼" : "▲") : "";
+    /// <summary>Как в реестре: стрелка показывается только у отсортированной колонки.</summary>
+    private string Arrow(string key) => _sortKey == key ? (_sortDesc ? "▼" : "▲") : string.Empty;
+
+    private string HeadClass(string key) => _sortKey == key ? "is-sorted" : string.Empty;
 
     private IEnumerable<KonturFavorite> Sorted() => _sortKey switch
     {
@@ -288,6 +360,10 @@
         "BiddingDate" => Ord(f => f.BiddingDate),
         "ApplicationEndDate" => Ord(f => f.ApplicationEndDate),
         "DateOfPlacement" => Ord(f => f.DateOfPlacement),
+        "NameLink" => Ord(f => f.NameLink),
+        "Customer" => Ord(f => f.Customer),
+        "PlaceOfDelivery" => Ord(f => f.PlaceOfDelivery ?? string.Empty),
+        "Winner" => Ord(f => f.Winner ?? string.Empty),
         "ResultPrice" => Ord(f => f.ResultPrice),
         "Label" => Ord(f => f.Label),
         _ => Ord(f => f.AddedAt)

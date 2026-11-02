@@ -694,7 +694,7 @@ else
                     : r.Stage;
             }
         }
-        catch (Exception ex) { _error = ex.Message; }
+        catch (Exception ex) { _error = ErrorText.Describe(ex); }
         finally { _busy = false; _loading = false; }
     }
 
@@ -923,7 +923,7 @@ else
             if (!result.Success) { _error = result.Error; }
             await LoadAsync();
         }
-        catch (Exception ex) { _error = ex.Message; }
+        catch (Exception ex) { _error = ErrorText.Describe(ex); }
     }
 
     // Этап 7: оповестить филиал в Битрикс24 и перевести на следующий этап.
@@ -1003,7 +1003,7 @@ else
         }
         catch (Exception ex)
         {
-            _error = "Не удалось перенести закупку: " + ex.Message;
+            _error = "Не удалось перенести закупку: " + ErrorText.Describe(ex);
             return;
         }
 
@@ -1033,6 +1033,6 @@ else
             }
             await LoadAsync();
         }
-        catch (Exception ex) { _error = ex.Message; }
+        catch (Exception ex) { _error = ErrorText.Describe(ex); }
     }
 }

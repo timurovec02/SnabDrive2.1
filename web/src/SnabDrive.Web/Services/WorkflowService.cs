@@ -277,7 +277,15 @@ public sealed class WorkflowService : IWorkflowService
         item.IsContractChecked = edit.IsContractChecked;
         item.IsEisFilled = edit.IsEisFilled;
 
-        await context.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Не удалось сохранить изменения закупки {RegeditId}");
+            return Result.Fail("Не удалось сохранить изменения: " + ErrorText.Describe(ex));
+        }
 
         var who = actor?.UserName ?? "Пользователь";
         await NotifyAsync(regeditId, who,
@@ -329,7 +337,15 @@ public sealed class WorkflowService : IWorkflowService
             AtUtc = DateTime.UtcNow
         });
 
-        await context.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Не удалось сохранить перевод закупки {RegeditId} на следующий этап");
+            return Result.Fail("Не удалось перевести закупку на следующий этап: " + ErrorText.Describe(ex));
+        }
 
         await NotifyStageOwnersAsync(tr.To, item, cancellationToken);
 
@@ -379,7 +395,15 @@ public sealed class WorkflowService : IWorkflowService
             AtUtc = DateTime.UtcNow
         });
 
-        await context.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Не удалось сохранить перевод закупки {RegeditId} на стадию {Stage}");
+            return Result.Fail("Не удалось перенести закупку на стадию: " + ErrorText.Describe(ex));
+        }
 
         // Ответственные за новую стадию получают уведомление, как при обычном переходе.
         await NotifyStageOwnersAsync(stage, item, cancellationToken);
@@ -471,7 +495,15 @@ public sealed class WorkflowService : IWorkflowService
             ByUser = actor.UserName,
             AtUtc = DateTime.UtcNow
         });
-        await context.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Не удалось сохранить оповещение филиала по закупке {RegeditId}");
+            return Result.Fail("Не удалось оповестить филиал: " + ErrorText.Describe(ex));
+        }
 
         _logger.LogInformation("Воркфлоу: оповещён филиал {Branch} по закупке {Id} ({User})", branchName, regeditId, actor.UserName);
 
@@ -509,7 +541,15 @@ public sealed class WorkflowService : IWorkflowService
             ByUser = actor.UserName,
             AtUtc = DateTime.UtcNow
         });
-        await context.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Не удалось сохранить возврат закупки {RegeditId}");
+            return Result.Fail("Не удалось оформить проблему с приемкой: " + ErrorText.Describe(ex));
+        }
 
         _logger.LogInformation("Воркфлоу: возврат закупки {Id} ({User}): {Reason}", regeditId, actor.UserName, reason);
 

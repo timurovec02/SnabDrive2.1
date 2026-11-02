@@ -74,15 +74,23 @@ else
                 <th style="text-align:right">Изменено</th>
                 <th style="text-align:right">Удалено</th>
                 <th style="text-align:right">В архив</th>
-                <th style="text-align:right">Переводов стадий</th>
+                <th style="text-align:right" title="Нажмите ▸ у сотрудника, чтобы увидеть, какие именно стадии выполнены">Переводов стадий</th>
                 <th style="text-align:right">Всего</th>
             </tr>
         </thead>
         <tbody>
             @foreach (var row in _rows.OrderByDescending(r => r.Total).ThenBy(r => r.User))
             {
+                var open = _expanded.Contains(row.User);
                 <tr>
-                    <td>@row.User</td>
+                    <td>
+                        @if (row.StageChanges > 0)
+                        {
+                            <button type="button" class="expand-toggle" title="@(open ? "Скрыть стадии" : "Показать, какие стадии выполнены")"
+                                    @onclick="() => Toggle(row.User)">@(open ? "▾" : "▸")</button>
+                        }
+                        @row.User
+                    </td>
                     <td style="text-align:right">@row.Created</td>
                     <td style="text-align:right">@row.Updated</td>
                     <td style="text-align:right">@row.Deleted</td>
@@ -90,6 +98,23 @@ else
                     <td style="text-align:right">@row.StageChanges</td>
                     <td style="text-align:right"><strong>@row.Total</strong></td>
                 </tr>
+                @if (open)
+                {
+                    <tr class="detail-row">
+                        <td colspan="7">
+                            <div class="stage-breakdown">
+                                <span class="stage-breakdown__title">Выполненные стадии:</span>
+                                @foreach (var st in row.Stages)
+                                {
+                                    <span class="chip">
+                                        @WorkflowStages.Name(st.Stage)
+                                        <span class="stage-breakdown__count">@st.Count</span>
+                                    </span>
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                }
             }
         </tbody>
         <tfoot>
@@ -148,6 +173,13 @@ else
                 .Select(g => new { User = g.Key, Count = g.Count() })
                 .ToListAsync();
 
+            // Те же переводы, но с разбивкой по стадиям — для раскрывающегося списка.
+            var stageDetail = await registry.RegistryWorkflowLogs.AsNoTracking()
+                .Where(w => w.AtUtc >= from && w.AtUtc <= to)
+                .GroupBy(w => new { w.ByUser, w.ToStage })
+                .Select(g => new { g.Key.ByUser, g.Key.ToStage, Count = g.Count() })
+                .ToListAsync();
+
             var users = audit.Select(a => a.UserName)
                 .Concat(workflow.Select(w => w.User))
                 .Where(u => !string.IsNullOrWhiteSpace(u))
@@ -161,8 +193,16 @@ else
                 var deleted = audit.Where(a => a.UserName == u && a.Action == AuditAction.Deleted).Sum(a => a.Count);
                 var archived = audit.Where(a => a.UserName == u && a.Action == AuditAction.Archived).Sum(a => a.Count);
                 var stageChanges = workflow.Where(w => w.User == u).Sum(w => w.Count);
+
+                // Стадии в том же порядке, в каком они идут в воркфлоу.
+                var stages = stageDetail
+                    .Where(d => d.ByUser == u)
+                    .OrderBy(d => StageOrder(d.ToStage))
+                    .Select(d => new StageCount(d.ToStage, d.Count))
+                    .ToList();
+
                 return new UserActivityRow(u, created, updated, deleted, archived, stageChanges,
-                    created + updated + deleted + archived + stageChanges);
+                    created + updated + deleted + archived + stageChanges, stages);
             }).ToList();
         }
         catch (Exception ex)
@@ -175,5 +215,26 @@ else
         }
     }
 
-    private sealed record UserActivityRow(string User, int Created, int Updated, int Deleted, int Archived, int StageChanges, int Total);
+    private sealed record UserActivityRow(string User, int Created, int Updated, int Deleted, int Archived,
+        int StageChanges, int Total, IReadOnlyList<StageCount> Stages);
+
+    private sealed record StageCount(int Stage, int Count);
+
+    /// <summary>Порядок стадии в воркфлоу — им сортируется раскрывающийся список.</summary>
+    private static int StageOrder(int stage)
+    {
+        var index = Array.FindIndex(WorkflowStages.All, s => s.Id == stage);
+        return index < 0 ? int.MaxValue : index;
+    }
+
+    /// <summary>Пользователи, у которых раскрыт список стадий.</summary>
+    private readonly HashSet<string> _expanded = new(StringComparer.Ordinal);
+
+    private void Toggle(string user)
+    {
+        if (!_expanded.Remove(user))
+        {
+            _expanded.Add(user);
+        }
+    }
 }
