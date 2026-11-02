@@ -136,7 +136,8 @@ else
                             </span>
                         }
                     </div>
-                    <InputFile OnChange="ev => OnFileAsync(ev, r.Id)" class="form-control" style="max-width:360px;margin-top:4px" />
+                    <InputFile OnChange="ev => OnFileAsync(ev, r.Id)" class="form-control" style="max-width:360px;margin-top:4px"
+                             title="@AttachmentLimits.FileHint" />
                 </div>
 
                 @* ===== Кто и когда вёл этап — для учёта работы сотрудников ===== *@
@@ -424,7 +425,7 @@ else
                                 </div>
                             }
                             <InputFile OnChange="ev => OnBranchFileAsync(ev, r.Id)" class="form-control"
-                                     title="Файл @AttachmentLimits.Hint" />
+                                     title="@AttachmentLimits.FileHint" />
                         </div>
                     </div>
                     <div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center">
