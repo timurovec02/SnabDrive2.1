@@ -9,7 +9,7 @@ IIS работает в **Session 0** без интерактивного раб
 
 ## Как это работает
 1. Сайт пишет аргументы в файл `export-request.txt` (параметр `Kontur:RequestFile`):
-   `--no-pause --favorites --output "C:\KonturExport\out\favorites"` (или `--templates`).
+   `--no-pause --favorites --output "C:\KonturExports\favorites"` (или `--templates`).
 2. Сайт выполняет `schtasks /run /tn "SnabDriveKontur"`.
 3. Задача выполняет обёртку `run-export.cmd`, которая читает `export-request.txt`
    и запускает `KonturExport.exe` **в интерактивной сессии** (браузер открывается нормально).
@@ -43,18 +43,19 @@ IIS работает в **Session 0** без интерактивного раб
   - Start in: `C:\KonturExport`
 - Triggers: не добавлять. Conditions: снять «only if on AC power».
 
-`RunBoth.cmd` выгружает **сразу два файла** в папку избранного:
+`RunBoth.cmd` выгружает **сразу два файла** в папку избранного — при
+`OutputDirectory = C:\\KonturExports` это `C:\\KonturExports\\favorites`, туда и смотрит сайт:
 `Kontur_дата_время.xlsx` и `TenderLand_дата_время.xlsx`. Сайт импортирует оба.
 
 **Задача «Контур ловушка»** — имя `SnabDriveKonturTemplates`:
-- То же, но аргументы: `--no-pause --templates --output "C:\KonturExport\out\templates"`
+- То же, но аргументы: `--no-pause --templates --output "C:\KonturExports\templates"`
 
 ⚠️ Папки в `--output` должны **точно совпадать** с тем, куда смотрит сайт:
 сайт ищет файл в `OutputDirectory\favorites` и `OutputDirectory\templates`.
-При `OutputDirectory = C:\KonturExport\out` это `C:\KonturExport\out\favorites` и `...\templates`.
+При `OutputDirectory = C:\KonturExports` это `C:\KonturExports\favorites` и `...\templates`.
 
 Проверить вручную: `schtasks /run /tn "SnabDriveKontur"` — откроется браузер и Excel
-ляжет в `C:\KonturExport\out\favorites`.
+ляжет в `C:\KonturExports\favorites`.
 
 > Обёртка `run-export.cmd` (вариант с файлом запроса) — альтернатива; если используете
 > .exe напрямую с аргументами, обёртка и `RequestFile` не нужны.
@@ -74,7 +75,7 @@ User Rights Assignment).
 ```json
 "Kontur": {
   "ExporterPath": "C:\\KonturExport\\KonturExport.exe",
-  "OutputDirectory": "C:\\KonturExport\\out",
+  "OutputDirectory": "C:\\KonturExports",
   "TimeoutMinutes": 15,
   "TaskName": "SnabDriveKontur",
   "TaskNameTemplates": "SnabDriveKonturTemplates",
@@ -84,7 +85,8 @@ User Rights Assignment).
 - `TaskName` — задача для избранного, `TaskNameTemplates` — для ловушки (п.3).
   Если `TaskNameTemplates` пусто — для шаблонов используется `TaskName`.
 - `OutputDirectory` — база; сайт ищет файлы в `OutputDirectory\favorites` и `\templates`
-  (должно совпадать с `--output` в задачах).
+  (должно совпадать с `--output` в задачах). На сервере это `C:\KonturExports`,
+  то есть сайт читает `C:\KonturExports\favorites` и `C:\KonturExports\templates`.
 - `RunBothPath` — путь к `RunBoth.cmd`. Нужен только для **прямого** запуска без задачи
   планировщика (разработка); на сервере сайт триггерит задачу по имени `TaskName`.
 

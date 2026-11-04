@@ -5,6 +5,7 @@
 @inject IToastService Toasts
 @inject KonturSchedulerService Scheduler
 @inject KonturSchedulerState SchedulerState
+@implements IDisposable
 @inject SnabDrive.Web.Services.IRolePermissionService RolePerms
 @inject IJSRuntime JS
 
@@ -22,7 +23,7 @@
     else
     {
         <div class="toolbar">
-            <button class="btn btn--primary" disabled="@_busy" @onclick="ExportNowAsync">Выгрузить сейчас</button>
+            <button class="btn btn--primary" disabled="@(_busy || SchedulerState.IsRunning)" @onclick="ExportNowAsync">Выгрузить сейчас</button>
             <button class="btn" @onclick="LoadAsync">Обновить</button>
             <label class="chk">
                 <input type="checkbox" @bind="_onlyNew" @bind:after="LoadAsync" /> только новые
@@ -236,6 +237,8 @@
     private int _pageSize = 50;
     private static readonly int[] PageSizes = { 50, 100, 200, 500 };
     private bool _busy;
+    private bool _schedulerHooked;
+    private bool _wasRunning;
     private string? _message;
     private bool _messageOk;
     private string _sortKey = "DateOfPlacement";
@@ -243,6 +246,13 @@
 
     protected override async Task OnInitializedAsync()
     {
+        if (!_schedulerHooked)
+        {
+            _schedulerHooked = true;
+            _wasRunning = SchedulerState.IsRunning;
+            SchedulerState.Changed += OnSchedulerChanged;
+        }
+
         try
         {
             if (AuthState is not null)
@@ -392,19 +402,67 @@
     {
         _busy = true;
         _message = null;
+        _wasRunning = true;
         // Запуск в фоне: поток UI свободен, поэтому блокировка (оверлей по IsRunning) появляется сразу.
+        // Снятие блокировки и обновление списка делает OnSchedulerChanged.
         _ = Task.Run(async () =>
         {
-            await Scheduler.RunAsync("вручную со страницы Контур");
-            await InvokeAsync(async () =>
+            try
             {
-                _messageOk = SchedulerState.LastSuccess;
-                _message = SchedulerState.LastMessage;
-                await LoadAsync();
-                _busy = false;
-            });
+                await Scheduler.RunAsync("вручную со страницы Контур");
+            }
+            catch (Exception ex)
+            {
+                // Ошибки самой выгрузки ловит RunAsync; сюда попадаем только при сбое запуска.
+                await InvokeAsync(() =>
+                {
+                    _busy = false;
+                    _messageOk = false;
+                    _message = "Не удалось запустить выгрузку: " + ErrorText.Describe(ex);
+                });
+            }
         });
     }
+
+    /// <summary>
+    /// Выгрузка завершилась — снимаем блокировку и перечитываем список.
+    /// Реагируем на событие планировщика, поэтому список обновляется сам независимо
+    /// от того, кто запустил выгрузку: кнопка на этой странице, расписание
+    /// или другой пользователь в другой вкладке.
+    /// </summary>
+    private void OnSchedulerChanged()
+    {
+        var running = SchedulerState.IsRunning;
+        var finished = _wasRunning && !running;
+        _wasRunning = running;
+
+        _ = InvokeAsync(async () =>
+        {
+            if (finished)
+            {
+                _busy = false;
+                _messageOk = SchedulerState.LastSuccess;
+                _message = SchedulerState.LastMessage;
+
+                if (!_denied)
+                {
+                    await LoadAsync();
+                }
+            }
+
+            StateHasChanged();
+        });
+    }
+
+    public void Dispose()
+    {
+        if (_schedulerHooked)
+        {
+            SchedulerState.Changed -= OnSchedulerChanged;
+            _schedulerHooked = false;
+        }
+    }
+
 
     private async Task ImportSelectedAsync()
     {

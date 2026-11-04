@@ -9,6 +9,7 @@
 @inject IKonturService Kontur
 @inject KonturSchedulerService Scheduler
 @inject KonturSchedulerState SchedulerState
+@implements IDisposable
 @inject NavigationManager Nav
 @inject IJSRuntime JS
 @inject AuthenticationStateProvider AuthStateProvider
@@ -186,6 +187,8 @@
     private bool AllSelected => _rows is { Count: > 0 } && _selected.Count == _rows.Count;
     private ChangeActor _actor = new(string.Empty, "system");
     private bool _busy;
+    private bool _schedulerHooked;
+    private bool _wasRunning;
     private bool _denied;
     private string? _statusMessage;
     private string? _error;
@@ -195,6 +198,13 @@
 
     protected override async Task OnInitializedAsync()
     {
+        if (!_schedulerHooked)
+        {
+            _schedulerHooked = true;
+            _wasRunning = SchedulerState.IsRunning;
+            SchedulerState.Changed += OnSchedulerChanged;
+        }
+
         try
         {
             var state = await AuthStateProvider.GetAuthenticationStateAsync();
@@ -229,27 +239,55 @@
         _busy = true;
         _error = null;
         _statusMessage = null;
+        _wasRunning = true;
         // Запуск в фоне — блокировка (оверлей) появляется сразу, поток UI не блокируется.
+        // Снятие блокировки и обновление списка делает OnSchedulerChanged.
         _ = Task.Run(async () =>
         {
             try
             {
                 await Scheduler.RunAsync("вручную (Контур ловушка)", ExportMode.Templates);
-                await InvokeAsync(async () =>
-                {
-                    _statusMessage = SchedulerState.LastMessage;
-                    await LoadAsync();
-                });
             }
             catch (Exception ex)
             {
-                await InvokeAsync(() => { _error = ex.Message; });
-            }
-            finally
-            {
-                await InvokeAsync(() => { _busy = false; });
+                await InvokeAsync(() =>
+                {
+                    _busy = false;
+                    _error = ErrorText.Describe(ex);
+                });
             }
         });
+    }
+
+    /// <summary>
+    /// Выгрузка завершилась — снимаем блокировку и перечитываем список. Сработает
+    /// и тогда, когда выгрузку запустило расписание или другой пользователь.
+    /// </summary>
+    private void OnSchedulerChanged()
+    {
+        var running = SchedulerState.IsRunning;
+        var finished = _wasRunning && !running;
+        _wasRunning = running;
+
+        _ = InvokeAsync(async () =>
+        {
+            if (finished)
+            {
+                _statusMessage = SchedulerState.LastMessage;
+                await LoadAsync();
+            }
+
+            StateHasChanged();
+        });
+    }
+
+    public void Dispose()
+    {
+        if (_schedulerHooked)
+        {
+            SchedulerState.Changed -= OnSchedulerChanged;
+            _schedulerHooked = false;
+        }
     }
 
     private async Task DeleteAsync(KonturTemplate t)
