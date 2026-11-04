@@ -44,6 +44,13 @@ public class KonturFavorite
     /// <summary>Дата публикации (размещения).</summary>
     public DateTime? DateOfPlacement { get; set; }
 
+    /// <summary>
+    /// Откуда выгружена закупка: "Kontur" или "TenderLand".
+    /// Избранное собирается из двух файлов одной выгрузки (RunBoth.cmd),
+    /// дубликаты схлопываются по номеру, поэтому источник храним отдельно.
+    /// </summary>
+    public string SourceSystem { get; set; } = "Kontur";
+
     public KonturFavoriteStatus Status { get; set; } = KonturFavoriteStatus.New;
 
     /// <summary>Id записи в Regedit, если строка перенесена в реестр.</summary>

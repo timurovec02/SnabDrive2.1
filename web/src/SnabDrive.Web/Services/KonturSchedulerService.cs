@@ -37,6 +37,14 @@ public sealed class KonturExporterOptions
     /// <summary>Файл, куда сайт пишет аргументы для экспортёра (читает обёртка задачи планировщика).
     /// Пусто — export-request.txt рядом с экспортёром.</summary>
     public string RequestFile { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Путь к RunBoth.cmd — для избранного выгружает сразу два файла:
+    /// Kontur_дата_время.xlsx и TenderLand_дата_время.xlsx.
+    /// Используется только при прямом запуске (без задачи планировщика), то есть в разработке;
+    /// на сервере RunBoth.cmd стоит действием задачи Windows и сайт триггерит её по имени.
+    /// </summary>
+    public string RunBothPath { get; set; } = string.Empty;
 }
 
 /// <summary>Редактируемое на сайте расписание (хранится в kontur-schedule.json).</summary>
@@ -251,9 +259,14 @@ public sealed class KonturSchedulerService : BackgroundService
             Directory.CreateDirectory(outDir);
             var start = DateTime.Now;
 
+            // Избранное выгружается двумя файлами (Kontur_* и TenderLand_*), ловушка — одним.
+            var expectedFiles = mode == ExportMode.Favorites ? 2 : 1;
+            var beforeNewest = NewestFileTime(outDir);
+
             RunExporter(options, outDir, mode, start);
 
-            await ImportNewestAsync(outDir, start, mode);
+            var files = WaitForNewFiles(outDir, beforeNewest, expectedFiles);
+            await ImportFilesAsync(files, mode);
         }
         catch (Exception ex)
         {
@@ -298,12 +311,7 @@ public sealed class KonturSchedulerService : BackgroundService
 
     private void RunViaScheduledTask(KonturExporterOptions options, string outDir, string modeFlag, string taskName, TimeSpan timeout)
     {
-        // Фиксируем самый свежий файл ДО запуска, чтобы дождаться именно нового.
-        var dir = new DirectoryInfo(outDir);
-        var beforeNewest = dir.Exists
-            ? dir.GetFiles("*.xlsx").OrderByDescending(f => f.LastWriteTime).FirstOrDefault()?.LastWriteTime ?? DateTime.MinValue
-            : DateTime.MinValue;
-
+        // Файлы после запуска ищет WaitForNewFiles — здесь только запуск задачи.
         try
         {
             var psi = new ProcessStartInfo("schtasks", $"/run /tn \"{taskName}\"")
@@ -323,31 +331,78 @@ public sealed class KonturSchedulerService : BackgroundService
         catch (Exception ex)
         {
             _state.AddLog("Ошибка запуска задачи планировщика: " + ex.Message);
-            return;
         }
+    }
 
-        // Ждём появления нового файла выгрузки, но не дольше 30 секунд —
-        // чтобы при ошибке/зависании скрипта блокировка снималась и пользователь мог работать дальше.
+    /// <summary>Время самого свежего .xlsx в папке (или MinValue, если папки/файлов нет).</summary>
+    private static DateTime NewestFileTime(string outDir)
+    {
+        var dir = new DirectoryInfo(outDir);
+        return dir.Exists
+            ? dir.GetFiles("*.xlsx").OrderByDescending(f => f.LastWriteTime).FirstOrDefault()?.LastWriteTime ?? DateTime.MinValue
+            : DateTime.MinValue;
+    }
+
+    /// <summary>
+    /// Ждёт появления новых файлов выгрузки, но не дольше 30 секунд — чтобы при ошибке
+    /// или зависании скрипта блокировка снималась и пользователь мог работать дальше.
+    /// Для избранного нужно два файла (Kontur_* и TenderLand_*): ждём оба, а по таймауту
+    /// импортируем то, что появилось.
+    /// </summary>
+    private IReadOnlyList<FileInfo> WaitForNewFiles(string outDir, DateTime beforeNewest, int expected)
+    {
+        var dir = new DirectoryInfo(outDir);
         var deadline = DateTime.Now + TimeSpan.FromSeconds(30);
+        var found = new List<FileInfo>();
+
         while (DateTime.Now < deadline)
         {
             Thread.Sleep(3000);
-            var file = dir.Exists ? dir.GetFiles("*.xlsx").OrderByDescending(f => f.LastWriteTime).FirstOrDefault() : null;
-            if (file is not null && file.LastWriteTime > beforeNewest)
+            found = dir.Exists
+                ? dir.GetFiles("*.xlsx").Where(f => f.LastWriteTime > beforeNewest).OrderBy(f => f.Name, StringComparer.OrdinalIgnoreCase).ToList()
+                : new List<FileInfo>();
+
+            if (found.Count >= expected)
             {
-                Thread.Sleep(2000); // дать файлу дописаться
-                _state.AddLog($"Появился файл выгрузки: {file.Name}");
-                return;
+                Thread.Sleep(2000); // дать файлам дописаться
+                break;
             }
         }
 
-        _state.LastSuccess = false;
-        _state.LastMessage = "Файл выгрузки не появился за отведённое время. Проверьте задачу планировщика и папку выгрузки.";
-        _state.AddLog(_state.LastMessage);
+        if (found.Count == 0)
+        {
+            _state.LastSuccess = false;
+            _state.LastMessage = expected > 1
+                ? "Файлы выгрузки не появились за отведённое время. Проверьте задачу планировщика и папку выгрузки."
+                : "Файл выгрузки не появился за отведённое время. Проверьте задачу планировщика и папку выгрузки.";
+            _state.AddLog(_state.LastMessage);
+            return found;
+        }
+
+        foreach (var f in found)
+        {
+            _state.AddLog($"Появился файл выгрузки: {f.Name}");
+        }
+
+        if (found.Count < expected)
+        {
+            _state.AddLog($"Ожидалось файлов: {expected}, появилось {found.Count} — импортируем то, что есть.");
+        }
+
+        return found;
     }
 
     private void RunDirect(KonturExporterOptions options, string outDir, string modeFlag, TimeSpan timeout)
     {
+        // Избранное в разработке можно выгружать сразу двумя файлами через RunBoth.cmd.
+        var runBoth = modeFlag == "--favorites" && !string.IsNullOrWhiteSpace(options.RunBothPath);
+        if (runBoth && File.Exists(options.RunBothPath))
+        {
+            _state.AddLog($"Избранное: запускаю «{options.RunBothPath}» (два файла выгрузки).");
+            RunProcess(options.RunBothPath, $"--no-pause --output \"{outDir}\"", outDir, timeout);
+            return;
+        }
+
         if (string.IsNullOrWhiteSpace(options.ExporterPath) || !File.Exists(options.ExporterPath))
         {
             _state.AddLog($"Экспортер не найден по пути «{options.ExporterPath}». Проверьте Kontur:ExporterPath в appsettings. Пробуем импорт из папки.");
@@ -355,14 +410,20 @@ public sealed class KonturSchedulerService : BackgroundService
         }
 
         var args = $"--no-pause {modeFlag} --output \"{outDir}\"";
-        _state.AddLog($"Команда: \"{options.ExporterPath}\" {args}");
+        RunProcess(options.ExporterPath, args, outDir, timeout);
+    }
+
+    /// <summary>Запустить процесс, дождаться завершения и положить вывод в журнал.</summary>
+    private void RunProcess(string path, string args, string outDir, TimeSpan timeout)
+    {
+        _state.AddLog($"Команда: \"{path}\" {args}");
 
         try
         {
-            var psi = new ProcessStartInfo(options.ExporterPath, args)
+            var psi = new ProcessStartInfo(path, args)
             {
                 UseShellExecute = false,
-                WorkingDirectory = Path.GetDirectoryName(Path.GetFullPath(options.ExporterPath)) ?? outDir,
+                WorkingDirectory = Path.GetDirectoryName(Path.GetFullPath(path)) ?? outDir,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true
             };
@@ -400,18 +461,19 @@ public sealed class KonturSchedulerService : BackgroundService
 
     private static string Tail(string value) => value.Length <= 1500 ? value : value[^1500..];
 
-    private async Task ImportNewestAsync(string outDir, DateTime start, ExportMode mode)
+    private async Task ImportFilesAsync(IReadOnlyList<FileInfo> files, ExportMode mode)
     {
         var modeLabel = mode == ExportMode.Templates ? "Контур ловушка" : "Избранное Контур";
-        var file = new DirectoryInfo(outDir).GetFiles("*.xlsx")
-            .OrderByDescending(f => f.LastWriteTime)
-            .FirstOrDefault();
 
-        if (file is null || file.LastWriteTime < start.AddMinutes(-2))
+        if (files.Count == 0)
         {
-            _state.LastSuccess = true;
-            _state.LastMessage = "Новый файл выгрузки не найден.";
-            _state.AddLog(_state.LastMessage);
+            // Сообщение об отсутствии файлов уже записал WaitForNewFiles.
+            if (_state.LastSuccess)
+            {
+                _state.LastMessage = "Новый файл выгрузки не найден.";
+                _state.AddLog(_state.LastMessage);
+            }
+
             await WriteAuditAsync($"Выгрузка «{modeLabel}»: новый файл не найден");
             return;
         }
@@ -419,26 +481,45 @@ public sealed class KonturSchedulerService : BackgroundService
         using var scope = _services.CreateScope();
         var kontur = scope.ServiceProvider.GetRequiredService<IKonturService>();
 
-        await using var stream = file.OpenRead();
-        var result = mode == ExportMode.Templates
-            ? await kontur.ImportToTemplatesAsync(stream, SystemActor)
-            : await kontur.ImportFromExcelAsync(stream, SystemActor);
+        // Избранное: импортируем оба файла (Kontur_* и TenderLand_*). Дубликаты по номеру
+        // закупки отсеивает сам импорт — второй файл обычно добавляет только новые строки.
+        var total = 0;
+        var failed = false;
+        var parts = new List<string>();
 
-        _state.LastSuccess = result.Success;
-        _state.LastAdded = result.Success ? result.Value : 0;
-        _state.LastMessage = result.Success ? $"Импортировано строк: {result.Value} ({file.Name})" : (result.Error ?? "Ошибка импорта");
-        _state.AddLog(_state.LastMessage);
-
-        if (result.Success)
+        foreach (var file in files)
         {
-            _store.Value.LastImportedFile = file.FullName;
-            _store.Save();
+            Result<int> result;
+            await using (var stream = file.OpenRead())
+            {
+                result = mode == ExportMode.Templates
+                    ? await kontur.ImportToTemplatesAsync(stream, SystemActor)
+                    : await kontur.ImportFromExcelAsync(stream, SystemActor);
+            }
+
+            if (result.Success)
+            {
+                total += result.Value;
+                parts.Add($"{file.Name}: {result.Value}");
+            }
+            else
+            {
+                failed = true;
+                parts.Add($"{file.Name}: ошибка — {result.Error}");
+            }
         }
 
-        var summary = result.Success
-            ? $"Выгрузка «{modeLabel}»: импортировано строк {result.Value}, файл «{file.Name}»"
-            : $"Выгрузка «{modeLabel}»: ошибка импорта — {result.Error}";
-        await WriteAuditAsync(summary);
+        _state.LastSuccess = !failed;
+        _state.LastAdded = total;
+        _state.LastMessage = failed
+            ? "Импорт завершился с ошибками: " + string.Join("; ", parts)
+            : $"Импортировано строк: {total} ({string.Join(", ", parts)})";
+        _state.AddLog(_state.LastMessage);
+
+        _store.Value.LastImportedFile = files[files.Count - 1].FullName;
+        _store.Save();
+
+        await WriteAuditAsync($"Выгрузка «{modeLabel}»: {_state.LastMessage}");
     }
 
     /// <summary>Записать событие выгрузки Контура в журнал аудита (ошибки аудита не роняют выгрузку).</summary>

@@ -132,6 +132,13 @@
                                 <span class="registry-grid__sort">@Arrow("Label")</span>
                             }
                         </th>
+                        <th class='@HeadClass("SourceSystem")' title="Сортировать по «Источник»" @onclick='() => SortBy("SourceSystem")'>
+                            <span class="registry-grid__head-text">Источник</span>
+                            @if (_sortKey == "SourceSystem")
+                            {
+                                <span class="registry-grid__sort">@Arrow("SourceSystem")</span>
+                            }
+                        </th>
                         <th><span class="registry-grid__head-text">Ссылка на ЕИС</span></th>
                         <th><span class="registry-grid__head-text">Обработка</span></th>
                     </tr>
@@ -149,6 +156,7 @@
                         <th><input class="filter-input" placeholder="фильтр" value='@GetFilter("Winner")' @onchange='e => SetFilter("Winner", e)' /></th>
                         <th><input class="filter-input" placeholder="фильтр" value='@GetFilter("ResultPrice")' @onchange='e => SetFilter("ResultPrice", e)' /></th>
                         <th><input class="filter-input" placeholder="фильтр" value='@GetFilter("Label")' @onchange='e => SetFilter("Label", e)' /></th>
+                        <th><input class="filter-input" placeholder="фильтр" value='@GetFilter("SourceSystem")' @onchange='e => SetFilter("SourceSystem", e)' /></th>
                         <th><input class="filter-input" placeholder="фильтр" value='@GetFilter("EisLink")' @onchange='e => SetFilter("EisLink", e)' /></th>
                         <th></th>
                     </tr>
@@ -156,7 +164,7 @@
                 <tbody>
                     @if (_favorites.Count == 0)
                     {
-                        <tr><td colspan="15" class="registry-grid__empty">Нет строк. Нажмите «Выгрузить сейчас».</td></tr>
+                        <tr><td colspan="16" class="registry-grid__empty">Нет строк. Нажмите «Выгрузить сейчас».</td></tr>
                     }
                     else
                     {
@@ -182,6 +190,7 @@
                                 <td class="registry-grid__cell">@(f.Winner ?? "")</td>
                                 <td class="registry-grid__cell"><span class="money-cell">@MoneyFormat.Money(f.ResultPrice)</span></td>
                                 <td class="registry-grid__cell">@(f.Label ?? "")</td>
+                                <td class="registry-grid__cell"><span class="chip">@SourceTitle(f.SourceSystem)</span></td>
                                 <td class="registry-grid__cell">
                                     @if (!string.IsNullOrWhiteSpace(f.EisLink))
                                     {
@@ -299,6 +308,8 @@
                 "ResultPrice" => q.Where(f => f.ResultPrice.ToString(CultureInfo.InvariantCulture).Contains(v)),
                 "Label" => q.Where(f => Contains(f.Label, v)),
                 "EisLink" => q.Where(f => Contains(f.EisLink, v)),
+                // Фильтр ищет по тому, что видно в таблице: «контур» или «tender».
+                "SourceSystem" => q.Where(f => Contains(SourceTitle(f.SourceSystem), v)),
                 _ => q
             };
         }
@@ -353,6 +364,10 @@
 
     private string HeadClass(string key) => _sortKey == key ? "is-sorted" : string.Empty;
 
+    /// <summary>Откуда выгружена строка: избранное собирается из двух файлов (RunBoth.cmd).</summary>
+    private static string SourceTitle(string? source) =>
+        string.Equals(source, "TenderLand", StringComparison.OrdinalIgnoreCase) ? "TenderLand" : "Контур";
+
     private IEnumerable<KonturFavorite> Sorted() => _sortKey switch
     {
         "PurchaseNumber" => Ord(f => f.PurchaseNumber),
@@ -366,6 +381,7 @@
         "Winner" => Ord(f => f.Winner ?? string.Empty),
         "ResultPrice" => Ord(f => f.ResultPrice),
         "Label" => Ord(f => f.Label),
+        "SourceSystem" => Ord(f => f.SourceSystem),
         _ => Ord(f => f.AddedAt)
     };
 

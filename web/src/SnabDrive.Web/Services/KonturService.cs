@@ -94,7 +94,9 @@ public sealed class KonturService : IKonturService
 
         if (added == 0)
         {
-            return Result<int>.Fail("Все строки из файла уже есть в избранном.");
+            // Не ошибка: при выгрузке двух файлов (Kontur_* и TenderLand_*) второй
+            // обычно даёт только дубликаты по номеру — их и должно быть ноль.
+            return Result<int>.Ok(0);
         }
 
         try
@@ -379,42 +381,78 @@ public sealed class KonturService : IKonturService
             return null;
         }
 
-        // Точная карта колонок выгрузки Контур. Дубликат «Название»:
-        // первое — наименование закупки, второе (после «Регион») — заказчик.
-        var colNumber = Find("Номер");
-        var colName = Find("Название");
-        var colNmck = Find("НМЦ");
-        var colPlacement = Find("Дата публикации");
-        // «Окончание приема заявок» — самостоятельное поле (дедлайн подачи заявки).
-        // «Проведение отбора» — дата торгов; если её в выгрузке нет, берём, как раньше,
-        // окончание приема заявок, чтобы «Дата торгов» не пустела.
-        var colAppEnd = Find("Окончание приема заявок")
+        // Избранное собирается из двух файлов одной выгрузки (RunBoth.cmd):
+        //   Kontur_дата_время.xlsx     — выгрузка Контур.Закупки (привычные заголовки);
+        //   TenderLand_дата_время.xlsx — выгрузка TenderLand, заголовки другие.
+        // Форму определяем по заголовкам, а не по имени файла: «Реестровый номер»
+        // встречается только в TenderLand, но на всякий случай требуем и второй
+        // признак этой выгрузки.
+        var colTenderNumber = Find("Реестровый номер");
+        var isTenderLand = colTenderNumber is not null
+                           && (Find("Начальная цена") is not null
+                               || FindContains("наименование заказчика") is not null
+                               || FindContains("начальная цена") is not null);
+
+        int? colNumber, colName, colNmck, colPlacement, colAppEnd, colBidding,
+             colDelivery, colWinner, colResult, colLabel, colEis, colCustomer;
+
+        if (isTenderLand)
+        {
+            // Из TenderLand берём только то, что там есть. Ссылки на ЕИС в выгрузке
+            // нет — EisLink не заполняем. Даты торгов, победителя, итоговой суммы
+            // и метки там тоже нет, эти поля остаются пустыми.
+            colNumber = colTenderNumber;
+            colName = Find("Название") ?? FindContains("название");
+            colPlacement = Find("Дата публикации") ?? FindContains("дата публикации");
+            colAppEnd = Find("Дата окончания подачи заявок") ?? FindContains("окончания подачи заявок");
+            colCustomer = Find("Полное наименование заказчика") ?? FindContains("наименование заказчика");
+            colNmck = Find("Начальная цена") ?? FindContains("начальная цена");
+            colDelivery = Find("Место поставки товара") ?? FindContains("место поставки");
+            colBidding = null;
+            colWinner = null;
+            colResult = null;
+            colLabel = null;
+            colEis = null;
+        }
+        else
+        {
+            // Точная карта колонок выгрузки Контур. Дубликат «Название»:
+            // первое — наименование закупки, второе (после «Регион») — заказчик.
+            colNumber = Find("Номер");
+            colName = Find("Название");
+            colNmck = Find("НМЦ");
+            colPlacement = Find("Дата публикации");
+            // «Окончание приема заявок» — самостоятельное поле (дедлайн подачи заявки).
+            // «Проведение отбора» — дата торгов; если её в выгрузке нет, берём, как раньше,
+            // окончание приема заявок, чтобы «Дата торгов» не пустела.
+            colAppEnd = Find("Окончание приема заявок")
                         ?? Find("Окончание приёма заявок")
                         ?? FindContains("окончание приема заявок", "окончание приёма заявок");
-        var colBidding = Find("Проведение отбора") ?? colAppEnd;
-        var colDelivery = Find("Место поставки");
-        var colWinner = Find("Название победителя") ?? Find("Название поставщика");
-        var colResult = Find("Предложение победителя") ?? Find("Цена договора");
-        var colLabel = Find("Метка");
-        var colEis = Find("Ссылка на ЕИС") ?? FindContains("ЕИС");
+            colBidding = Find("Проведение отбора") ?? colAppEnd;
+            colDelivery = Find("Место поставки");
+            colWinner = Find("Название победителя") ?? Find("Название поставщика");
+            colResult = Find("Предложение победителя") ?? Find("Цена договора");
+            colLabel = Find("Метка");
+            colEis = Find("Ссылка на ЕИС") ?? FindContains("ЕИС");
 
-        int? colCustomer = null;
-        var regionCol = Find("Регион");
-        if (regionCol is not null)
-        {
-            foreach (var c in cols)
+            colCustomer = null;
+            var regionCol = Find("Регион");
+            if (regionCol is not null)
             {
-                if (c.Col > regionCol && c.Name == "Название")
+                foreach (var c in cols)
                 {
-                    colCustomer = c.Col;
-                    break;
+                    if (c.Col > regionCol && c.Name == "Название")
+                    {
+                        colCustomer = c.Col;
+                        break;
+                    }
                 }
             }
-        }
 
-        colCustomer ??= FindContains("Размещает") ?? FindContains("заказчик", "организатор");
-        colName ??= FindContains("наименован", "предмет", "объект");
-        colNmck ??= FindContains("нмц", "цена", "бюджет");
+            colCustomer ??= FindContains("Размещает") ?? FindContains("заказчик", "организатор");
+            colName ??= FindContains("наименован", "предмет", "объект");
+            colNmck ??= FindContains("нмц", "цена", "бюджет");
+        }
 
         for (var i = headerIndex + 1; i < rows.Count; i++)
         {
@@ -447,6 +485,7 @@ public sealed class KonturService : IKonturService
                 ResultPrice = Money(sheet, row.RowNumber(), colResult),
                 Label = Clamp(Text(sheet, row.RowNumber(), colLabel), 500),
                 EisLink = Clamp(CellLink(sheet, row.RowNumber(), colEis), 1000),
+                SourceSystem = isTenderLand ? "TenderLand" : "Kontur",
                 Status = KonturFavoriteStatus.New,
                 RawJson = JsonSerializer.Serialize(raw),
                 AddedAt = DateTime.Now,

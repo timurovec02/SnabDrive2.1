@@ -425,6 +425,7 @@ BEGIN
         EisLink         nvarchar(1000) NULL,
         BiddingDate     datetime2(7)   NULL,
         DateOfPlacement datetime2(7)   NULL,
+        SourceSystem    nvarchar(50)   NOT NULL CONSTRAINT DF_KonturFavorites_SourceSystem DEFAULT('Kontur'),
         Status          int            NOT NULL CONSTRAINT DF_KonturFavorites_Status DEFAULT(0),
         RegeditId       int            NULL,
         RawJson         nvarchar(max)  NULL,

@@ -22,6 +22,7 @@ BEGIN
         EisLink         nvarchar(1000) NULL,
         BiddingDate     datetime2(7)   NULL,
         DateOfPlacement datetime2(7)   NULL,
+        SourceSystem    nvarchar(50)   NOT NULL CONSTRAINT DF_KonturFavorites_SourceSystem DEFAULT('Kontur'),
         Status          int            NOT NULL CONSTRAINT DF_KonturFavorites_Status DEFAULT(0),
         RegeditId       int            NULL,
         RawJson         nvarchar(max)  NULL,
@@ -44,6 +45,10 @@ BEGIN
         ALTER TABLE dbo.KonturFavorites ADD Winner nvarchar(500) NULL;
     IF COL_LENGTH('dbo.KonturFavorites', 'ResultPrice') IS NULL
         ALTER TABLE dbo.KonturFavorites ADD ResultPrice decimal(18,2) NOT NULL CONSTRAINT DF_KonturFavorites_ResultPrice DEFAULT(0);
+    -- Источник выгрузки: избранное собирается из двух файлов (Kontur_* и TenderLand_*).
+    IF COL_LENGTH('dbo.KonturFavorites', 'SourceSystem') IS NULL
+        ALTER TABLE dbo.KonturFavorites ADD SourceSystem nvarchar(50) NOT NULL
+            CONSTRAINT DF_KonturFavorites_SourceSystem DEFAULT('Kontur');
 
     -- Защитное расширение: если колонки созданы короче, приводим к нужной длине.
     IF COL_LENGTH('dbo.KonturFavorites', 'PlaceOfDelivery') < 1000

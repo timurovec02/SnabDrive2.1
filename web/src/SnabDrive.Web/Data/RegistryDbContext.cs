@@ -219,6 +219,7 @@ public class RegistryDbContext : DbContext
             entity.Property(x => x.BiddingDate).HasColumnName("BiddingDate");
             entity.Property(x => x.ApplicationEndDate).HasColumnName("ApplicationEndDate");
             entity.Property(x => x.DateOfPlacement).HasColumnName("DateOfPlacement");
+            entity.Property(x => x.SourceSystem).HasColumnName("SourceSystem").HasMaxLength(50);
             entity.Property(x => x.Status).HasColumnName("Status");
             entity.Property(x => x.RegeditId).HasColumnName("RegeditId");
             entity.Property(x => x.RawJson).HasColumnName("RawJson");

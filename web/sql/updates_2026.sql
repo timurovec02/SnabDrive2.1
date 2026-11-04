@@ -270,6 +270,24 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_RegistryItems_Applicat
 GO
 
 -- ============================================================================
+-- Избранное Контур: откуда выгружена закупка.
+--   Выгрузка избранного идёт через RunBoth.cmd и даёт два файла —
+--   Kontur_дата_время.xlsx и TenderLand_дата_время.xlsx. Оба импортируются
+--   в одну таблицу, дубликаты схлопываются по номеру закупки, а колонка
+--   [SourceSystem] показывает источник строки ('Kontur' или 'TenderLand').
+--   Существующие строки получали данные из Контур — им ставится 'Kontur'.
+-- ============================================================================
+IF COL_LENGTH('dbo.KonturFavorites', 'SourceSystem') IS NULL
+BEGIN
+    ALTER TABLE dbo.KonturFavorites ADD SourceSystem NVARCHAR(50) NOT NULL
+        CONSTRAINT DF_KonturFavorites_SourceSystem DEFAULT('Kontur');
+    PRINT 'KonturFavorites.SourceSystem добавлена (у существующих строк — Kontur).';
+END
+ELSE
+    PRINT 'KonturFavorites.SourceSystem уже существует.';
+GO
+
+-- ============================================================================
 -- Журнал стадий: [Action] расширена с nvarchar(50) до nvarchar(200).
 --   Подпись «Перевод на стадию вручную: 1. Контур и подготовка → 4. Торги» в 50
 --   символов не влезала, и SQL Server отклонял запись ошибкой «String or binary
@@ -306,7 +324,8 @@ INSERT INTO @need VALUES
  ('RegistryItems','ApplicationEndDate'),
  ('ArchiveRegistryItems','EisLink'),('ArchiveRegistryItems','PurchaseNumber'),
  ('ArchiveRegistryItems','DeliveryDate'),('ArchiveRegistryItems','ApplicationEndDate'),
- ('KonturFavorites','ApplicationEndDate'),('KonturTemplates','ApplicationEndDate');
+ ('KonturFavorites','ApplicationEndDate'),('KonturTemplates','ApplicationEndDate'),
+ ('KonturFavorites','SourceSystem');
 
 IF EXISTS (SELECT 1 FROM @need n WHERE COL_LENGTH('dbo.' + n.TableName, n.ColumnName) IS NULL)
 BEGIN
