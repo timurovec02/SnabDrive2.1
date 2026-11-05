@@ -1,16 +1,19 @@
 @page "/kontur-scheduler"
+@using Microsoft.Extensions.Configuration
 @attribute [Authorize]
+@implements IDisposable
 @inject AuthenticationStateProvider AuthStateProvider
 @inject KonturScheduleStore Store
+@inject KonturSchedulerService Scheduler
+@inject KonturSchedulerState SchedulerState
+@inject Microsoft.Extensions.Configuration.IConfiguration Configuration
 @inject IToastService Toasts
 @inject SnabDrive.Web.Services.IRolePermissionService RolePerms
 
 <PageTitle>Планировщик Контур — Снабдрайв</PageTitle>
 
 <div class="page">
-    <PageHeader Icon="⏰"
-                Title="Планировщик Контур"
-                Subtitle="Автоматически запускает KonturExport и импортирует выгрузку в «Избранное Контур» по расписанию — например, утром и вечером." />
+    <PageHeader Title="Планировщик Контур" />
 
     @if (!_canUse)
     {
@@ -18,41 +21,155 @@
     }
     else
     {
-        <div class="card">
-            <h2>Расписание</h2>
-            <label class="checkbox-label" style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
-                <input type="checkbox" @bind="_enabled" /> Планировщик включён
+        @* ---------------- сводка: что происходит прямо сейчас ---------------- *@
+        <div class="stat-grid">
+            <div class="stat-tile @(_enabled ? "stat-tile--ok" : "stat-tile--warn")">
+                <div class="stat-tile__label">Планировщик</div>
+                <div class="stat-tile__value">@(_enabled ? "Включён" : "Выключен")</div>
+                <div class="stat-tile__hint">@(SchedulerState.IsRunning ? "идёт выгрузка…" : "ждёт расписания")</div>
+            </div>
+            <div class="stat-tile">
+                <div class="stat-tile__label">Ближайший запуск</div>
+                <div class="stat-tile__value">@FmtTime(SchedulerState.NextRunUtc)</div>
+                <div class="stat-tile__hint">по сохранённому расписанию</div>
+            </div>
+            <div class="stat-tile @(SchedulerState.LastRunUtc is null ? "" : (SchedulerState.LastSuccess ? "stat-tile--ok" : "stat-tile--danger"))">
+                <div class="stat-tile__label">Последний запуск</div>
+                <div class="stat-tile__value">@FmtTime(SchedulerState.LastRunUtc)</div>
+                <div class="stat-tile__hint">
+                    @if (SchedulerState.LastRunUtc is null)
+                    {
+                        <text>ещё не запускался</text>
+                    }
+                    else
+                    {
+                        <text>@(SchedulerState.LastSuccess ? "успешно" : "с ошибкой")</text>
+                    }
+                </div>
+            </div>
+            <div class="stat-tile">
+                <div class="stat-tile__label">Импортировано строк</div>
+                <div class="stat-tile__value">@SchedulerState.LastAdded</div>
+                <div class="stat-tile__hint">за последний запуск</div>
+            </div>
+        </div>
+
+        @if (SchedulerState.IsRunning)
+        {
+            <div class="alert alert--warn" role="status">⏳ Идёт выгрузка и импорт файлов — страницы Контур разблокируются автоматически.</div>
+        }
+        else if (!string.IsNullOrWhiteSpace(SchedulerState.LastMessage))
+        {
+            <div class="alert @(SchedulerState.LastSuccess ? "alert--ok" : "alert--warn")">@SchedulerState.LastMessage</div>
+        }
+
+        @* ---------------- два расписания ---------------- *@
+        <div class="sched-grid">
+            <div class="section-card">
+                <h2>★ Избранное</h2>
+                <p class="section-card__hint">
+                    Запускает RunBoth.cmd: выгружаются два файла — Kontur_*.xlsx и TenderLand_*.xlsx.
+                    Оба импортируются в «Контур избранное», дубли по номеру закупки отбрасываются.
+                </p>
+
+                <div class="time-chips">
+                    @if (_times.Count == 0)
+                    {
+                        <span class="muted">Время не задано — автозапуск выключен.</span>
+                    }
+                    @foreach (var t in _times)
+                    {
+                        <span class="badge badge--info">@t
+                            <button type="button" class="chip-remove" @onclick="() => RemoveTime(t)" title="Убрать">×</button>
+                        </span>
+                    }
+                </div>
+
+                <div class="sched-row">
+                    <input type="time" class="input" @bind="_newTime" aria-label="Время запуска избранного" />
+                    <button type="button" class="btn" @onclick="AddTime">＋ Добавить время</button>
+                </div>
+
+                <div class="sched-actions">
+                    <button type="button" class="btn btn--small" disabled="@SchedulerState.IsRunning"
+                            @onclick="() => RunNow(ExportMode.Favorites)">▶ Выгрузить сейчас</button>
+                    <span class="muted">запусков в сутки: @_times.Count</span>
+                </div>
+            </div>
+
+            <div class="section-card">
+                <h2>🎯 Шаблоны</h2>
+                <p class="section-card__hint">
+                    Выгрузка «Контур шаблоны» (--templates), обычно в начале и конце рабочего дня.
+                    Метка проставляется автоматически при повторной выгрузке.
+                </p>
+
+                <div class="time-chips">
+                    @if (_templatesTimes.Count == 0)
+                    {
+                        <span class="muted">Время не задано — автозапуск выключен.</span>
+                    }
+                    @foreach (var t in _templatesTimes)
+                    {
+                        <span class="badge badge--info">@t
+                            <button type="button" class="chip-remove" @onclick="() => RemoveTemplateTime(t)" title="Убрать">×</button>
+                        </span>
+                    }
+                </div>
+
+                <div class="sched-row">
+                    <input type="time" class="input" @bind="_newTemplateTime" aria-label="Время запуска шаблонов" />
+                    <button type="button" class="btn" @onclick="AddTemplateTime">＋ Добавить время</button>
+                </div>
+
+                <div class="sched-actions">
+                    <button type="button" class="btn btn--small" disabled="@SchedulerState.IsRunning"
+                            @onclick="() => RunNow(ExportMode.Templates)">▶ Выгрузить сейчас</button>
+                    <span class="muted">запусков в сутки: @_templatesTimes.Count</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="toolbar">
+            <label class="chk">
+                <input type="checkbox" @bind="_enabled" /> планировщик включён
             </label>
+            <div class="toolbar__spacer"></div>
+            <button type="button" class="btn" @onclick="ResetChanges">↺ Отменить изменения</button>
+            <button type="button" class="btn btn--primary" @onclick="SaveSchedule">💾 Сохранить расписание</button>
+        </div>
 
-            <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">
-                @foreach (var t in _times)
-                {
-                    <span class="badge badge--info">@t
-                        <button class="chip-remove" @onclick="() => RemoveTime(t)" title="Убрать">×</button>
-                    </span>
-                }
-            </div>
+        @* ---------------- как настроен запуск ---------------- *@
+        <div class="section-card">
+            <h2>⚙ Параметры запуска</h2>
+            <p class="section-card__hint">Значения берутся из appsettings (секция Kontur). Меняются администратором на сервере.</p>
+            <dl class="cfg-list">
+                <div><dt>Задача Windows (избранное)</dt><dd>@(Blank(Options.TaskName))</dd></div>
+                <div><dt>Задача Windows (шаблоны)</dt><dd>@(Blank(Options.TaskNameTemplates))</dd></div>
+                <div><dt>Экспортёр</dt><dd>@(Blank(Options.ExporterPath))</dd></div>
+                <div><dt>Обёртка RunBoth.cmd</dt><dd>@(Blank(Options.RunBothPath))</dd></div>
+                <div><dt>Папка выгрузки (избранное)</dt><dd>@FavoritesDir</dd></div>
+                <div><dt>Папка выгрузки (шаблоны)</dt><dd>@TemplatesDir</dd></div>
+                <div><dt>Таймаут запуска</dt><dd>@Options.TimeoutMinutes мин</dd></div>
+            </dl>
+        </div>
 
-            <div class="toolbar">
-                <input type="text" class="input" placeholder="ЧЧ:ММ" value="@_newTime" @onchange="OnNewTimeChanged" style="width:140px" />
-                <button class="btn" @onclick="AddTime">＋ Добавить время</button>
-                <div class="toolbar__spacer"></div>
-                <button class="btn btn--primary" @onclick="SaveSchedule">Сохранить</button>
-            </div>
-
-            <h2 class="h5" style="margin:20px 0 8px">Контур ловушка (--templates)</h2>
-            <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">
-                @foreach (var t in _templatesTimes)
-                {
-                    <span class="badge badge--info">@t
-                        <button class="chip-remove" @onclick="() => RemoveTemplateTime(t)" title="Убрать">×</button>
-                    </span>
-                }
-            </div>
-            <div class="toolbar">
-                <input type="text" class="input" placeholder="ЧЧ:ММ" value="@_newTemplateTime" @onchange="OnNewTemplateTimeChanged" style="width:140px" />
-                <button class="btn" @onclick="AddTemplateTime">＋ Добавить время</button>
-            </div>
+        @* ---------------- журнал ---------------- *@
+        <div class="section-card">
+            <h2>📜 Журнал запусков</h2>
+            @if (_log.Count == 0)
+            {
+                <p class="section-card__hint">Записей пока нет — журнал заполняется после первого запуска экспортёра.</p>
+            }
+            else
+            {
+                <ul class="run-log">
+                    @foreach (var line in _log)
+                    {
+                        <li>@line</li>
+                    }
+                </ul>
+            }
         </div>
     }
 </div>
@@ -64,6 +181,9 @@
     private string _newTime = "08:00";
     private List<string> _templatesTimes = new();
     private string _newTemplateTime = "09:00";
+    private KonturExporterOptions Options = new();
+    private IReadOnlyList<string> _log = Array.Empty<string>();
+    private bool _hooked;
 
     protected override async Task OnInitializedAsync()
     {
@@ -74,9 +194,17 @@
             var feats = await RolePerms.GetEffectiveFeaturesAsync(uid);
             _canUse = feats.TryGetValue(SnabDrive.Web.Services.AppFeatures.Scheduler, out var sf) && sf;
 
-            _enabled = Store.Value.Enabled;
-            _times = Store.Value.Times.ToList();
-            _templatesTimes = Store.Value.TemplatesTimes.ToList();
+            // Сервис читает секцию Kontur напрямую из IConfiguration, поэтому
+            // страница делает то же самое: IOptions здесь никто не заполняет.
+            Options = Configuration.GetSection("Kontur").Get<KonturExporterOptions>() ?? new KonturExporterOptions();
+            CopyFromStore();
+            RefreshLog();
+
+            if (!_hooked)
+            {
+                SchedulerState.Changed += OnSchedulerChanged;
+                _hooked = true;
+            }
         }
         catch
         {
@@ -84,7 +212,47 @@
         }
     }
 
-    private void OnNewTimeChanged(ChangeEventArgs e) => _newTime = e.Value?.ToString() ?? string.Empty;
+    private void CopyFromStore()
+    {
+        _enabled = Store.Value.Enabled;
+        _times = Store.Value.Times.ToList();
+        _templatesTimes = Store.Value.TemplatesTimes.ToList();
+    }
+
+    private void RefreshLog()
+    {
+        var log = SchedulerState.GetLog();
+        _log = log.Count <= 15 ? log.Reverse().ToList() : log.TakeLast(15).Reverse().ToList();
+    }
+
+    /// <summary>Состояние планировщика меняется из фонового потока — перерисовываемся в контексте Blazor.</summary>
+    private void OnSchedulerChanged()
+    {
+        RefreshLog();
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private static string FmtTime(DateTime? utc)
+        => utc is null ? "—" : utc.Value.ToLocalTime().ToString("dd.MM HH:mm");
+
+    private static string Blank(string? value)
+        => string.IsNullOrWhiteSpace(value) ? "не задано" : value;
+
+    /// <summary>Папки, из которых сайт берёт файлы выгрузки (корень + favorites/templates).</summary>
+    private string FavoritesDir => ExportDir("favorites");
+
+    private string TemplatesDir => ExportDir("templates");
+
+    private string ExportDir(string sub)
+        => Path.Combine(string.IsNullOrWhiteSpace(Options.OutputDirectory) ? "~/Downloads/KonturExports" : Options.OutputDirectory, sub);
+
+    /// <summary>Ручной запуск выгрузки: сайт триггерит задачу Windows и ждёт появления файлов.</summary>
+    private void RunNow(ExportMode mode)
+    {
+        var reason = mode == ExportMode.Favorites ? "вручную (Контур избранное)" : "вручную (Контур шаблоны)";
+        _ = Task.Run(() => Scheduler.RunAsync(reason, mode));
+        Toasts.Show("Выгрузка запущена — дождитесь появления файлов.", ToastKind.Info);
+    }
 
     private void AddTime()
     {
@@ -101,8 +269,6 @@
 
     private void RemoveTime(string t) => _times.Remove(t);
 
-    private void OnNewTemplateTimeChanged(ChangeEventArgs e) => _newTemplateTime = e.Value?.ToString() ?? string.Empty;
-
     private void AddTemplateTime()
     {
         if (TimeSpan.TryParse(_newTemplateTime, out var ts))
@@ -118,6 +284,12 @@
 
     private void RemoveTemplateTime(string t) => _templatesTimes.Remove(t);
 
+    private void ResetChanges()
+    {
+        CopyFromStore();
+        Toasts.Show("Изменения отменены", ToastKind.Info);
+    }
+
     private void SaveSchedule()
     {
         Store.Value.Enabled = _enabled;
@@ -125,5 +297,13 @@
         Store.Value.TemplatesTimes = _templatesTimes.ToList();
         Store.Save();
         Toasts.Show("Расписание сохранено", ToastKind.Success);
+    }
+
+    public void Dispose()
+    {
+        if (_hooked)
+        {
+            SchedulerState.Changed -= OnSchedulerChanged;
+        }
     }
 }

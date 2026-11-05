@@ -13,9 +13,7 @@
 @implements IDisposable
 @inject AuthenticationStateProvider AuthStateProvider
 
-<PageHeader Icon="➤"
-            Title="Задачи по закупкам"
-            Subtitle="Воркфлоу по стадиям: поля в карточке сохраняются автоматически, кнопки внизу переводят закупку дальше. Список обновляется сам, когда закупку меняет другой сотрудник." />
+<PageHeader Title="Задачи по закупкам" />
 
 @if (_error is not null)
 {
@@ -69,16 +67,14 @@
         }
     </div>
     <div class="toolbar-spacer"></div>
+    @if (_stage == 1)
+    {
+        <button class="btn btn--primary" disabled="@_busy" @onclick="AddNewAsync"
+                title="Добавить пустую закупку на первую стадию">＋ Добавить</button>
+    }
     <button class="btn" disabled="@_busy" @onclick="LoadAsync">⟳ Обновить</button>
 </div>
 
-@if (!_loading && _allowedStages.Contains(_stage))
-{
-    <div class="hint" style="display:flex;align-items:center;gap:8px;margin:0 0 14px;font-size:14.5px">
-        <span style="font-size:18px">📂</span>
-        <span>Открытая стадия: <strong>@WorkflowStages.Name(_stage)</strong></span>
-    </div>
-}
 
 @if (!_loading && _allowedStages.Count == 0)
 {
@@ -756,6 +752,37 @@ else
     }
 
     private void ClearSearch() => _search = string.Empty;
+
+    /// <summary>
+    /// Кнопка «Добавить» (видна только на первой стадии): создаёт пустую закупку
+    /// на стадии «1. Контур и подготовка» и сразу показывает её в списке.
+    /// </summary>
+    private async Task AddNewAsync()
+    {
+        _busy = true;
+        try
+        {
+            var result = await WorkflowSvc.CreateAsync(_actor);
+            await LoadAsync();  // перезагружаем список, чтобы новая карточка появилась сразу
+
+            if (result.Success)
+            {
+                _notice = $"Добавлена закупка №{result.Value} — заполните карточку";
+            }
+            else
+            {
+                _error = result.Error ?? "Не удалось добавить закупку.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = ErrorText.Describe(ex);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
 
     private void SetStage(int stage) => _stage = stage;
 

@@ -2315,3 +2315,197 @@ body {
     background: var(--primary-soft);
     color: var(--primary-dark);
 }
+
+/* ========================================================================
+   Выпадающие списки — единый вид для всех <select> на сайте.
+   Правила идут последними, чтобы перебить старые .input/.form-select.
+   ======================================================================== */
+
+select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-color: #fff;
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23475467' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 9px center;
+    background-size: 10px 6px;
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    color: var(--text);
+    font: inherit;
+    font-size: 13px;
+    line-height: 1.25;
+    min-height: 32px;
+    padding: 5px 28px 5px 10px;
+    cursor: pointer;
+    transition: border-color .12s ease, box-shadow .12s ease, background-color .12s ease;
+}
+
+select:hover:not(:disabled) {
+    border-color: var(--primary);
+    background-color: #fbfcff;
+}
+
+select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: var(--ring);
+}
+
+select:disabled {
+    background-color: var(--surface-3);
+    color: var(--text-muted);
+    cursor: not-allowed;
+    opacity: .85;
+}
+
+select option {
+    background: #fff;
+    color: var(--text);
+}
+
+/* поля с классами: свой padding перебивает базовый, поэтому поднимаем специфичность */
+select.input,
+select.wf-input,
+select.form-select,
+select.control {
+    min-height: 34px;
+    font-size: 13px;
+    padding: 6px 30px 6px 11px;
+}
+
+/* компактные списки: панели инструментов и фильтры таблиц */
+select.input--small,
+.toolbar select,
+.registry-grid select {
+    min-height: 28px;
+    font-size: 12.5px;
+    padding: 3px 24px 3px 8px;
+    background-position: right 7px center;
+    border-radius: 6px;
+}
+
+/* ячейки реестра: список должен помещаться в строку таблицы */
+select.cell-input,
+select.filter-input {
+    min-height: 0;
+    font-size: 12px;
+    padding: 2px 20px 2px 6px;
+    background-position: right 5px center;
+    border-radius: 6px;
+}
+
+/* выбор стадии в ячейке остаётся «плоским» — стрелка там только мешает */
+select.stage-select {
+    background-image: none;
+    min-height: 0;
+    padding: 1px 2px;
+    border-color: transparent;
+    background-color: transparent;
+}
+
+select.stage-select:hover,
+select.stage-select:focus {
+    background-color: #fff;
+    border-color: var(--primary);
+    box-shadow: var(--ring);
+}
+
+/* ========================================================================
+   Планировщик Контур
+   ======================================================================== */
+
+.sched-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: 14px;
+    align-items: start;
+}
+
+.time-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin: 0 0 12px;
+    min-height: 28px;
+}
+
+.time-chips .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    font-size: 14px;
+    font-weight: 700;
+    padding: 4px 8px;
+    border-radius: 999px;
+}
+
+.sched-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 10px;
+}
+
+.sched-row .input {
+    width: 140px;
+}
+
+.sched-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--border);
+}
+
+.cfg-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 8px 18px;
+    margin: 0;
+}
+
+.cfg-list > div {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--surface-3);
+    font-size: 13px;
+}
+
+.cfg-list dt {
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.cfg-list dd {
+    margin: 0;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 12.5px;
+    text-align: right;
+    word-break: break-all;
+}
+
+.run-log {
+    list-style: none;
+    margin: 0;
+    padding: 10px 12px;
+    max-height: 260px;
+    overflow: auto;
+    background: #0f172a;
+    border-radius: 8px;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: #e2e8f0;
+}
+
+.run-log li + li {
+    border-top: 1px solid rgba(255, 255, 255, .07);
+}

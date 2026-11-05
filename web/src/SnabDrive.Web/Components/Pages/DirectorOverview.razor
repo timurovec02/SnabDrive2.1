@@ -13,7 +13,7 @@
 
 <PageHeader Icon="📊"
             Title="Обзор директора"
-            Subtitle="Сводная аналитика по закупкам, активности сотрудников и выгрузкам «Контур ловушка»." />
+            Subtitle="Сводная аналитика по закупкам, активности сотрудников и выгрузкам «Контур шаблоны»." />
 
 @if (_error is not null)
 {
@@ -85,11 +85,11 @@ else
             <div class="stat-tile__value">@_sumResult.ToString("N0")</div>
         </div>
         <div class="stat-tile stat-tile--warn">
-            <div class="stat-tile__label">Ловушка: записей</div>
+            <div class="stat-tile__label">Шаблоны: записей</div>
             <div class="stat-tile__value">@_templatesTotal</div>
         </div>
         <div class="stat-tile stat-tile--warn">
-            <div class="stat-tile__label">Ловушка: «Интересно»</div>
+            <div class="stat-tile__label">Шаблоны: «Интересно»</div>
             <div class="stat-tile__value">@_templatesInteresting</div>
             <div class="stat-tile__hint">отмечено меткой</div>
         </div>

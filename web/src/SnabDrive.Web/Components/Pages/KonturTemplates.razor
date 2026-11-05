@@ -15,169 +15,172 @@
 @inject AuthenticationStateProvider AuthStateProvider
 @inject SnabDrive.Web.Services.IRolePermissionService RolePerms
 
-<PageHeader Icon="🎯"
-            Title="Контур ловушка"
-            Subtitle="Выгрузка в начале и конце рабочего дня (--templates). Метка проставляется автоматически при повторной выгрузке и вручную не редактируется." />
+<div class="page">
+    <PageHeader Title="Контур шаблоны" />
 
-@if (_denied)
-{
-    <div class="alert alert-error">Нет доступа к «Контур ловушка». Обратитесь к администратору.</div>
-}
-@if (_error is not null)
-{
-    <div class="alert alert-error">@_error</div>
-}
-@if (_statusMessage is not null)
-{
-    <div class="alert alert-info">@_statusMessage</div>
-}
+    @if (_denied)
+    {
+        <div class="alert alert-error">Нет доступа к «Контур шаблоны». Обратитесь к администратору.</div>
+    }
+    @if (_error is not null)
+    {
+        <div class="alert alert-error">@_error</div>
+    }
+    @if (_statusMessage is not null)
+    {
+        <div class="alert alert-info">@_statusMessage</div>
+    }
 
-<div class="toolbar">
-    <button class="btn btn-primary" disabled="@(_busy || _denied || SchedulerState.IsRunning)" @onclick="ExportNow">Выгрузить ловушку сейчас</button>
-    <button class="btn" disabled="@_busy" @onclick="LoadAsync">Обновить</button>
-    <label class="chk">
-        показать
-        <select @bind="_pageSize" @bind:after="LoadAsync">
-            @foreach (var n in PageSizes)
-            {
-                <option value="@n">@n</option>
-            }
-        </select>
-    </label>
-    <span class="toolbar-spacer"></span>
-    <button class="btn btn--danger" disabled="@(_selected.Count == 0 || _busy)" @onclick="DeleteSelectedAsync">Удалить (@_selected.Count)</button>
-    <span class="muted">Записей: @(_rows?.Count ?? 0)</span>
-</div>
-
-<div class="grid-wrapper">
-    <table class="registry-grid">
-        <thead>
-            <tr class="registry-grid__head">
-                <th style="width:36px"><input type="checkbox" checked="@AllSelected" @onchange="ToggleAll" title="Выделить все" /></th>
-                <th class="registry-grid__index">#</th>
-                <th class='@HeadClass("Num")' title="Сортировать по «Номер»" @onclick='() => SortBy("Num")'>
-                    <span class="registry-grid__head-text">Номер</span>
-                    @if (_sortKey == "Num")
-                    {
-                        <span class="registry-grid__sort">@Arrow("Num")</span>
-                    }
-                </th>
-                <th class='@HeadClass("Name")' title="Сортировать по «Наименование»" @onclick='() => SortBy("Name")'>
-                    <span class="registry-grid__head-text">Наименование</span>
-                    @if (_sortKey == "Name")
-                    {
-                        <span class="registry-grid__sort">@Arrow("Name")</span>
-                    }
-                </th>
-                <th class='@HeadClass("Customer")' title="Сортировать по «Заказчик»" @onclick='() => SortBy("Customer")'>
-                    <span class="registry-grid__head-text">Заказчик</span>
-                    @if (_sortKey == "Customer")
-                    {
-                        <span class="registry-grid__sort">@Arrow("Customer")</span>
-                    }
-                </th>
-                <th class='@HeadClass("NmcK")' title="Сортировать по «НМЦК»" @onclick='() => SortBy("NmcK")'>
-                    <span class="registry-grid__head-text">НМЦК</span>
-                    @if (_sortKey == "NmcK")
-                    {
-                        <span class="registry-grid__sort">@Arrow("NmcK")</span>
-                    }
-                </th>
-                <th class='@HeadClass("Date")' title="Сортировать по «Дата торгов»" @onclick='() => SortBy("Date")'>
-                    <span class="registry-grid__head-text">Дата торгов</span>
-                    @if (_sortKey == "Date")
-                    {
-                        <span class="registry-grid__sort">@Arrow("Date")</span>
-                    }
-                </th>
-                <th class='@HeadClass("AppEnd")' title="Сортировать по «Окончание приема заявок»" @onclick='() => SortBy("AppEnd")'>
-                    <span class="registry-grid__head-text">Окончание приема заявок</span>
-                    @if (_sortKey == "AppEnd")
-                    {
-                        <span class="registry-grid__sort">@Arrow("AppEnd")</span>
-                    }
-                </th>
-                <th class='@HeadClass("Pub")' title="Сортировать по «Дата публикации»" @onclick='() => SortBy("Pub")'>
-                    <span class="registry-grid__head-text">Дата публикации</span>
-                    @if (_sortKey == "Pub")
-                    {
-                        <span class="registry-grid__sort">@Arrow("Pub")</span>
-                    }
-                </th>
-                <th class='@HeadClass("Label")' title="Сортировать по «Метка»" @onclick='() => SortBy("Label")'>
-                    <span class="registry-grid__head-text">Метка</span>
-                    @if (_sortKey == "Label")
-                    {
-                        <span class="registry-grid__sort">@Arrow("Label")</span>
-                    }
-                </th>
-                <th class='@HeadClass("Added")' title="Сортировать по «Добавлено»" @onclick='() => SortBy("Added")'>
-                    <span class="registry-grid__head-text">Добавлено</span>
-                    @if (_sortKey == "Added")
-                    {
-                        <span class="registry-grid__sort">@Arrow("Added")</span>
-                    }
-                </th>
-                <th><span class="registry-grid__head-text">Действия</span></th>
-            </tr>
-            <tr class="registry-grid__filters">
-                <th></th>
-                <th></th>
-                <th><input class="filter-input" placeholder="фильтр" value='@GetFilter("Num")' @onchange='e => SetFilter("Num", e)' /></th>
-                <th><input class="filter-input" placeholder="фильтр" value='@GetFilter("Name")' @onchange='e => SetFilter("Name", e)' /></th>
-                <th><input class="filter-input" placeholder="фильтр" value='@GetFilter("Customer")' @onchange='e => SetFilter("Customer", e)' /></th>
-                <th></th>
-                <th></th>
-                <th></th>
-                <th></th>
-                <th><input class="filter-input" placeholder="фильтр" value='@GetFilter("Label")' @onchange='e => SetFilter("Label", e)' /></th>
-                <th></th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            @if (_rows is null)
-            {
-                <tr><td colspan="12" class="registry-grid__empty">Загрузка…</td></tr>
-            }
-            else if (!_rows.Any())
-            {
-                <tr><td colspan="12" class="registry-grid__empty">Нет выгрузок ловушки.</td></tr>
-            }
-            else
-            {
-                foreach (var (t, index) in Sorted().Select((x, n) => (x, n + 1)))
+    <div class="toolbar">
+        <button class="btn btn-primary" disabled="@(_busy || _denied || SchedulerState.IsRunning)" @onclick="ExportNow">Выгрузить шаблоны сейчас</button>
+        <button class="btn" disabled="@_busy" @onclick="LoadAsync">Обновить</button>
+        <label class="chk">
+            показать
+            <select @bind="_pageSize" @bind:after="LoadAsync">
+                @foreach (var n in PageSizes)
                 {
-                    <tr>
-                        <td class="registry-grid__cell"><input type="checkbox" checked="@_selected.Contains(t.Id)" @onchange="e => Toggle(t.Id, e.Value is bool b && b)" /></td>
-                        <td class="registry-grid__index">@index</td>
-                        <td class="registry-grid__cell">@t.PurchaseNumber</td>
-                        <td class="registry-grid__cell">
-                            @if (!string.IsNullOrWhiteSpace(t.EisLink))
-                            {
-                                <a class="registry-grid__link" href="@t.EisLink" target="_blank" rel="noopener">@t.NameLink</a>
-                            }
-                            else
-                            {
-                                @t.NameLink
-                            }
-                        </td>
-                        <td class="registry-grid__cell">@t.Customer</td>
-                        <td class="registry-grid__cell"><span class="money-cell">@MoneyFormat.Money(t.NMCK)</span></td>
-                        <td class="registry-grid__cell">@(t.BiddingDate?.ToString("dd.MM.yyyy") ?? "—")</td>
-                        <td class="registry-grid__cell">@(t.ApplicationEndDate?.ToString("dd.MM.yyyy HH:mm") ?? "—")</td>
-                        <td class="registry-grid__cell">@(t.DateOfPlacement?.ToString("dd.MM.yyyy") ?? "—")</td>
-                        <td class="registry-grid__cell">@(string.IsNullOrWhiteSpace(t.Label) ? "—" : t.Label)</td>
-                        <td class="registry-grid__cell">@t.AddedAt.ToString("dd.MM.yyyy HH:mm")</td>
-                        <td class="registry-grid__cell">
-                            <button class="btn btn-link btn-sm btn--danger" @onclick="() => DeleteAsync(t)">Удалить</button>
-                        </td>
-                    </tr>
+                    <option value="@n">@n</option>
                 }
-            }
-        </tbody>
-    </table>
+            </select>
+        </label>
+        <div class="toolbar-spacer"></div>
+        <button class="btn btn--danger" disabled="@(_selected.Count == 0 || _busy)" @onclick="DeleteSelectedAsync">Удалить (@_selected.Count)</button>
+        <span class="muted">Записей: @(_rows?.Count ?? 0)</span>
+    </div>
+
+    <div class="page__section">
+        <div class="grid-wrapper">
+            <table class="registry-grid">
+                <thead>
+                    <tr class="registry-grid__head">
+                        <th style="width:36px"><input type="checkbox" checked="@AllSelected" @onchange="ToggleAll" title="Выделить все" /></th>
+                        <th class="registry-grid__index">#</th>
+                        <th class='@HeadClass("Num")' title="Сортировать по «Номер»" @onclick='() => SortBy("Num")'>
+                            <span class="registry-grid__head-text">Номер</span>
+                            @if (_sortKey == "Num")
+                            {
+                                <span class="registry-grid__sort">@Arrow("Num")</span>
+                            }
+                        </th>
+                        <th class='@HeadClass("Name")' title="Сортировать по «Наименование»" @onclick='() => SortBy("Name")'>
+                            <span class="registry-grid__head-text">Наименование</span>
+                            @if (_sortKey == "Name")
+                            {
+                                <span class="registry-grid__sort">@Arrow("Name")</span>
+                            }
+                        </th>
+                        <th class='@HeadClass("Customer")' title="Сортировать по «Заказчик»" @onclick='() => SortBy("Customer")'>
+                            <span class="registry-grid__head-text">Заказчик</span>
+                            @if (_sortKey == "Customer")
+                            {
+                                <span class="registry-grid__sort">@Arrow("Customer")</span>
+                            }
+                        </th>
+                        <th class='@HeadClass("NmcK")' title="Сортировать по «НМЦК»" @onclick='() => SortBy("NmcK")'>
+                            <span class="registry-grid__head-text">НМЦК</span>
+                            @if (_sortKey == "NmcK")
+                            {
+                                <span class="registry-grid__sort">@Arrow("NmcK")</span>
+                            }
+                        </th>
+                        <th class='@HeadClass("Date")' title="Сортировать по «Дата торгов»" @onclick='() => SortBy("Date")'>
+                            <span class="registry-grid__head-text">Дата торгов</span>
+                            @if (_sortKey == "Date")
+                            {
+                                <span class="registry-grid__sort">@Arrow("Date")</span>
+                            }
+                        </th>
+                        <th class='@HeadClass("AppEnd")' title="Сортировать по «Окончание приема заявок»" @onclick='() => SortBy("AppEnd")'>
+                            <span class="registry-grid__head-text">Окончание приема заявок</span>
+                            @if (_sortKey == "AppEnd")
+                            {
+                                <span class="registry-grid__sort">@Arrow("AppEnd")</span>
+                            }
+                        </th>
+                        <th class='@HeadClass("Pub")' title="Сортировать по «Дата публикации»" @onclick='() => SortBy("Pub")'>
+                            <span class="registry-grid__head-text">Дата публикации</span>
+                            @if (_sortKey == "Pub")
+                            {
+                                <span class="registry-grid__sort">@Arrow("Pub")</span>
+                            }
+                        </th>
+                        <th class='@HeadClass("Label")' title="Сортировать по «Метка»" @onclick='() => SortBy("Label")'>
+                            <span class="registry-grid__head-text">Метка</span>
+                            @if (_sortKey == "Label")
+                            {
+                                <span class="registry-grid__sort">@Arrow("Label")</span>
+                            }
+                        </th>
+                        <th class='@HeadClass("Added")' title="Сортировать по «Добавлено»" @onclick='() => SortBy("Added")'>
+                            <span class="registry-grid__head-text">Добавлено</span>
+                            @if (_sortKey == "Added")
+                            {
+                                <span class="registry-grid__sort">@Arrow("Added")</span>
+                            }
+                        </th>
+                        <th><span class="registry-grid__head-text">Действия</span></th>
+                    </tr>
+                    <tr class="registry-grid__filters">
+                        <th></th>
+                        <th></th>
+                        <th><input class="filter-input" placeholder="фильтр" value='@GetFilter("Num")' @onchange='e => SetFilter("Num", e)' /></th>
+                        <th><input class="filter-input" placeholder="фильтр" value='@GetFilter("Name")' @onchange='e => SetFilter("Name", e)' /></th>
+                        <th><input class="filter-input" placeholder="фильтр" value='@GetFilter("Customer")' @onchange='e => SetFilter("Customer", e)' /></th>
+                        <th></th>
+                        <th></th>
+                        <th></th>
+                        <th></th>
+                        <th><input class="filter-input" placeholder="фильтр" value='@GetFilter("Label")' @onchange='e => SetFilter("Label", e)' /></th>
+                        <th></th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (_rows is null)
+                    {
+                        <tr><td colspan="12" class="registry-grid__empty">Загрузка…</td></tr>
+                    }
+                    else if (!_rows.Any())
+                    {
+                        <tr><td colspan="12" class="registry-grid__empty">Нет выгрузок шаблонов.</td></tr>
+                    }
+                    else
+                    {
+                        foreach (var (t, index) in Sorted().Select((x, n) => (x, n + 1)))
+                        {
+                            <tr>
+                                <td class="registry-grid__cell"><input type="checkbox" checked="@_selected.Contains(t.Id)" @onchange="e => Toggle(t.Id, e.Value is bool b && b)" /></td>
+                                <td class="registry-grid__index">@index</td>
+                                <td class="registry-grid__cell">@t.PurchaseNumber</td>
+                                <td class="registry-grid__cell">
+                                    @if (!string.IsNullOrWhiteSpace(t.EisLink))
+                                    {
+                                        <a class="registry-grid__link" href="@t.EisLink" target="_blank" rel="noopener">@t.NameLink</a>
+                                    }
+                                    else
+                                    {
+                                        @t.NameLink
+                                    }
+                                </td>
+                                <td class="registry-grid__cell">@t.Customer</td>
+                                <td class="registry-grid__cell"><span class="money-cell">@MoneyFormat.Money(t.NMCK)</span></td>
+                                <td class="registry-grid__cell">@(t.BiddingDate?.ToString("dd.MM.yyyy") ?? "—")</td>
+                                <td class="registry-grid__cell">@(t.ApplicationEndDate?.ToString("dd.MM.yyyy HH:mm") ?? "—")</td>
+                                <td class="registry-grid__cell">@(t.DateOfPlacement?.ToString("dd.MM.yyyy") ?? "—")</td>
+                                <td class="registry-grid__cell">@(string.IsNullOrWhiteSpace(t.Label) ? "—" : t.Label)</td>
+                                <td class="registry-grid__cell">@t.AddedAt.ToString("dd.MM.yyyy HH:mm")</td>
+                                <td class="registry-grid__cell">
+                                    <button class="btn btn-link btn-sm btn--danger" @onclick="() => DeleteAsync(t)">Удалить</button>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
 </div>
+
 
 @code {
     private List<KonturTemplate>? _rows;
@@ -246,7 +249,7 @@
         {
             try
             {
-                await Scheduler.RunAsync("вручную (Контур ловушка)", ExportMode.Templates);
+                await Scheduler.RunAsync("вручную (Контур шаблоны)", ExportMode.Templates);
             }
             catch (Exception ex)
             {
@@ -320,10 +323,10 @@
     {
         if (_selected.Count == 0) return;
         var ok = await JS.InvokeAsync<bool>("confirm",
-            $"Удалить выбранные ловушки ({_selected.Count}) из базы безвозвратно?");
+            $"Удалить выбранные шаблоны ({_selected.Count}) из базы безвозвратно?");
         if (!ok) return;
         var result = await Kontur.DeleteTemplatesAsync(_selected, _actor);
-        _statusMessage = result.Success ? $"Удалено ловушек: {result.Value}." : (result.Error ?? "Ошибка удаления");
+        _statusMessage = result.Success ? $"Удалено шаблонов: {result.Value}." : (result.Error ?? "Ошибка удаления");
         _selected.Clear();
         await LoadAsync();
     }

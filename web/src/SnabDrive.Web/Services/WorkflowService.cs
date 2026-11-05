@@ -139,6 +139,12 @@ public interface IWorkflowService
 
     Task<Result> UpdateAsync(int regeditId, WorkflowEdit edit, ChangeActor? actor = null, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Добавить пустую закупку сразу на первую стадию — кнопка «Добавить» во вкладке «Задачи».
+    /// Возвращает идентификатор новой строки реестра.
+    /// </summary>
+    Task<Result<int>> CreateAsync(ChangeActor actor, CancellationToken cancellationToken = default);
+
     /// <summary>Перевести на стадию по коду перехода (см. WorkflowService.Transitions).</summary>
     Task<Result> AdvanceAsync(int regeditId, int code, ChangeActor actor, CancellationToken cancellationToken = default);
 
@@ -293,6 +299,53 @@ public sealed class WorkflowService : IWorkflowService
             cancellationToken);
 
         return Result.Ok();
+    }
+
+    /// <inheritdoc/>
+    public async Task<Result<int>> CreateAsync(ChangeActor actor, CancellationToken cancellationToken = default)
+    {
+        await using var context = await _factory.CreateDbContextAsync(cancellationToken);
+
+        var item = new Regedit
+        {
+            Stage = 1, // новая закупка всегда появляется на первой стадии
+            StageStartedAtUtc = DateTime.UtcNow,
+            StageStartedBy = actor.UserName
+        };
+        context.Regedit.Add(item);
+
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Не удалось добавить закупку ({User})", actor.UserName);
+            return Result<int>.Fail("Не удалось добавить закупку: " + ErrorText.Describe(ex));
+        }
+
+        // Журнал воркфлоу: идентификатор строки известен только после первой записи.
+        context.RegistryWorkflowLogs.Add(new RegistryWorkflowLog
+        {
+            RegeditId = item.Id,
+            FromStage = 0,
+            ToStage = 1,
+            Action = JournalText.Action("Закупка добавлена"),
+            ByUser = actor.UserName,
+            AtUtc = DateTime.UtcNow
+        });
+
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            // Строка уже создана — сообщаем об этом, но не теряем её идентификатор.
+            _logger.LogError(ex, "Закупка {Id} создана, но запись журнала не сохранилась", item.Id);
+        }
+
+        return Result<int>.Ok(item.Id);
     }
 
     public async Task<Result> AdvanceAsync(int regeditId, int code, ChangeActor actor, CancellationToken cancellationToken = default)
