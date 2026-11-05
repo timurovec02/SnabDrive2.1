@@ -178,9 +178,11 @@
     private bool _canUse;
     private bool _enabled = true;
     private List<string> _times = new();
-    private string _newTime = "08:00";
+    // <input type="time"> биндится на System.TimeOnly? — тип связывания Blazor
+    // выводит по атрибуту type, поэтому поля nullable (со string будет CS0029).
+    private TimeOnly? _newTime = new TimeOnly(8, 0);
     private List<string> _templatesTimes = new();
-    private string _newTemplateTime = "09:00";
+    private TimeOnly? _newTemplateTime = new TimeOnly(9, 0);
     private KonturExporterOptions Options = new();
     private IReadOnlyList<string> _log = Array.Empty<string>();
     private bool _hooked;
@@ -256,14 +258,13 @@
 
     private void AddTime()
     {
-        if (TimeSpan.TryParse(_newTime, out var ts))
+        if (_newTime is null) return;   // очищенное поле — добавлять нечего
+
+        var value = _newTime.Value.ToString(@"hh\:mm");
+        if (!_times.Contains(value))
         {
-            var value = ts.ToString(@"hh\:mm");
-            if (!_times.Contains(value))
-            {
-                _times.Add(value);
-                _times = _times.OrderBy(x => x).ToList();
-            }
+            _times.Add(value);
+            _times = _times.OrderBy(x => x).ToList();
         }
     }
 
@@ -271,14 +272,13 @@
 
     private void AddTemplateTime()
     {
-        if (TimeSpan.TryParse(_newTemplateTime, out var ts))
+        if (_newTemplateTime is null) return;
+
+        var value = _newTemplateTime.Value.ToString(@"hh\:mm");
+        if (!_templatesTimes.Contains(value))
         {
-            var value = ts.ToString(@"hh\:mm");
-            if (!_templatesTimes.Contains(value))
-            {
-                _templatesTimes.Add(value);
-                _templatesTimes = _templatesTimes.OrderBy(x => x).ToList();
-            }
+            _templatesTimes.Add(value);
+            _templatesTimes = _templatesTimes.OrderBy(x => x).ToList();
         }
     }
 
