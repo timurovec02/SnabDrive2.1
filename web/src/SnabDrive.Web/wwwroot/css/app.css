@@ -2509,3 +2509,254 @@ select.stage-select:focus {
 .run-log li + li {
     border-top: 1px solid rgba(255, 255, 255, .07);
 }
+
+/* ========================================================================
+   Нативные элементы управления — в общем стиле с остальным интерфейсом.
+   Пункты списков, кнопка «Выберите файл», чекбоксы, календари, полоса прокрутки.
+   ======================================================================== */
+
+/* нативные виджеты браузера (календарь, список select, автозаполнение) рисуем светлыми */
+:root {
+    color-scheme: light;
+}
+
+::selection {
+    background: rgba(37, 99, 235, .18);
+    color: var(--text);
+}
+
+/* --- пункты выпадающих списков ---
+   Браузеры разрешают менять у <option> только фон, цвет и шрифт: отступы и рамки
+   Chrome игнорирует, а подсветку под курсором рисует сам. Поэтому здесь — то,
+   что действительно применяется во всех браузерах. */
+select option {
+    background-color: #fff;
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 400;
+    padding: 8px 10px;
+}
+
+/* Firefox применяет background-color, Chrome — только градиент */
+select option:checked {
+    background-color: var(--primary-soft);
+    background: linear-gradient(0deg, var(--primary-soft) 0%, var(--primary-soft) 100%);
+    color: var(--primary-dark);
+    font-weight: 700;
+}
+
+select option:disabled {
+    color: var(--text-muted);
+}
+
+/* служебные пункты-заглушки («— не выбран —», «все сущности») */
+select option[value=""] {
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+select optgroup {
+    background-color: var(--surface-2);
+    color: var(--text-muted);
+    font-style: normal;
+    font-weight: 700;
+    padding: 6px 0;
+}
+
+/* многострочные списки (multiple / size) — стрелка им не нужна */
+select[multiple],
+select[size] {
+    background-image: none;
+    padding: 6px;
+    min-height: 96px;
+}
+
+select[multiple] option,
+select[size] option {
+    border-radius: 6px;
+    padding: 6px 8px;
+}
+
+/* --- выбор файла: «Выберите файл» выглядит как обычная кнопка --- */
+input[type="file"],
+.file-input {
+    display: block;
+    max-width: 380px;
+    margin-top: 4px;
+    padding: 8px 10px;
+    border: 1px dashed var(--border-strong);
+    border-radius: 10px;
+    background: var(--surface-2);
+    color: var(--text-muted);
+    font-size: 13px;
+    cursor: pointer;
+    transition: border-color .15s ease, background-color .15s ease, box-shadow .15s ease;
+}
+
+input[type="file"]:hover,
+.file-input:hover {
+    border-color: var(--primary);
+    background: #f2f7ff;
+    box-shadow: var(--ring);
+}
+
+input[type="file"]:focus-visible,
+.file-input:focus-visible {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: var(--ring);
+}
+
+input[type="file"]::file-selector-button,
+.file-input::file-selector-button {
+    appearance: none;
+    -webkit-appearance: none;
+    margin-right: 12px;
+    padding: 7px 14px;
+    border: 0;
+    border-radius: 8px;
+    background: var(--primary);
+    color: #fff;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background-color .15s ease, transform .05s ease;
+}
+
+input[type="file"]::file-selector-button:hover,
+.file-input::file-selector-button:hover {
+    background: var(--primary-dark);
+}
+
+input[type="file"]::file-selector-button:active,
+.file-input::file-selector-button:active {
+    transform: translateY(1px);
+}
+
+/* Safari до 14.1 понимает только этот префикс */
+input[type="file"]::-webkit-file-upload-button,
+.file-input::-webkit-file-upload-button {
+    appearance: none;
+    margin-right: 12px;
+    padding: 7px 14px;
+    border: 0;
+    border-radius: 8px;
+    background: var(--primary);
+    color: #fff;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+/* --- чекбоксы и радиокнопки: один фирменный цвет везде --- */
+input[type="checkbox"],
+input[type="radio"] {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    accent-color: var(--primary);
+    cursor: pointer;
+    vertical-align: middle;
+    transition: box-shadow .12s ease;
+}
+
+input[type="radio"] {
+    width: 15px;
+    height: 15px;
+}
+
+input[type="checkbox"]:focus-visible,
+input[type="radio"]:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
+input[type="checkbox"]:disabled,
+input[type="radio"]:disabled {
+    cursor: not-allowed;
+    opacity: .55;
+}
+
+/* отметки «Согласован» / «Оплачен» в таблице остаются крупнее — по ним кликают часто */
+input.bool-check {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--primary);
+}
+
+/* --- значки календаря и часов у полей даты/времени --- */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator,
+input[type="month"]::-webkit-calendar-picker-indicator,
+input[type="week"]::-webkit-calendar-picker-indicator {
+    opacity: .5;
+    cursor: pointer;
+    transition: opacity .15s ease;
+}
+
+input[type="date"]:hover::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]:hover::-webkit-calendar-picker-indicator,
+input[type="time"]:hover::-webkit-calendar-picker-indicator,
+input[type="month"]:hover::-webkit-calendar-picker-indicator,
+input[type="week"]:hover::-webkit-calendar-picker-indicator {
+    opacity: 1;
+}
+
+/* стрелки у числовых полей — заметно, но не кричаще */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+    opacity: .45;
+}
+
+input[type="number"]:hover::-webkit-inner-spin-button,
+input[type="number"]:hover::-webkit-outer-spin-button {
+    opacity: .9;
+}
+
+/* Chrome подсвечивает автозаполненные поля жёлтым — возвращаем наш фон */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+    -webkit-text-fill-color: var(--text);
+    box-shadow: inset 0 0 0 100px #fff;
+    transition: background-color 9999s ease-in-out 0s;
+}
+
+/* --- полоса прокрутки в общем стиле --- */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: #c3cede #f1f5f9;
+}
+
+*::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+}
+
+*::-webkit-scrollbar-track {
+    background: var(--surface-3);
+    border-radius: 8px;
+}
+
+*::-webkit-scrollbar-thumb {
+    background: #c3cede;
+    border: 3px solid var(--surface-3);
+    border-radius: 8px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+    background: #9fb0c9;
+}
+
+*::-webkit-scrollbar-corner {
+    background: var(--surface-3);
+}
+
+/* базовый вид любой кнопки: системный шрифт не должен выбиваться из интерфейса */
+button {
+    font-family: inherit;
+    font-size: inherit;
+}
