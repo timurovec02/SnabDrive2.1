@@ -259,6 +259,7 @@ else
                 else if (_stage == 3)
                 {
                     <div class="wf-grid">
+                        <div class="wf-field"><label class="wf-label">Наименование</label><div class="wf-readonly">@r.NameLink</div></div>
                         <div class="wf-field"><label class="wf-label">Заказчик</label><div class="wf-readonly">@r.Customer</div></div>
                         <div class="wf-field"><label class="wf-label">НМЦК</label><div class="wf-readonly">@r.NMCK.ToString("N2")</div></div>
                         <div class="wf-field"><label class="wf-label">Дата торгов</label><div class="wf-readonly">@Fmt(r.BiddingDate)</div></div>
@@ -317,6 +318,10 @@ else
                 {
                     <div class="wf-grid">
                         <div class="wf-field">
+                        <div class="wf-field">
+                            <label class="wf-label">Наименование</label>
+                            <div class="wf-readonly">@r.NameLink</div>
+                        </div>
                             <label class="wf-label">Заказчик</label>
                             <div class="wf-readonly">@r.Customer</div>
                         </div>
@@ -370,7 +375,7 @@ else
                     <div class="wf-grid">
                         <div class="wf-field">
                             <label class="wf-label">Наименование</label>
-                            <textarea class="wf-area" @bind="_edits[r.Id].NameLink" @bind:after="() => SaveAsync(r.Id)"></textarea>
+                            <div class="wf-readonly">@r.NameLink</div>
                         </div>
                         <div class="wf-field">
                             <label class="wf-label">Заказчик</label>
@@ -413,6 +418,14 @@ else
                 else if (_stage == 7)
                 {
                     <div class="wf-grid">
+                        <div class="wf-field">
+                            <label class="wf-label">Наименование</label>
+                            <div class="wf-readonly">@r.NameLink</div>
+                        </div>
+                        <div class="wf-field">
+                            <label class="wf-label">Заказчик</label>
+                            <div class="wf-readonly">@r.Customer</div>
+                        </div>
                         <div class="wf-field">
                             <label class="wf-label">Ожидаемая дата доставки</label>
                             <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
@@ -462,7 +475,7 @@ else
                     <div class="wf-grid">
                         <div class="wf-field">
                             <label class="wf-label">Наименование</label>
-                            <textarea class="wf-area" @bind="_edits[r.Id].NameLink" @bind:after="() => SaveAsync(r.Id)"></textarea>
+                            <div class="wf-readonly">@r.NameLink</div>
                         </div>
                         <div class="wf-field">
                             <label class="wf-label">Заказчик</label>
@@ -491,7 +504,7 @@ else
                 else
                 {
                     <div class="wf-grid">
-                        <div class="wf-field"><label class="wf-label">Наименование</label><textarea class="wf-area" @bind="_edits[r.Id].NameLink" @bind:after="() => SaveAsync(r.Id)"></textarea></div>
+                        <div class="wf-field"><label class="wf-label">Наименование</label><div class="wf-readonly">@r.NameLink</div></div>
                         <div class="wf-field"><label class="wf-label">Заказчик</label><div class="wf-readonly">@r.Customer</div></div>
                         <div class="wf-field"><label class="wf-label">НМЦК</label><input type="number" class="wf-input" @bind="_edits[r.Id].NMCK" @bind:after="() => SaveAsync(r.Id)" /></div>
                         <div class="wf-field"><label class="wf-label">Дата торгов</label><input class="wf-input" value="@Fmt(r.BiddingDate)" disabled /></div>
