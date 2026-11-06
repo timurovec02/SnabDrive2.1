@@ -2760,3 +2760,116 @@ button {
     font-family: inherit;
     font-size: inherit;
 }
+
+/* ========================================================================
+   Каркас страницы: шапка и боковое меню стоят на месте, прокручивается
+   только рабочая область. Своей полосы прокрутки нет ни у шапки, ни у меню.
+   ======================================================================== */
+
+html,
+body {
+    height: 100%;
+}
+
+body {
+    overflow: hidden;
+}
+
+.app-shell {
+    height: 100vh;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.app-header {
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.app-body {
+    min-height: 0;
+}
+
+.app-main {
+    min-height: 0;
+    overflow: auto;
+}
+
+/* Меню: если пунктов больше, чем влезает, оно прокручивается колесом,
+   но полоса прокрутки не показывается — панель выглядит цельной. */
+.nav {
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: none;
+}
+
+.nav::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+}
+
+/* Страница входа живёт в пустом макете — ей прокрутка разрешена. */
+.login-page {
+    min-height: 100vh;
+    overflow: auto;
+}
+
+/* ========================================================================
+   Контекстное меню поля (ПКМ) во вкладке «Задачи»
+   ======================================================================== */
+
+.ctx-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1200;
+}
+
+.ctx-menu {
+    position: fixed;
+    z-index: 1201;
+    min-width: 200px;
+    padding: 10px 12px 12px;
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-radius: 10px;
+    box-shadow: 0 14px 36px rgba(16, 24, 40, .24);
+}
+
+.ctx-menu__title {
+    margin: 0 0 8px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 240px;
+}
+
+.ctx-menu__row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.ctx-menu__swatch {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 1px solid rgba(16, 24, 40, .2);
+    border-radius: 7px;
+    cursor: pointer;
+    transition: transform .08s ease, box-shadow .08s ease;
+}
+
+.ctx-menu__swatch:hover {
+    transform: scale(1.14);
+    box-shadow: 0 0 0 2px var(--primary);
+}
+
+.ctx-menu__clear {
+    margin-top: 10px;
+    width: 100%;
+}

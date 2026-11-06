@@ -169,6 +169,16 @@ public interface IWorkflowService
     /// </summary>
     Task<Result> CompleteMovementAsync(int regeditId, ChangeActor actor, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Подсветка полей карточки «Задачи» (правая кнопка мыши). Хранится в той же таблице
+    /// [CellColors], что и подсветка ячеек реестра, поэтому новая схема не нужна.
+    /// Ключ словаря — «идентификатор|поле», см. <see cref="FieldColorKey"/>.
+    /// </summary>
+    Task<IReadOnlyDictionary<string, string>> GetFieldColorsAsync(IEnumerable<int> regeditIds, CancellationToken cancellationToken = default);
+
+    /// <summary>Покрасить рамку поля; пустой <paramref name="colorCode"/> снимает подсветку.</summary>
+    Task<Result> SetFieldColorAsync(int regeditId, string fieldKey, string? colorCode, ChangeActor actor, CancellationToken cancellationToken = default);
+
     /// <summary>Перевести на стадию по коду перехода (см. WorkflowService.Transitions).</summary>
     Task<Result> AdvanceAsync(int regeditId, int code, ChangeActor actor, CancellationToken cancellationToken = default);
 
@@ -572,6 +582,76 @@ public sealed class WorkflowService : IWorkflowService
             regeditId, moved, actor.UserName);
         return Result.Ok();
     }
+
+    /// <inheritdoc/>
+    public async Task<IReadOnlyDictionary<string, string>> GetFieldColorsAsync(IEnumerable<int> regeditIds, CancellationToken cancellationToken = default)
+    {
+        var ids = regeditIds.Distinct().ToList();
+        if (ids.Count == 0)
+        {
+            return new Dictionary<string, string>(StringComparer.Ordinal);
+        }
+
+        await using var context = await _factory.CreateDbContextAsync(cancellationToken);
+        var rows = await context.CellColors.AsNoTracking()
+            .Where(c => ids.Contains(c.RegeditId))
+            .Select(c => new { c.RegeditId, c.ColumnName, c.ColorCode })
+            .ToListAsync(cancellationToken);
+
+        var map = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var row in rows)
+        {
+            map[FieldColorKey(row.RegeditId, row.ColumnName)] = row.ColorCode;
+        }
+
+        return map;
+    }
+
+    /// <inheritdoc/>
+    public async Task<Result> SetFieldColorAsync(int regeditId, string fieldKey, string? colorCode, ChangeActor actor, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(fieldKey))
+        {
+            return Result.Fail("Не указано поле.");
+        }
+
+        await using var context = await _factory.CreateDbContextAsync(cancellationToken);
+        var existing = await context.CellColors
+            .FirstOrDefaultAsync(c => c.RegeditId == regeditId && c.ColumnName == fieldKey, cancellationToken);
+
+        if (string.IsNullOrWhiteSpace(colorCode))
+        {
+            if (existing is not null)
+            {
+                context.CellColors.Remove(existing);
+            }
+        }
+        else if (existing is null)
+        {
+            context.CellColors.Add(new CellColor { RegeditId = regeditId, ColumnName = fieldKey, ColorCode = colorCode });
+        }
+        else
+        {
+            existing.ColorCode = colorCode;
+        }
+
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Не удалось сохранить подсветку поля {Field} у закупки {RegeditId}", fieldKey, regeditId);
+            return Result.Fail("Не удалось сохранить подсветку: " + ErrorText.Describe(ex));
+        }
+
+        _logger.LogInformation("Воркфлоу: подсветка поля {Field} закупки {Id} = {Color} ({User})",
+            fieldKey, regeditId, string.IsNullOrWhiteSpace(colorCode) ? "снята" : colorCode, actor.UserName);
+        return Result.Ok();
+    }
+
+    /// <summary>Ключ подсветки поля в словаре: «идентификатор закупки|имя поля».</summary>
+    public static string FieldColorKey(int regeditId, string fieldKey) => $"{regeditId}|{fieldKey}";
 
     /// <summary>
     /// Этапы 5 «Перемещение товара» и 6 «Контракт» идут параллельно. На этап 7 закупку

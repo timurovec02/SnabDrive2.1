@@ -169,15 +169,15 @@ else
                 @if (_stage == 1 || _stage == 2 || _stage == 12)
                 {
                     <div class="wf-grid">
-                        <div class="wf-field">
+                        <div class="wf-field" style='@FieldStyle(r.Id, "NameLink")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "NameLink", ev)' @oncontextmenu:preventDefault>
                             <label class="wf-label">Наименование</label>
                             <textarea class="wf-area" @bind="_edits[r.Id].NameLink" @bind:after="() => SaveAsync(r.Id)"></textarea>
                         </div>
-                        <div class="wf-field">
+                        <div class="wf-field" style='@FieldStyle(r.Id, "Customer")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "Customer", ev)' @oncontextmenu:preventDefault>
                             <label class="wf-label">Заказчик</label>
                             <textarea class="wf-area" @bind="_edits[r.Id].Customer" @bind:after="() => SaveAsync(r.Id)"></textarea>
                         </div>
-                        <div class="wf-field">
+                        <div class="wf-field" style='@FieldStyle(r.Id, "TypeOfPurchaseId")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "TypeOfPurchaseId", ev)' @oncontextmenu:preventDefault>
                             <label class="wf-label">Тип закупки</label>
                             <select class="wf-input" @bind="_edits[r.Id].TypeOfPurchaseId" @bind:after="() => SaveAsync(r.Id)">
                                 <option value="">— не выбран —</option>
@@ -187,15 +187,15 @@ else
                                 }
                             </select>
                         </div>
-                        <div class="wf-field">
+                        <div class="wf-field" style='@FieldStyle(r.Id, "PlaceOfDelivery")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "PlaceOfDelivery", ev)' @oncontextmenu:preventDefault>
                             <label class="wf-label">Место поставки</label>
                             <textarea class="wf-area" @bind="_edits[r.Id].PlaceOfDelivery" @bind:after="() => SaveAsync(r.Id)"></textarea>
                         </div>
-                        <div class="wf-field">
+                        <div class="wf-field" style='@FieldStyle(r.Id, "ReserveNumber")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "ReserveNumber", ev)' @oncontextmenu:preventDefault>
                             <label class="wf-label">Номер резерва</label>
                             <input class="wf-input" @bind="_edits[r.Id].ReserveNumber" @bind:after="() => SaveAsync(r.Id)" />
                         </div>
-                        <div class="wf-field">
+                        <div class="wf-field" style='@FieldStyle(r.Id, "B2BStatusId")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "B2BStatusId", ev)' @oncontextmenu:preventDefault>
                             <label class="wf-label">Статус резерва B2B</label>
                             <select class="wf-input" @bind="_edits[r.Id].B2BStatusId" @bind:after="() => SaveAsync(r.Id)">
                                 <option value="">— не выбран —</option>
@@ -205,37 +205,37 @@ else
                                 }
                             </select>
                         </div>
-                        <div class="wf-field">
+                        <div class="wf-field" style='@FieldStyle(r.Id, "NationalMode")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "NationalMode", ev)' @oncontextmenu:preventDefault>
                             <label class="wf-label">Нац режим</label>
                             <input class="wf-input" @bind="_edits[r.Id].NationalMode" @bind:after="() => SaveAsync(r.Id)" />
                         </div>
-                        <div class="wf-field">
+                        <div class="wf-field" style='@FieldStyle(r.Id, "BiddingDate")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "BiddingDate", ev)' @oncontextmenu:preventDefault>
                             <label class="wf-label">Дата торгов</label>
                             <input type="datetime-local" class="wf-input" @bind="_edits[r.Id].BiddingDate" @bind:format="yyyy-MM-dd'T'HH:mm" @bind:after="() => SaveAsync(r.Id)" />
                         </div>
-                        <div class="wf-field">
+                        <div class="wf-field" style='@FieldStyle(r.Id, "ApplicationEndDate")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "ApplicationEndDate", ev)' @oncontextmenu:preventDefault>
                             <label class="wf-label">Окончание приема заявок</label>
                             <input type="datetime-local" class="wf-input" @bind="_edits[r.Id].ApplicationEndDate" @bind:format="yyyy-MM-dd'T'HH:mm" @bind:after="() => SaveAsync(r.Id)" />
                         </div>
-                        <div class="wf-field">
+                        <div class="wf-field" style='@FieldStyle(r.Id, "NMCK")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "NMCK", ev)' @oncontextmenu:preventDefault>
                             <label class="wf-label">НМЦК</label>
                             <input type="number" class="wf-input" @bind="_edits[r.Id].NMCK" @bind:after="() => SaveAsync(r.Id)" />
                         </div>
-                        <div class="wf-field">
+                        <div class="wf-field" style='@FieldStyle(r.Id, "MinPrice")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "MinPrice", ev)' @oncontextmenu:preventDefault>
                             <label class="wf-label">Наша минимальная сумма</label>
                             <input type="number" class="wf-input" @bind="_edits[r.Id].MinPrice" @bind:after="() => SaveAsync(r.Id)" />
                         </div>
-                        <div class="wf-field">
+                        <div class="wf-field" style='@FieldStyle(r.Id, "DeliveryDate")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "DeliveryDate", ev)' @oncontextmenu:preventDefault>
                             <label class="wf-label">Дата доставки</label>
                             <input type="date" class="wf-input" @bind="_edits[r.Id].DeliveryDate" @bind:format="yyyy-MM-dd" @bind:after="() => SaveAsync(r.Id)" />
                         </div>
-                        <div class="wf-field">
+                        <div class="wf-field" style='@FieldStyle(r.Id, "Note")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "Note", ev)' @oncontextmenu:preventDefault>
                             <label class="wf-label">Примечание</label>
                             <textarea class="wf-area" @bind="_edits[r.Id].Note" @bind:after="() => SaveAsync(r.Id)"></textarea>
                         </div>
                         @if (_stage == 12)
                         {
-                            <div class="wf-field">
+                            <div class="wf-field" style='@FieldStyle(r.Id, "IsCall")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "IsCall", ev)' @oncontextmenu:preventDefault>
                                 <label class="wf-label">Звони</label>
                                 <label style="display:flex;align-items:center;gap:8px;font-size:15px;font-weight:600">
                                     <input type="checkbox" style="width:20px;height:20px" checked="@_edits[r.Id].IsCall" @onchange="ev => OnToggleCall(r.Id, ev)" />
@@ -245,7 +245,7 @@ else
                         }
                         @if (_stage == 1)
                         {
-                            <div class="wf-field">
+                            <div class="wf-field" style='@FieldStyle(r.Id, "IsByRequest")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "IsByRequest", ev)' @oncontextmenu:preventDefault>
                                 <label class="wf-label">По заявкам</label>
                                 <label style="display:flex;align-items:center;gap:8px;font-size:15px;font-weight:600">
                                     <input type="checkbox" style="width:20px;height:20px" checked="@_edits[r.Id].IsByRequest" @onchange="ev => OnToggleByRequest(r.Id, ev)" />
@@ -259,14 +259,14 @@ else
                 else if (_stage == 3)
                 {
                     <div class="wf-grid">
-                        <div class="wf-field"><label class="wf-label">Наименование</label><div class="wf-readonly">@r.NameLink</div></div>
-                        <div class="wf-field"><label class="wf-label">Заказчик</label><div class="wf-readonly">@r.Customer</div></div>
-                        <div class="wf-field"><label class="wf-label">НМЦК</label><div class="wf-readonly">@r.NMCK.ToString("N2")</div></div>
-                        <div class="wf-field"><label class="wf-label">Дата торгов</label><div class="wf-readonly">@Fmt(r.BiddingDate)</div></div>
-                        <div class="wf-field"><label class="wf-label">Окончание приема заявок</label><div class="wf-readonly">@Fmt(r.ApplicationEndDate)</div></div>
-                        <div class="wf-field"><label class="wf-label">Тип закупки</label><div class="wf-readonly">@r.TypeOfPurchaseName</div></div>
-                        <div class="wf-field"><label class="wf-label">Наша минимальная сумма</label><div class="wf-readonly">@r.MinPrice.ToString("N2")</div></div>
-                        <div class="wf-field"><label class="wf-label">Место поставки</label><div class="wf-readonly">@r.PlaceOfDelivery</div></div>
+                        <div class="wf-field" style='@FieldStyle(r.Id, "NameLink")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "NameLink", ev)' @oncontextmenu:preventDefault><label class="wf-label">Наименование</label><div class="wf-readonly">@r.NameLink</div></div>
+                        <div class="wf-field" style='@FieldStyle(r.Id, "Customer")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "Customer", ev)' @oncontextmenu:preventDefault><label class="wf-label">Заказчик</label><div class="wf-readonly">@r.Customer</div></div>
+                        <div class="wf-field" style='@FieldStyle(r.Id, "NMCK")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "NMCK", ev)' @oncontextmenu:preventDefault><label class="wf-label">НМЦК</label><div class="wf-readonly">@r.NMCK.ToString("N2")</div></div>
+                        <div class="wf-field" style='@FieldStyle(r.Id, "BiddingDate")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "BiddingDate", ev)' @oncontextmenu:preventDefault><label class="wf-label">Дата торгов</label><div class="wf-readonly">@Fmt(r.BiddingDate)</div></div>
+                        <div class="wf-field" style='@FieldStyle(r.Id, "ApplicationEndDate")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "ApplicationEndDate", ev)' @oncontextmenu:preventDefault><label class="wf-label">Окончание приема заявок</label><div class="wf-readonly">@Fmt(r.ApplicationEndDate)</div></div>
+                        <div class="wf-field" style='@FieldStyle(r.Id, "TypeOfPurchaseId")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "TypeOfPurchaseId", ev)' @oncontextmenu:preventDefault><label class="wf-label">Тип закупки</label><div class="wf-readonly">@r.TypeOfPurchaseName</div></div>
+                        <div class="wf-field" style='@FieldStyle(r.Id, "MinPrice")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "MinPrice", ev)' @oncontextmenu:preventDefault><label class="wf-label">Наша минимальная сумма</label><div class="wf-readonly">@r.MinPrice.ToString("N2")</div></div>
+                        <div class="wf-field" style='@FieldStyle(r.Id, "PlaceOfDelivery")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "PlaceOfDelivery", ev)' @oncontextmenu:preventDefault><label class="wf-label">Место поставки</label><div class="wf-readonly">@r.PlaceOfDelivery</div></div>
                     </div>
                 }
                 @* ===== Этап 4 «Торги»: наименование/заказчик/тип — чтение, дата торгов — редактируется;
@@ -274,15 +274,15 @@ else
                 else if (_stage == 4)
                 {
                     <div class="wf-grid">
-                        <div class="wf-field"><label class="wf-label">Наименование</label><div class="wf-readonly">@r.NameLink</div></div>
-                        <div class="wf-field"><label class="wf-label">Заказчик</label><div class="wf-readonly">@r.Customer</div></div>
-                        <div class="wf-field"><label class="wf-label">Тип закупки</label><div class="wf-readonly">@r.TypeOfPurchaseName</div></div>
-                        <div class="wf-field"><label class="wf-label">НМЦК</label><div class="wf-readonly">@r.NMCK.ToString("N2")</div></div>
-                        <div class="wf-field">
+                        <div class="wf-field" style='@FieldStyle(r.Id, "NameLink")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "NameLink", ev)' @oncontextmenu:preventDefault><label class="wf-label">Наименование</label><div class="wf-readonly">@r.NameLink</div></div>
+                        <div class="wf-field" style='@FieldStyle(r.Id, "Customer")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "Customer", ev)' @oncontextmenu:preventDefault><label class="wf-label">Заказчик</label><div class="wf-readonly">@r.Customer</div></div>
+                        <div class="wf-field" style='@FieldStyle(r.Id, "TypeOfPurchaseId")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "TypeOfPurchaseId", ev)' @oncontextmenu:preventDefault><label class="wf-label">Тип закупки</label><div class="wf-readonly">@r.TypeOfPurchaseName</div></div>
+                        <div class="wf-field" style='@FieldStyle(r.Id, "NMCK")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "NMCK", ev)' @oncontextmenu:preventDefault><label class="wf-label">НМЦК</label><div class="wf-readonly">@r.NMCK.ToString("N2")</div></div>
+                        <div class="wf-field" style='@FieldStyle(r.Id, "BiddingDate")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "BiddingDate", ev)' @oncontextmenu:preventDefault>
                             <label class="wf-label">Дата торгов</label>
                             <input type="datetime-local" class="wf-input" @bind="_edits[r.Id].BiddingDate" @bind:format="yyyy-MM-dd'T'HH:mm" @bind:after="() => SaveAsync(r.Id)" />
                         </div>
-                        <div class="wf-field">
+                        <div class="wf-field" style='@FieldStyle(r.Id, "MinPrice")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "MinPrice", ev)' @oncontextmenu:preventDefault>
                             <label class="wf-label">Наша минимальная сумма</label>
                             @if (_isDirector)
                             {
@@ -303,11 +303,11 @@ else
                                 <div class="wf-readonly">@r.MinPrice.ToString("N2")</div>
                             }
                         </div>
-                        <div class="wf-field">
+                        <div class="wf-field" style='@FieldStyle(r.Id, "ResultPrice")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "ResultPrice", ev)' @oncontextmenu:preventDefault>
                             <label class="wf-label">Итог цена</label>
                             <input type="number" class="wf-input" @bind="_edits[r.Id].ResultPrice" @bind:after="() => SaveAsync(r.Id)" />
                         </div>
-                        <div class="wf-field">
+                        <div class="wf-field" style='@FieldStyle(r.Id, "Place")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "Place", ev)' @oncontextmenu:preventDefault>
                             <label class="wf-label">Место на торгах</label>
                             <input class="wf-input" @bind="_edits[r.Id].Place" @bind:after="() => SaveAsync(r.Id)" />
                         </div>
@@ -317,23 +317,23 @@ else
                 else if (_stage == 5)
                 {
                     <div class="wf-grid">
-                        <div class="wf-field">
-                        <div class="wf-field">
+                        <div class="wf-field" style='@FieldStyle(r.Id, "NameLink")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "NameLink", ev)' @oncontextmenu:preventDefault>
+                        <div class="wf-field" style='@FieldStyle(r.Id, "NameLink")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "NameLink", ev)' @oncontextmenu:preventDefault>
                             <label class="wf-label">Наименование</label>
                             <div class="wf-readonly">@r.NameLink</div>
                         </div>
                             <label class="wf-label">Заказчик</label>
                             <div class="wf-readonly">@r.Customer</div>
                         </div>
-                        <div class="wf-field">
+                        <div class="wf-field" style='@FieldStyle(r.Id, "TypeOfPurchaseId")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "TypeOfPurchaseId", ev)' @oncontextmenu:preventDefault>
                             <label class="wf-label">Тип закупки</label>
                             <div class="wf-readonly">@r.TypeOfPurchaseName</div>
                         </div>
-                        <div class="wf-field">
+                        <div class="wf-field" style='@FieldStyle(r.Id, "PlaceOfDelivery")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "PlaceOfDelivery", ev)' @oncontextmenu:preventDefault>
                             <label class="wf-label">Место поставки</label>
                             <textarea class="wf-area" @bind="_edits[r.Id].PlaceOfDelivery" @bind:after="() => SaveAsync(r.Id)"></textarea>
                         </div>
-                        <div class="wf-field">
+                        <div class="wf-field" style='@FieldStyle(r.Id, "B2BStatusId")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "B2BStatusId", ev)' @oncontextmenu:preventDefault>
                             <label class="wf-label">Статус резерва B2B</label>
                             <select class="wf-input" @bind="_edits[r.Id].B2BStatusId" @bind:after="() => SaveAsync(r.Id)">
                                 <option value="">— не выбран —</option>
@@ -343,27 +343,27 @@ else
                                 }
                             </select>
                         </div>
-                        <div class="wf-field">
+                        <div class="wf-field" style='@FieldStyle(r.Id, "NationalMode")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "NationalMode", ev)' @oncontextmenu:preventDefault>
                             <label class="wf-label">Нац режим</label>
                             <div class="wf-readonly">@r.NationalMode</div>
                         </div>
-                        <div class="wf-field">
+                        <div class="wf-field" style='@FieldStyle(r.Id, "ReserveNumber")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "ReserveNumber", ev)' @oncontextmenu:preventDefault>
                             <label class="wf-label">Номер резерва</label>
                             <input class="wf-input" @bind="_edits[r.Id].ReserveNumber" @bind:after="() => SaveAsync(r.Id)" />
                         </div>
-                        <div class="wf-field">
+                        <div class="wf-field" style='@FieldStyle(r.Id, "ResultPrice")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "ResultPrice", ev)' @oncontextmenu:preventDefault>
                             <label class="wf-label">Итог цена</label>
                             <div class="wf-readonly">@r.ResultPrice.ToString("N2")</div>
                         </div>
-                        <div class="wf-field">
+                        <div class="wf-field" style='@FieldStyle(r.Id, "NMCK")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "NMCK", ev)' @oncontextmenu:preventDefault>
                             <label class="wf-label">НМЦК</label>
                             <input type="number" class="wf-input" @bind="_edits[r.Id].NMCK" @bind:after="() => SaveAsync(r.Id)" />
                         </div>
-                        <div class="wf-field">
+                        <div class="wf-field" style='@FieldStyle(r.Id, "ExpectedDeliveryDate")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "ExpectedDeliveryDate", ev)' @oncontextmenu:preventDefault>
                             <label class="wf-label">Ожидаемая дата доставки</label>
                             <input type="date" class="wf-input" @bind="_edits[r.Id].ExpectedDeliveryDate" @bind:format="yyyy-MM-dd" @bind:after="() => SaveAsync(r.Id)" />
                         </div>
-                        <div class="wf-field">
+                        <div class="wf-field" style='@FieldStyle(r.Id, "Note")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "Note", ev)' @oncontextmenu:preventDefault>
                             <label class="wf-label">Примечание</label>
                             <textarea class="wf-area" @bind="_edits[r.Id].Note" @bind:after="() => SaveAsync(r.Id)"></textarea>
                         </div>
@@ -373,23 +373,23 @@ else
                 else if (_stage == 6)
                 {
                     <div class="wf-grid">
-                        <div class="wf-field">
+                        <div class="wf-field" style='@FieldStyle(r.Id, "NameLink")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "NameLink", ev)' @oncontextmenu:preventDefault>
                             <label class="wf-label">Наименование</label>
                             <div class="wf-readonly">@r.NameLink</div>
                         </div>
-                        <div class="wf-field">
+                        <div class="wf-field" style='@FieldStyle(r.Id, "Customer")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "Customer", ev)' @oncontextmenu:preventDefault>
                             <label class="wf-label">Заказчик</label>
                             <div class="wf-readonly">@r.Customer</div>
                         </div>
-                        <div class="wf-field">
+                        <div class="wf-field" style='@FieldStyle(r.Id, "ResultPrice")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "ResultPrice", ev)' @oncontextmenu:preventDefault>
                             <label class="wf-label">Итог цена</label>
                             <div class="wf-readonly">@r.ResultPrice.ToString("N2")</div>
                         </div>
-                        <div class="wf-field">
+                        <div class="wf-field" style='@FieldStyle(r.Id, "PlaceOfDelivery")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "PlaceOfDelivery", ev)' @oncontextmenu:preventDefault>
                             <label class="wf-label">Место поставки</label>
                             <textarea class="wf-area" @bind="_edits[r.Id].PlaceOfDelivery" @bind:after="() => SaveAsync(r.Id)"></textarea>
                         </div>
-                        <div class="wf-field">
+                        <div class="wf-field" style='@FieldStyle(r.Id, "ContractStatusId")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "ContractStatusId", ev)' @oncontextmenu:preventDefault>
                             <label class="wf-label">Статус контракта</label>
                             <select class="wf-input" @bind="_edits[r.Id].ContractStatusId" @bind:after="() => SaveAsync(r.Id)">
                                 <option value="">— не выбран —</option>
@@ -405,7 +405,7 @@ else
                                 ⚠ @ContractStatuses.Name(r.ContractStatusId) — закройте вопрос, прежде чем переводить закупку дальше.
                             </div>
                         }
-                        <div class="wf-field">
+                        <div class="wf-field" style='@FieldStyle(r.Id, "IsContractChecked")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "IsContractChecked", ev)' @oncontextmenu:preventDefault>
                             <label class="wf-label">Проверен</label>
                             <label style="display:flex;align-items:center;gap:8px;font-size:15px;font-weight:600">
                                 <input type="checkbox" style="width:20px;height:20px" checked="@_edits[r.Id].IsContractChecked" @onchange="ev => OnToggleContractChecked(r.Id, ev)" />
@@ -418,15 +418,15 @@ else
                 else if (_stage == 7)
                 {
                     <div class="wf-grid">
-                        <div class="wf-field">
+                        <div class="wf-field" style='@FieldStyle(r.Id, "NameLink")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "NameLink", ev)' @oncontextmenu:preventDefault>
                             <label class="wf-label">Наименование</label>
                             <div class="wf-readonly">@r.NameLink</div>
                         </div>
-                        <div class="wf-field">
+                        <div class="wf-field" style='@FieldStyle(r.Id, "Customer")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "Customer", ev)' @oncontextmenu:preventDefault>
                             <label class="wf-label">Заказчик</label>
                             <div class="wf-readonly">@r.Customer</div>
                         </div>
-                        <div class="wf-field">
+                        <div class="wf-field" style='@FieldStyle(r.Id, "ExpectedDeliveryDate")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "ExpectedDeliveryDate", ev)' @oncontextmenu:preventDefault>
                             <label class="wf-label">Ожидаемая дата доставки</label>
                             <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
                                 <input type="date" class="wf-input" @bind="_edits[r.Id].ExpectedDeliveryDate" @bind:format="yyyy-MM-dd" @bind:after="() => SaveAsync(r.Id)" />
@@ -436,7 +436,7 @@ else
                                 </label>
                             </div>
                         </div>
-                        <div class="wf-field">
+                        <div class="wf-field" style='@FieldStyle(r.Id, "BranchId")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "BranchId", ev)' @oncontextmenu:preventDefault>
                             <label class="wf-label">Филиал</label>
                             <select class="wf-input" @bind="_edits[r.Id].BranchId" @bind:after="() => SaveAsync(r.Id)">
                                 <option value="">— не выбран —</option>
@@ -446,7 +446,7 @@ else
                                 }
                             </select>
                         </div>
-                        <div class="wf-field">
+                        <div class="wf-field" style='@FieldStyle(r.Id, "BranchFilePath")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "BranchFilePath", ev)' @oncontextmenu:preventDefault>
                             <label class="wf-label">Файл для оповещения</label>
                             @if (!string.IsNullOrWhiteSpace(r.BranchFilePath))
                             {
@@ -473,15 +473,15 @@ else
                 else if (_stage == 8)
                 {
                     <div class="wf-grid">
-                        <div class="wf-field">
+                        <div class="wf-field" style='@FieldStyle(r.Id, "NameLink")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "NameLink", ev)' @oncontextmenu:preventDefault>
                             <label class="wf-label">Наименование</label>
                             <div class="wf-readonly">@r.NameLink</div>
                         </div>
-                        <div class="wf-field">
+                        <div class="wf-field" style='@FieldStyle(r.Id, "Customer")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "Customer", ev)' @oncontextmenu:preventDefault>
                             <label class="wf-label">Заказчик</label>
                             <div class="wf-readonly">@r.Customer</div>
                         </div>
-                        <div class="wf-field">
+                        <div class="wf-field" style='@FieldStyle(r.Id, "ExpectedDeliveryDate")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "ExpectedDeliveryDate", ev)' @oncontextmenu:preventDefault>
                             <label class="wf-label">Ожидаемая дата доставки</label>
                             <input type="date" class="wf-input" style="@Highlight(r.IsEisFilled)"
                                    @bind="_edits[r.Id].ExpectedDeliveryDate" @bind:format="yyyy-MM-dd" @bind:after="() => SaveAsync(r.Id)" />
@@ -490,11 +490,11 @@ else
                                 <span style="display:inline-flex;align-items:center;gap:6px;margin-top:4px;font-size:15px;font-weight:800;color:#b45309">🧾 Заполнить в ЕИС</span>
                             }
                         </div>
-                        <div class="wf-field">
+                        <div class="wf-field" style='@FieldStyle(r.Id, "PlaceOfDelivery")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "PlaceOfDelivery", ev)' @oncontextmenu:preventDefault>
                             <label class="wf-label">Место поставки</label>
                             <textarea class="wf-area" @bind="_edits[r.Id].PlaceOfDelivery" @bind:after="() => SaveAsync(r.Id)"></textarea>
                         </div>
-                        <div class="wf-field">
+                        <div class="wf-field" style='@FieldStyle(r.Id, "Note")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "Note", ev)' @oncontextmenu:preventDefault>
                             <label class="wf-label">Примечание</label>
                             <textarea class="wf-area" @bind="_edits[r.Id].Note" @bind:after="() => SaveAsync(r.Id)"></textarea>
                         </div>
@@ -504,15 +504,15 @@ else
                 else
                 {
                     <div class="wf-grid">
-                        <div class="wf-field"><label class="wf-label">Наименование</label><div class="wf-readonly">@r.NameLink</div></div>
-                        <div class="wf-field"><label class="wf-label">Заказчик</label><div class="wf-readonly">@r.Customer</div></div>
-                        <div class="wf-field"><label class="wf-label">НМЦК</label><input type="number" class="wf-input" @bind="_edits[r.Id].NMCK" @bind:after="() => SaveAsync(r.Id)" /></div>
-                        <div class="wf-field"><label class="wf-label">Дата торгов</label><input class="wf-input" value="@Fmt(r.BiddingDate)" disabled /></div>
-                        <div class="wf-field"><label class="wf-label">Номер резерва</label><input class="wf-input" @bind="_edits[r.Id].ReserveNumber" @bind:after="() => SaveAsync(r.Id)" /></div>
-                        <div class="wf-field"><label class="wf-label">Место на торгах</label><input class="wf-input" @bind="_edits[r.Id].Place" @bind:after="() => SaveAsync(r.Id)" /></div>
-                        <div class="wf-field"><label class="wf-label">Место поставки</label><textarea class="wf-area" @bind="_edits[r.Id].PlaceOfDelivery" @bind:after="() => SaveAsync(r.Id)"></textarea></div>
-                        <div class="wf-field"><label class="wf-label">Итог цена</label><div class="wf-readonly">@r.ResultPrice.ToString("N2")</div></div>
-                        <div class="wf-field"><label class="wf-label">Примечание</label><textarea class="wf-area" @bind="_edits[r.Id].Note" @bind:after="() => SaveAsync(r.Id)"></textarea></div>
+                        <div class="wf-field" style='@FieldStyle(r.Id, "NameLink")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "NameLink", ev)' @oncontextmenu:preventDefault><label class="wf-label">Наименование</label><div class="wf-readonly">@r.NameLink</div></div>
+                        <div class="wf-field" style='@FieldStyle(r.Id, "Customer")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "Customer", ev)' @oncontextmenu:preventDefault><label class="wf-label">Заказчик</label><div class="wf-readonly">@r.Customer</div></div>
+                        <div class="wf-field" style='@FieldStyle(r.Id, "NMCK")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "NMCK", ev)' @oncontextmenu:preventDefault><label class="wf-label">НМЦК</label><input type="number" class="wf-input" @bind="_edits[r.Id].NMCK" @bind:after="() => SaveAsync(r.Id)" /></div>
+                        <div class="wf-field" style='@FieldStyle(r.Id, "BiddingDate")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "BiddingDate", ev)' @oncontextmenu:preventDefault><label class="wf-label">Дата торгов</label><input class="wf-input" value="@Fmt(r.BiddingDate)" disabled /></div>
+                        <div class="wf-field" style='@FieldStyle(r.Id, "ReserveNumber")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "ReserveNumber", ev)' @oncontextmenu:preventDefault><label class="wf-label">Номер резерва</label><input class="wf-input" @bind="_edits[r.Id].ReserveNumber" @bind:after="() => SaveAsync(r.Id)" /></div>
+                        <div class="wf-field" style='@FieldStyle(r.Id, "Place")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "Place", ev)' @oncontextmenu:preventDefault><label class="wf-label">Место на торгах</label><input class="wf-input" @bind="_edits[r.Id].Place" @bind:after="() => SaveAsync(r.Id)" /></div>
+                        <div class="wf-field" style='@FieldStyle(r.Id, "PlaceOfDelivery")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "PlaceOfDelivery", ev)' @oncontextmenu:preventDefault><label class="wf-label">Место поставки</label><textarea class="wf-area" @bind="_edits[r.Id].PlaceOfDelivery" @bind:after="() => SaveAsync(r.Id)"></textarea></div>
+                        <div class="wf-field" style='@FieldStyle(r.Id, "ResultPrice")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "ResultPrice", ev)' @oncontextmenu:preventDefault><label class="wf-label">Итог цена</label><div class="wf-readonly">@r.ResultPrice.ToString("N2")</div></div>
+                        <div class="wf-field" style='@FieldStyle(r.Id, "Note")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "Note", ev)' @oncontextmenu:preventDefault><label class="wf-label">Примечание</label><textarea class="wf-area" @bind="_edits[r.Id].Note" @bind:after="() => SaveAsync(r.Id)"></textarea></div>
                     </div>
 
                     @if (_stage == 10)
@@ -653,6 +653,23 @@ else
     </div>
 }
 
+@* ===== Контекстное меню поля: правая кнопка мыши на любом поле карточки ===== *@
+@if (_menu is not null)
+{
+    <div class="ctx-backdrop" @onclick="CloseFieldMenu" @oncontextmenu="CloseFieldMenu" @oncontextmenu:preventDefault></div>
+    <div class="ctx-menu" style="left:min(@(_menu.X)px, calc(100vw - 220px));top:min(@(_menu.Y)px, calc(100vh - 200px))">
+        <p class="ctx-menu__title">Рамка поля «@FieldLabel(_menu.Field)»</p>
+        <div class="ctx-menu__row">
+            @foreach (var color in FieldPalette)
+            {
+                <button type="button" class="ctx-menu__swatch" style="background:@color" title="@color"
+                        @onclick="() => PickFieldColor(color)"></button>
+            }
+        </div>
+        <button type="button" class="btn btn--small ctx-menu__clear" @onclick="ClearFieldColor">✕ Убрать подсветку</button>
+    </div>
+}
+
 @code {
     private List<WorkflowRow> _rows = new();
     private readonly Dictionary<int, WorkflowEdit> _edits = new();
@@ -731,6 +748,7 @@ else
         try
         {
             _rows = (await WorkflowSvc.GetAsync()).ToList();
+            _fieldColors = await WorkflowSvc.GetFieldColorsAsync(_rows.Select(r => r.Id));
             _edits.Clear();
 
             // Список перезагружается по любому событию из шины, в том числе между выбором
@@ -1051,6 +1069,97 @@ else
 
     private static string ClosedBy(string? user)
         => string.IsNullOrWhiteSpace(user) ? string.Empty : $", {user}";
+
+    // ------------------------------------------------- подсветка полей по правой кнопке
+
+    /// <summary>Палитра та же, что в реестре: подсветка одной закупки выглядит одинаково везде.</summary>
+    private static readonly string[] FieldPalette =
+    {
+        "#ffeb3b", "#ffcdd2", "#c8e6c9", "#bbdefb", "#ffe0b2", "#e1bee7", "#b2dfdb", "#d7ccc8"
+    };
+
+    /// <summary>Подписи полей для заголовка контекстного меню (ключ — имя свойства записи).</summary>
+    private static readonly Dictionary<string, string> FieldLabels = new()
+    {
+        ["NameLink"] = "Наименование",
+        ["Customer"] = "Заказчик",
+        ["TypeOfPurchaseId"] = "Тип закупки",
+        ["PlaceOfDelivery"] = "Место поставки",
+        ["ReserveNumber"] = "Номер резерва",
+        ["B2BStatusId"] = "Статус резерва B2B",
+        ["NationalMode"] = "Нац режим",
+        ["BiddingDate"] = "Дата торгов",
+        ["ApplicationEndDate"] = "Окончание приема заявок",
+        ["NMCK"] = "НМЦК",
+        ["MinPrice"] = "Наша минимальная сумма",
+        ["DeliveryDate"] = "Дата доставки",
+        ["Note"] = "Примечание",
+        ["ResultPrice"] = "Итог цена",
+        ["Place"] = "Место на торгах",
+        ["ExpectedDeliveryDate"] = "Ожидаемая дата доставки",
+        ["ContractStatusId"] = "Статус контракта",
+        ["IsContractChecked"] = "Проверен",
+        ["BranchId"] = "Филиал",
+        ["BranchFilePath"] = "Файл для оповещения",
+        ["IsByRequest"] = "По заявкам",
+        ["IsCall"] = "Звони"
+    };
+
+    private IReadOnlyDictionary<string, string> _fieldColors = new Dictionary<string, string>();
+    private FieldMenu? _menu;
+
+    private sealed record FieldMenu(int RegeditId, string Field, int X, int Y);
+
+    private static string FieldLabel(string key) => FieldLabels.TryGetValue(key, out var name) ? name : key;
+
+    private string? FieldColor(int id, string key)
+        => _fieldColors.TryGetValue(WorkflowService.FieldColorKey(id, key), out var color) && !string.IsNullOrWhiteSpace(color)
+            ? color
+            : null;
+
+    /// <summary>Заметная рамка вокруг поля: толстый контур плюс лёгкая тонировка фона.</summary>
+    private string FieldStyle(int id, string key)
+    {
+        var color = FieldColor(id, key);
+        return color is null
+            ? string.Empty
+            : $"outline:3px solid {color};outline-offset:2px;border-radius:10px;background:{color}33";
+    }
+
+    private void OpenFieldMenu(int id, string key, MouseEventArgs ev)
+        => _menu = new FieldMenu(id, key, (int)ev.ClientX, (int)ev.ClientY);
+
+    private void CloseFieldMenu() => _menu = null;
+
+    private Task PickFieldColor(string color) => ApplyFieldColor(color);
+
+    private Task ClearFieldColor() => ApplyFieldColor(null);
+
+    private async Task ApplyFieldColor(string? color)
+    {
+        if (_menu is null) return;
+
+        var id = _menu.RegeditId;
+        var key = _menu.Field;
+        _menu = null;
+
+        var result = await WorkflowSvc.SetFieldColorAsync(id, key, color, _actor);
+        if (!result.Success)
+        {
+            _error = result.Error;
+            return;
+        }
+
+        // Перечитываем только подсветку: карточка не перезагружается, введённый текст не теряется.
+        try
+        {
+            _fieldColors = await WorkflowSvc.GetFieldColorsAsync(_rows.Select(r => r.Id));
+        }
+        catch (Exception ex)
+        {
+            _error = ErrorText.Describe(ex);
+        }
+    }
 
     // Этап 7: сохранить отдельный файл для оповещения филиала.
     private async Task OnBranchFileAsync(InputFileChangeEventArgs ev, int id)
