@@ -39,7 +39,9 @@ public static class ContractStatuses
     {
         (1, "На подписании у Снабдрайв"),
         (2, "На подписании у заказчика"),
-        (3, "Подписан")
+        (3, "Подписан"),
+        (4, "Нужен протокол"),
+        (5, "Нужен допник")
     };
 
     public static string Name(int? id) => All.FirstOrDefault(x => x.Id == id).Name ?? string.Empty;
@@ -83,7 +85,10 @@ public sealed record WorkflowRow(
     string? StageStartedBy,
     DateTime? StageCompletedAtUtc,
     string? StageCompletedBy,
-    DateTime? ApplicationEndDate);
+    DateTime? ApplicationEndDate,
+    DateTime? ContractClosedAtUtc,
+    string? ContractClosedBy,
+    bool PaymentOverdue);
 
 /// <summary>Модель редактирования строки воркфлоу.</summary>
 public sealed class WorkflowEdit
@@ -131,6 +136,9 @@ public sealed class WorkflowEdit
 
     /// <summary>Флажок «Заполнить в ЕИС» (этап 7) — подсвечивает дату доставки на этапе 8.</summary>
     public bool IsEisFilled { get; set; }
+
+    /// <summary>Флажок «Оплата просрочена» (этап 10 — Оплата).</summary>
+    public bool PaymentOverdue { get; set; }
 }
 
 public interface IWorkflowService
@@ -144,6 +152,13 @@ public interface IWorkflowService
     /// Возвращает идентификатор новой строки реестра.
     /// </summary>
     Task<Result<int>> CreateAsync(ChangeActor actor, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Закрыть этап 6 «Контракт» вручную. Этап идёт параллельно с этапом 5 «Перемещение
+    /// товара», поэтому стадия закупки не меняется — фиксируются только дата и исполнитель.
+    /// Без закрытого контракта этап 5 не завершается (см. проверку в <see cref="AdvanceAsync"/>).
+    /// </summary>
+    Task<Result> CloseContractAsync(int regeditId, ChangeActor actor, CancellationToken cancellationToken = default);
 
     /// <summary>Перевести на стадию по коду перехода (см. WorkflowService.Transitions).</summary>
     Task<Result> AdvanceAsync(int regeditId, int code, ChangeActor actor, CancellationToken cancellationToken = default);
@@ -241,7 +256,8 @@ public sealed class WorkflowService : IWorkflowService
                 r.IsByRequest, r.ExpectedDeliveryDate, r.BranchId, r.BranchFilePath, r.ReturnReason,
                 r.ContractStatusId, r.IsContractChecked, r.IsEisFilled,
                 r.StageStartedAtUtc, r.StageStartedBy, r.StageCompletedAtUtc, r.StageCompletedBy,
-                r.ApplicationEndDate))
+                r.ApplicationEndDate,
+                r.ContractClosedAtUtc, r.ContractClosedBy, r.PaymentOverdue))
             .ToListAsync(cancellationToken);
     }
 
@@ -275,6 +291,7 @@ public sealed class WorkflowService : IWorkflowService
         item.DeliveryDate = edit.DeliveryDate;
         item.IsCall = edit.IsCall;
         item.IsByRequest = edit.IsByRequest;
+        item.PaymentOverdue = edit.PaymentOverdue;
         item.ExpectedDeliveryDate = edit.ExpectedDeliveryDate;
         item.BranchId = edit.BranchId;
 
@@ -364,6 +381,28 @@ public sealed class WorkflowService : IWorkflowService
 
         var from = item.Stage;
 
+        // Проверка этапа 4 «Торги»: итог торгов нельзя зафиксировать, пока не указаны
+        // место и итоговая цена — иначе на следующие этапы уйдут пустые данные.
+        if (from == 4 && code is 5 or 6)
+        {
+            if (string.IsNullOrWhiteSpace(item.Place))
+            {
+                return Result.Fail("Укажите «Место на торгах» — без него нельзя зафиксировать итог торгов.");
+            }
+
+            if (item.ResultPrice <= 0)
+            {
+                return Result.Fail("Укажите «Итог цена» — без неё нельзя зафиксировать итог торгов.");
+            }
+        }
+
+        // Этап 5 «Перемещение товара» завершается только после того, как вручную закрыт
+        // параллельный этап 6 «Контракт» (код 8 из этапа 6 — прежний путь, его не трогаем).
+        if (code == 8 && from == 5 && item.ContractClosedAtUtc is null)
+        {
+            return Result.Fail("Сначала закройте этап «6. Контракт» — этап 5 завершается только после него.");
+        }
+
         // Авто-даты при завершении этапа (дата + время):
         //  1 «Контур и подготовка»      -> «Дата передачи на размещение»;
         //  3 «Подача заявки на площадку» -> «Дата размещения на площадке».
@@ -407,6 +446,55 @@ public sealed class WorkflowService : IWorkflowService
             cancellationToken);
 
         _logger.LogInformation("Воркфлоу: закупка {Id} {From}->{To} ({User})", regeditId, from, tr.To, actor.UserName);
+        return Result.Ok();
+    }
+
+    /// <inheritdoc/>
+    public async Task<Result> CloseContractAsync(int regeditId, ChangeActor actor, CancellationToken cancellationToken = default)
+    {
+        await using var context = await _factory.CreateDbContextAsync(cancellationToken);
+        var item = await context.Regedit.FirstOrDefaultAsync(r => r.Id == regeditId, cancellationToken);
+        if (item is null)
+        {
+            return Result.Fail("Запись не найдена.");
+        }
+
+        if (item.ContractClosedAtUtc is not null)
+        {
+            return Result.Fail($"Этап «6. Контракт» уже закрыт: {item.ContractClosedAtUtc:dd.MM.yyyy HH:mm}, {item.ContractClosedBy}.");
+        }
+
+        var now = DateTime.UtcNow;
+        item.ContractClosedAtUtc = now;
+        item.ContractClosedBy = actor.UserName;
+
+        // Стадия не меняется: контракт закрывается внутри этапа 5, поэтому в журнале
+        // FromStage и ToStage совпадают.
+        context.RegistryWorkflowLogs.Add(new RegistryWorkflowLog
+        {
+            RegeditId = regeditId,
+            FromStage = item.Stage,
+            ToStage = item.Stage,
+            Action = JournalText.Action("Этап 6 «Контракт» закрыт"),
+            ByUser = actor.UserName,
+            AtUtc = now
+        });
+
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Не удалось закрыть этап «Контракт» у закупки {RegeditId}", regeditId);
+            return Result.Fail("Не удалось закрыть этап «Контракт»: " + ErrorText.Describe(ex));
+        }
+
+        await NotifyAsync(regeditId, actor.UserName,
+            $"{actor.UserName}: «{ShortName(item.NameLink)}» — этап «6. Контракт» закрыт",
+            cancellationToken);
+
+        _logger.LogInformation("Воркфлоу: закупка {Id} — этап «6. Контракт» закрыт ({User})", regeditId, actor.UserName);
         return Result.Ok();
     }
 

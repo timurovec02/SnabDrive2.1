@@ -76,6 +76,19 @@ public class Regedit
     /// <summary>Отметка «Заполнить в ЕИС» (этап 7) — подсвечивает дату доставки на этапе 8.</summary>
     public bool IsEisFilled { get; set; }
 
+    /// <summary>
+    /// Этап 6 «Контракт» идёт параллельно с этапом 5 «Перемещение товара»: после выигрыша
+    /// закупка попадает в обе вкладки. Поле заполняется, когда контракт закрывают вручную;
+    /// до этого момента этап 5 нельзя завершить.
+    /// </summary>
+    public DateTime? ContractClosedAtUtc { get; set; }
+
+    /// <summary>Кто закрыл этап 6 «Контракт».</summary>
+    public string? ContractClosedBy { get; set; }
+
+    /// <summary>Отметка «Оплата просрочена» (этап 10 — Оплата).</summary>
+    public bool PaymentOverdue { get; set; }
+
     // ---- Воркфлоу по стадиям (web): 1 = поиск/подготовка, 2 = участие, 3 = оформление, 4 = завершено; IsLost = проигран ----
     public int Stage { get; set; } = 1;
     public bool IsLost { get; set; }

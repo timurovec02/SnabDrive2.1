@@ -81,6 +81,15 @@
     <div class="alert alert-info">Вашей роли не назначено ни одной стадии воркфлоу. Настройка: «Роли» → «Стадии воркфлоу».</div>
 }
 
+@if (_stage == 6)
+{
+    <div class="alert alert-info" style="margin:0 0 12px">
+        Этап «6. Контракт» идёт параллельно с этапом 5 «Перемещение товара»: после выигрыша на торгах закупка
+        попадает сразу в обе вкладки и остаётся здесь, пока контракт не закроют вручную. Этап 5 завершится
+        только после закрытия контракта — тогда закупка уйдёт на этап 7.
+    </div>
+}
+
 @if (_loading)
 {
     <p class="muted">Загрузка…</p>
@@ -340,6 +349,18 @@ else
                             <input class="wf-input" @bind="_edits[r.Id].NationalMode" @bind:after="() => SaveAsync(r.Id)" />
                         </div>
                         <div class="wf-field">
+                            <label class="wf-label">Номер резерва</label>
+                            <input class="wf-input" @bind="_edits[r.Id].ReserveNumber" @bind:after="() => SaveAsync(r.Id)" />
+                        </div>
+                        <div class="wf-field">
+                            <label class="wf-label">Итог цена</label>
+                            <input type="number" class="wf-input" @bind="_edits[r.Id].ResultPrice" @bind:after="() => SaveAsync(r.Id)" />
+                        </div>
+                        <div class="wf-field">
+                            <label class="wf-label">НМЦК</label>
+                            <input type="number" class="wf-input" @bind="_edits[r.Id].NMCK" @bind:after="() => SaveAsync(r.Id)" />
+                        </div>
+                        <div class="wf-field">
                             <label class="wf-label">Ожидаемая дата доставки</label>
                             <input type="date" class="wf-input" @bind="_edits[r.Id].ExpectedDeliveryDate" @bind:format="yyyy-MM-dd" @bind:after="() => SaveAsync(r.Id)" />
                         </div>
@@ -379,6 +400,12 @@ else
                                 }
                             </select>
                         </div>
+                        @if (r.ContractStatusId is 4 or 5)
+                        {
+                            <div class="alert alert--warn" style="grid-column:1/-1;margin:0">
+                                ⚠ @ContractStatuses.Name(r.ContractStatusId) — закройте вопрос, прежде чем переводить закупку дальше.
+                            </div>
+                        }
                         <div class="wf-field">
                             <label class="wf-label">Проверен</label>
                             <label style="display:flex;align-items:center;gap:8px;font-size:15px;font-weight:600">
@@ -480,6 +507,15 @@ else
                         <div class="wf-field"><label class="wf-label">Итог. цена</label><input type="number" class="wf-input" @bind="_edits[r.Id].ResultPrice" @bind:after="() => SaveAsync(r.Id)" /></div>
                         <div class="wf-field"><label class="wf-label">Примечание</label><textarea class="wf-area" @bind="_edits[r.Id].Note" @bind:after="() => SaveAsync(r.Id)"></textarea></div>
                     </div>
+
+                    @if (_stage == 10)
+                    {
+                        <label style="@OverdueStyle(r.PaymentOverdue)">
+                            <input type="checkbox" style="width:20px;height:20px" checked="@_edits[r.Id].PaymentOverdue"
+                                   @onchange="ev => OnTogglePaymentOverdue(r.Id, ev)" />
+                            <span>⏰ Оплата просрочена</span>
+                        </label>
+                    }
                 }
 
                 @if (_stage == 13 && !string.IsNullOrWhiteSpace(r.ReturnReason))
@@ -508,16 +544,46 @@ else
                     }
                     else if (_stage == 4)
                     {
-                        <button class="btn" @onclick="() => Advance(r.Id, 5)">Выиграл →</button>
-                        <button class="btn btn--danger" @onclick="() => Advance(r.Id, 6)">Проиграл</button>
+                        <button class="btn" disabled="@(!Stage4Ready(_edits[r.Id]))" @onclick="() => Advance(r.Id, 5)"
+                                title="@(Stage4Ready(_edits[r.Id]) ? "Выиграно: закупка попадёт в этапы 5 и 6" : "Сначала укажите «Место на торгах» и «Итог цена»")">Выиграл →</button>
+                        <button class="btn btn--danger" disabled="@(!Stage4Ready(_edits[r.Id]))" @onclick="() => Advance(r.Id, 6)"
+                                title="@(Stage4Ready(_edits[r.Id]) ? "Проиграно" : "Сначала укажите «Место на торгах» и «Итог цена»")">Проиграл</button>
+                        @if (!Stage4Ready(_edits[r.Id]))
+                        {
+                            <span style="display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:#b45309">
+                                ⛔ Укажите «Место на торгах» и «Итог цена» — без них итог торгов не фиксируется
+                            </span>
+                        }
                     }
                     else if (_stage == 5)
                     {
-                        <button class="btn" @onclick="() => Advance(r.Id, 7)">→ 6 Контракт</button>
+                        @if (r.ContractClosedAtUtc is null)
+                        {
+                            <button class="btn" disabled title="Сначала закройте этап «6. Контракт»">→ 7 Логистика</button>
+                            <span style="display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:#b45309">
+                                ⛔ Этап 5 завершится только после закрытия этапа «6. Контракт»
+                            </span>
+                        }
+                        else
+                        {
+                            <button class="btn" @onclick="() => Advance(r.Id, 8)">→ 7 Логистика</button>
+                            <span class="muted" style="font-size:12px">Контракт закрыт: @Fmt(r.ContractClosedAtUtc)@ClosedBy(r.ContractClosedBy)</span>
+                        }
                     }
                     else if (_stage == 6)
                     {
-                        <button class="btn" @onclick="() => Advance(r.Id, 8)">→ Логистика</button>
+                        @if (r.Stage == 6)
+                        {
+                            <button class="btn" @onclick="() => Advance(r.Id, 8)">→ 7 Логистика</button>
+                        }
+                        else
+                        {
+                            <button class="btn btn--primary" disabled="@_busy" @onclick="() => CloseContract(r.Id)"
+                                    title="Зафиксировать закрытие контракта. Закупка останется на этапе 5, но её можно будет завершить">
+                                ✅ Закрыть этап «Контракт»
+                            </button>
+                            <span class="muted" style="font-size:12px">Закупка на этапе 5 — после закрытия контракта этап 5 можно завершить</span>
+                        }
                     }
                     @* Этап 7 переводится далее кнопкой «Оповестить филиал» (в блоке полей). *@
                     else if (_stage == 8)
@@ -685,7 +751,8 @@ else
                     BranchId = r.BranchId,
                     ContractStatusId = r.ContractStatusId,
                     IsContractChecked = r.IsContractChecked,
-                    IsEisFilled = r.IsEisFilled
+                    IsEisFilled = r.IsEisFilled,
+                    PaymentOverdue = r.PaymentOverdue
                 };
                 _stageMoves[r.Id] = picked.TryGetValue(r.Id, out var wanted) && wanted != r.Stage
                     ? wanted
@@ -788,11 +855,21 @@ else
 
     private string TabClass(int stage) => _stage == stage ? "tab tab--active" : "tab";
 
-    private int Count(int stage) => _rows.Count(r => r.Stage == stage && MatchesSearch(r));
+    /// <summary>
+    /// К какой вкладке относится закупка. Этап 6 «Контракт» идёт параллельно с этапом 5
+    /// «Перемещение товара»: после выигрыша закупка остаётся на этапе 5, но показывается
+    /// и во вкладке контракта, пока тот не закрыт вручную.
+    /// </summary>
+    private static bool InStage(WorkflowRow r, int stage)
+        => stage == 6
+            ? r.Stage == 6 || (r.Stage == 5 && r.ContractClosedAtUtc is null)
+            : r.Stage == stage;
+
+    private int Count(int stage) => _rows.Count(r => InStage(r, stage) && MatchesSearch(r));
 
     private List<WorkflowRow> Rows()
     {
-        var rows = _rows.Where(r => r.Stage == _stage && MatchesSearch(r)).ToList();
+        var rows = _rows.Where(r => InStage(r, _stage) && MatchesSearch(r)).ToList();
 
         // Этап 3 «Подача заявки»: очередность определяет дедлайн — сначала те,
         // у которых прием заявок заканчивается раньше. Без даты — в конец.
@@ -940,6 +1017,22 @@ else
         await SaveAsync(id);
     }
 
+    // Флажок «Оплата просрочена» (этап 10 — Оплата).
+    private async Task OnTogglePaymentOverdue(int id, ChangeEventArgs ev)
+    {
+        _edits[id].PaymentOverdue = ev.Value is bool b && b;
+        await SaveAsync(id);
+    }
+
+    /// <summary>Просроченная оплата бросается в глаза: красная плашка вместо обычной подписи.</summary>
+    private static string OverdueStyle(bool overdue) => overdue
+        ? "display:inline-flex;align-items:center;gap:8px;margin-top:10px;font-size:15px;font-weight:800;"
+          + "color:#b42318;background:#fef3f2;border:1px solid #fda29b;border-radius:8px;padding:6px 10px"
+        : "display:inline-flex;align-items:center;gap:8px;margin-top:10px;font-size:15px;font-weight:600";
+
+    private static string ClosedBy(string? user)
+        => string.IsNullOrWhiteSpace(user) ? string.Empty : $", {user}";
+
     // Этап 7: сохранить отдельный файл для оповещения филиала.
     private async Task OnBranchFileAsync(InputFileChangeEventArgs ev, int id)
     {
@@ -1056,6 +1149,26 @@ else
         if (!result.Success) { _error = result.Error; return; }
         await LoadAsync();
     }
+
+    /// <summary>
+    /// Закрыть этап 6 «Контракт» вручную. Стадия закупки не меняется: контракт идёт
+    /// параллельно с этапом 5, и только после его закрытия этап 5 можно завершить.
+    /// </summary>
+    private async Task CloseContract(int id)
+    {
+        _error = null;
+        var result = await WorkflowSvc.CloseContractAsync(id, _actor);
+        if (!result.Success) { _error = result.Error; return; }
+        _notice = "Этап «6. Контракт» закрыт — теперь этап 5 можно завершить.";
+        await LoadAsync();
+    }
+
+    /// <summary>
+    /// Проверка этапа 4 «Торги»: «Выиграл» и «Проиграл» доступны только после того,
+    /// как указаны место на торгах и итоговая цена (то же проверяет и сервис).
+    /// </summary>
+    private static bool Stage4Ready(WorkflowEdit e)
+        => !string.IsNullOrWhiteSpace(e.Place) && e.ResultPrice > 0;
 
     private async Task OnFileAsync(InputFileChangeEventArgs ev, int id)
     {

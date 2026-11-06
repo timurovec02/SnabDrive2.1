@@ -308,6 +308,23 @@ ELSE
     PRINT 'WorkflowLogs.Action уже нужной длины (или таблицы нет).';
 GO
 
+-- =============================================================================
+-- Этапы 5 и 6 идут параллельно + отметка «Оплата просрочена».
+--   После выигрыша на этапе 4 «Торги» закупка попадает сразу в этап 5 «Перемещение
+--   товара» и в этап 6 «Контракт». Контракт закрывается вручную, и пока он не закрыт,
+--   этап 5 нельзя завершить (проверка в WorkflowService.AdvanceAsync).
+--     ContractClosedAtUtc / ContractClosedBy — кто и когда закрыл этап 6;
+--     PaymentOverdue — отметка «Оплата просрочена» на этапе 10 «Оплата».
+-- =============================================================================
+IF COL_LENGTH('dbo.RegistryItems', 'ContractClosedAtUtc') IS NULL
+    ALTER TABLE dbo.RegistryItems ADD ContractClosedAtUtc DATETIME2(3) NULL;
+IF COL_LENGTH('dbo.RegistryItems', 'ContractClosedBy') IS NULL
+    ALTER TABLE dbo.RegistryItems ADD ContractClosedBy NVARCHAR(256) NULL;
+IF COL_LENGTH('dbo.RegistryItems', 'PaymentOverdue') IS NULL
+    ALTER TABLE dbo.RegistryItems ADD PaymentOverdue BIT NOT NULL
+        CONSTRAINT DF_RegistryItems_PaymentOverdue DEFAULT(0);
+GO
+
 -- ============================================================================
 -- Самопроверка: какие из нужных колонок так и не появились.
 -- Пустой результат = схема соответствует текущей версии приложения.
@@ -322,6 +339,8 @@ INSERT INTO @need VALUES
  ('RegistryItems','StageStartedAtUtc'),('RegistryItems','StageStartedBy'),
  ('RegistryItems','StageCompletedAtUtc'),('RegistryItems','StageCompletedBy'),
  ('RegistryItems','ApplicationEndDate'),
+ ('RegistryItems','ContractClosedAtUtc'),('RegistryItems','ContractClosedBy'),
+ ('RegistryItems','PaymentOverdue'),
  ('ArchiveRegistryItems','EisLink'),('ArchiveRegistryItems','PurchaseNumber'),
  ('ArchiveRegistryItems','DeliveryDate'),('ArchiveRegistryItems','ApplicationEndDate'),
  ('KonturFavorites','ApplicationEndDate'),('KonturTemplates','ApplicationEndDate'),
