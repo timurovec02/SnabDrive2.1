@@ -325,6 +325,20 @@ IF COL_LENGTH('dbo.RegistryItems', 'PaymentOverdue') IS NULL
         CONSTRAINT DF_RegistryItems_PaymentOverdue DEFAULT(0);
 GO
 
+-- =============================================================================
+-- Этап 5 «Перемещение товара» можно завершить независимо от контракта: закупка
+-- сразу уходит из вкладки этапа 5, а на этап 7 попадает только после закрытия
+-- этапа 6 «Контракт». Кто завершил последним (этап 5 или контракт), тот и
+-- переводит закупку на этап 7 — см. WorkflowService.CompleteMovementAsync
+-- и CloseContractAsync.
+--     Stage5ClosedAtUtc / Stage5ClosedBy — кто и когда завершил этап 5.
+-- =============================================================================
+IF COL_LENGTH('dbo.RegistryItems', 'Stage5ClosedAtUtc') IS NULL
+    ALTER TABLE dbo.RegistryItems ADD Stage5ClosedAtUtc DATETIME2(3) NULL;
+IF COL_LENGTH('dbo.RegistryItems', 'Stage5ClosedBy') IS NULL
+    ALTER TABLE dbo.RegistryItems ADD Stage5ClosedBy NVARCHAR(256) NULL;
+GO
+
 -- ============================================================================
 -- Самопроверка: какие из нужных колонок так и не появились.
 -- Пустой результат = схема соответствует текущей версии приложения.
@@ -341,6 +355,7 @@ INSERT INTO @need VALUES
  ('RegistryItems','ApplicationEndDate'),
  ('RegistryItems','ContractClosedAtUtc'),('RegistryItems','ContractClosedBy'),
  ('RegistryItems','PaymentOverdue'),
+ ('RegistryItems','Stage5ClosedAtUtc'),('RegistryItems','Stage5ClosedBy'),
  ('ArchiveRegistryItems','EisLink'),('ArchiveRegistryItems','PurchaseNumber'),
  ('ArchiveRegistryItems','DeliveryDate'),('ArchiveRegistryItems','ApplicationEndDate'),
  ('KonturFavorites','ApplicationEndDate'),('KonturTemplates','ApplicationEndDate'),

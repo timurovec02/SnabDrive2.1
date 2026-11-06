@@ -88,7 +88,9 @@ public sealed record WorkflowRow(
     DateTime? ApplicationEndDate,
     DateTime? ContractClosedAtUtc,
     string? ContractClosedBy,
-    bool PaymentOverdue);
+    bool PaymentOverdue,
+    DateTime? Stage5ClosedAtUtc,
+    string? Stage5ClosedBy);
 
 /// <summary>Модель редактирования строки воркфлоу.</summary>
 public sealed class WorkflowEdit
@@ -159,6 +161,13 @@ public interface IWorkflowService
     /// Без закрытого контракта этап 5 не завершается (см. проверку в <see cref="AdvanceAsync"/>).
     /// </summary>
     Task<Result> CloseContractAsync(int regeditId, ChangeActor actor, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Завершить этап 5 «Перемещение товара». Закупка сразу пропадает из вкладки этапа 5,
+    /// а на этап 7 попадает только после закрытия этапа 6 «Контракт»: если контракт уже
+    /// закрыт, перевод происходит немедленно, иначе — в <see cref="CloseContractAsync"/>.
+    /// </summary>
+    Task<Result> CompleteMovementAsync(int regeditId, ChangeActor actor, CancellationToken cancellationToken = default);
 
     /// <summary>Перевести на стадию по коду перехода (см. WorkflowService.Transitions).</summary>
     Task<Result> AdvanceAsync(int regeditId, int code, ChangeActor actor, CancellationToken cancellationToken = default);
@@ -257,7 +266,8 @@ public sealed class WorkflowService : IWorkflowService
                 r.ContractStatusId, r.IsContractChecked, r.IsEisFilled,
                 r.StageStartedAtUtc, r.StageStartedBy, r.StageCompletedAtUtc, r.StageCompletedBy,
                 r.ApplicationEndDate,
-                r.ContractClosedAtUtc, r.ContractClosedBy, r.PaymentOverdue))
+                r.ContractClosedAtUtc, r.ContractClosedBy, r.PaymentOverdue,
+                r.Stage5ClosedAtUtc, r.Stage5ClosedBy))
             .ToListAsync(cancellationToken);
     }
 
@@ -480,6 +490,9 @@ public sealed class WorkflowService : IWorkflowService
             AtUtc = now
         });
 
+        // Если этап 5 уже завершён, контракт был последним — закупка уходит на этап 7.
+        var moved = TryMoveToLogistics(item, context, actor, now);
+
         try
         {
             await context.SaveChangesAsync(cancellationToken);
@@ -491,11 +504,98 @@ public sealed class WorkflowService : IWorkflowService
         }
 
         await NotifyAsync(regeditId, actor.UserName,
-            $"{actor.UserName}: «{ShortName(item.NameLink)}» — этап «6. Контракт» закрыт",
+            moved
+                ? $"{actor.UserName}: «{ShortName(item.NameLink)}» — контракт закрыт, закупка на этапе «{WorkflowStages.Name(7)}»"
+                : $"{actor.UserName}: «{ShortName(item.NameLink)}» — этап «6. Контракт» закрыт",
             cancellationToken);
 
-        _logger.LogInformation("Воркфлоу: закупка {Id} — этап «6. Контракт» закрыт ({User})", regeditId, actor.UserName);
+        _logger.LogInformation("Воркфлоу: закупка {Id} — этап «6. Контракт» закрыт, перевод на 7: {Moved} ({User})",
+            regeditId, moved, actor.UserName);
         return Result.Ok();
+    }
+
+    /// <inheritdoc/>
+    public async Task<Result> CompleteMovementAsync(int regeditId, ChangeActor actor, CancellationToken cancellationToken = default)
+    {
+        await using var context = await _factory.CreateDbContextAsync(cancellationToken);
+        var item = await context.Regedit.FirstOrDefaultAsync(r => r.Id == regeditId, cancellationToken);
+        if (item is null)
+        {
+            return Result.Fail("Запись не найдена.");
+        }
+
+        if (item.Stage != 5)
+        {
+            return Result.Fail("Этап 5 завершается только у закупки на этапе «5. Перемещение товара».");
+        }
+
+        if (item.Stage5ClosedAtUtc is not null)
+        {
+            return Result.Fail($"Этап 5 уже завершён: {item.Stage5ClosedAtUtc:dd.MM.yyyy HH:mm}, {item.Stage5ClosedBy}.");
+        }
+
+        var now = DateTime.UtcNow;
+        item.Stage5ClosedAtUtc = now;
+        item.Stage5ClosedBy = actor.UserName;
+
+        // Стадия пока не меняется: закупка ждёт закрытия контракта, поэтому From = To.
+        context.RegistryWorkflowLogs.Add(new RegistryWorkflowLog
+        {
+            RegeditId = regeditId,
+            FromStage = 5,
+            ToStage = 5,
+            Action = JournalText.Action("Этап 5 «Перемещение товара» завершён"),
+            ByUser = actor.UserName,
+            AtUtc = now
+        });
+
+        // Контракт уже закрыт — ждать нечего, уходим на этап 7 сразу.
+        var moved = TryMoveToLogistics(item, context, actor, now);
+
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Не удалось завершить этап «Перемещение товара» у закупки {RegeditId}", regeditId);
+            return Result.Fail("Не удалось завершить этап 5: " + ErrorText.Describe(ex));
+        }
+
+        await NotifyAsync(regeditId, actor.UserName,
+            moved
+                ? $"{actor.UserName}: «{ShortName(item.NameLink)}» → этап «{WorkflowStages.Name(7)}»"
+                : $"{actor.UserName}: «{ShortName(item.NameLink)}» — этап 5 завершён, ждём закрытия контракта",
+            cancellationToken);
+
+        _logger.LogInformation("Воркфлоу: закупка {Id} — этап 5 завершён, перевод на 7: {Moved} ({User})",
+            regeditId, moved, actor.UserName);
+        return Result.Ok();
+    }
+
+    /// <summary>
+    /// Этапы 5 «Перемещение товара» и 6 «Контракт» идут параллельно. На этап 7 закупку
+    /// переводит тот, кто завершил свой этап последним: метод вызывается из обоих мест
+    /// и срабатывает, только когда закрыты оба этапа.
+    /// </summary>
+    private static bool TryMoveToLogistics(Regedit item, RegistryDbContext context, ChangeActor actor, DateTime now)
+    {
+        if (item.Stage != 5 || item.Stage5ClosedAtUtc is null || item.ContractClosedAtUtc is null)
+        {
+            return false;
+        }
+
+        StageTracker.MoveTo(item, 7, actor.UserName);
+        context.RegistryWorkflowLogs.Add(new RegistryWorkflowLog
+        {
+            RegeditId = item.Id,
+            FromStage = 5,
+            ToStage = 7,
+            Action = JournalText.Action(WorkflowStages.Name(7)),
+            ByUser = actor.UserName,
+            AtUtc = now
+        });
+        return true;
     }
 
     public async Task<Result> SetStageAsync(int regeditId, int stage, ChangeActor actor, CancellationToken cancellationToken = default)

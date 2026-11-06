@@ -85,8 +85,8 @@
 {
     <div class="alert alert-info" style="margin:0 0 12px">
         Этап «6. Контракт» идёт параллельно с этапом 5 «Перемещение товара»: после выигрыша на торгах закупка
-        попадает сразу в обе вкладки и остаётся здесь, пока контракт не закроют вручную. Этап 5 завершится
-        только после закрытия контракта — тогда закупка уйдёт на этап 7.
+        попадает сразу в обе вкладки. Этап 5 можно завершить в любой момент — закупка просто уйдёт из своей вкладки,
+        а на этап 7 попадёт только после того, как контракт закроют здесь.
     </div>
 }
 
@@ -230,7 +230,7 @@ else
                             <input type="date" class="wf-input" @bind="_edits[r.Id].DeliveryDate" @bind:format="yyyy-MM-dd" @bind:after="() => SaveAsync(r.Id)" />
                         </div>
                         <div class="wf-field">
-                            <label class="wf-label">Примечания</label>
+                            <label class="wf-label">Примечание</label>
                             <textarea class="wf-area" @bind="_edits[r.Id].Note" @bind:after="() => SaveAsync(r.Id)"></textarea>
                         </div>
                         @if (_stage == 12)
@@ -278,7 +278,7 @@ else
                         <div class="wf-field"><label class="wf-label">Тип закупки</label><div class="wf-readonly">@r.TypeOfPurchaseName</div></div>
                         <div class="wf-field"><label class="wf-label">НМЦК</label><div class="wf-readonly">@r.NMCK.ToString("N2")</div></div>
                         <div class="wf-field">
-                            <label class="wf-label">Дата и время торгов</label>
+                            <label class="wf-label">Дата торгов</label>
                             <input type="datetime-local" class="wf-input" @bind="_edits[r.Id].BiddingDate" @bind:format="yyyy-MM-dd'T'HH:mm" @bind:after="() => SaveAsync(r.Id)" />
                         </div>
                         <div class="wf-field">
@@ -318,17 +318,11 @@ else
                     <div class="wf-grid">
                         <div class="wf-field">
                             <label class="wf-label">Заказчик</label>
-                            <textarea class="wf-area" @bind="_edits[r.Id].Customer" @bind:after="() => SaveAsync(r.Id)"></textarea>
+                            <div class="wf-readonly">@r.Customer</div>
                         </div>
                         <div class="wf-field">
                             <label class="wf-label">Тип закупки</label>
-                            <select class="wf-input" @bind="_edits[r.Id].TypeOfPurchaseId" @bind:after="() => SaveAsync(r.Id)">
-                                <option value="">— не выбран —</option>
-                                @foreach (var t in _types)
-                                {
-                                    <option value="@t.Id">@t.Name</option>
-                                }
-                            </select>
+                            <div class="wf-readonly">@r.TypeOfPurchaseName</div>
                         </div>
                         <div class="wf-field">
                             <label class="wf-label">Место поставки</label>
@@ -346,7 +340,7 @@ else
                         </div>
                         <div class="wf-field">
                             <label class="wf-label">Нац режим</label>
-                            <input class="wf-input" @bind="_edits[r.Id].NationalMode" @bind:after="() => SaveAsync(r.Id)" />
+                            <div class="wf-readonly">@r.NationalMode</div>
                         </div>
                         <div class="wf-field">
                             <label class="wf-label">Номер резерва</label>
@@ -354,7 +348,7 @@ else
                         </div>
                         <div class="wf-field">
                             <label class="wf-label">Итог цена</label>
-                            <input type="number" class="wf-input" @bind="_edits[r.Id].ResultPrice" @bind:after="() => SaveAsync(r.Id)" />
+                            <div class="wf-readonly">@r.ResultPrice.ToString("N2")</div>
                         </div>
                         <div class="wf-field">
                             <label class="wf-label">НМЦК</label>
@@ -365,7 +359,7 @@ else
                             <input type="date" class="wf-input" @bind="_edits[r.Id].ExpectedDeliveryDate" @bind:format="yyyy-MM-dd" @bind:after="() => SaveAsync(r.Id)" />
                         </div>
                         <div class="wf-field">
-                            <label class="wf-label">Примечания</label>
+                            <label class="wf-label">Примечание</label>
                             <textarea class="wf-area" @bind="_edits[r.Id].Note" @bind:after="() => SaveAsync(r.Id)"></textarea>
                         </div>
                     </div>
@@ -380,11 +374,11 @@ else
                         </div>
                         <div class="wf-field">
                             <label class="wf-label">Заказчик</label>
-                            <textarea class="wf-area" @bind="_edits[r.Id].Customer" @bind:after="() => SaveAsync(r.Id)"></textarea>
+                            <div class="wf-readonly">@r.Customer</div>
                         </div>
                         <div class="wf-field">
-                            <label class="wf-label">Итог сумма</label>
-                            <input type="number" class="wf-input" @bind="_edits[r.Id].ResultPrice" @bind:after="() => SaveAsync(r.Id)" />
+                            <label class="wf-label">Итог цена</label>
+                            <div class="wf-readonly">@r.ResultPrice.ToString("N2")</div>
                         </div>
                         <div class="wf-field">
                             <label class="wf-label">Место поставки</label>
@@ -472,7 +466,7 @@ else
                         </div>
                         <div class="wf-field">
                             <label class="wf-label">Заказчик</label>
-                            <textarea class="wf-area" @bind="_edits[r.Id].Customer" @bind:after="() => SaveAsync(r.Id)"></textarea>
+                            <div class="wf-readonly">@r.Customer</div>
                         </div>
                         <div class="wf-field">
                             <label class="wf-label">Ожидаемая дата доставки</label>
@@ -498,13 +492,13 @@ else
                 {
                     <div class="wf-grid">
                         <div class="wf-field"><label class="wf-label">Наименование</label><textarea class="wf-area" @bind="_edits[r.Id].NameLink" @bind:after="() => SaveAsync(r.Id)"></textarea></div>
-                        <div class="wf-field"><label class="wf-label">Заказчик</label><textarea class="wf-area" @bind="_edits[r.Id].Customer" @bind:after="() => SaveAsync(r.Id)"></textarea></div>
+                        <div class="wf-field"><label class="wf-label">Заказчик</label><div class="wf-readonly">@r.Customer</div></div>
                         <div class="wf-field"><label class="wf-label">НМЦК</label><input type="number" class="wf-input" @bind="_edits[r.Id].NMCK" @bind:after="() => SaveAsync(r.Id)" /></div>
                         <div class="wf-field"><label class="wf-label">Дата торгов</label><input class="wf-input" value="@Fmt(r.BiddingDate)" disabled /></div>
-                        <div class="wf-field"><label class="wf-label">Резерв 1С</label><input class="wf-input" @bind="_edits[r.Id].ReserveNumber" @bind:after="() => SaveAsync(r.Id)" /></div>
+                        <div class="wf-field"><label class="wf-label">Номер резерва</label><input class="wf-input" @bind="_edits[r.Id].ReserveNumber" @bind:after="() => SaveAsync(r.Id)" /></div>
                         <div class="wf-field"><label class="wf-label">Место на торгах</label><input class="wf-input" @bind="_edits[r.Id].Place" @bind:after="() => SaveAsync(r.Id)" /></div>
                         <div class="wf-field"><label class="wf-label">Место поставки</label><textarea class="wf-area" @bind="_edits[r.Id].PlaceOfDelivery" @bind:after="() => SaveAsync(r.Id)"></textarea></div>
-                        <div class="wf-field"><label class="wf-label">Итог. цена</label><input type="number" class="wf-input" @bind="_edits[r.Id].ResultPrice" @bind:after="() => SaveAsync(r.Id)" /></div>
+                        <div class="wf-field"><label class="wf-label">Итог цена</label><div class="wf-readonly">@r.ResultPrice.ToString("N2")</div></div>
                         <div class="wf-field"><label class="wf-label">Примечание</label><textarea class="wf-area" @bind="_edits[r.Id].Note" @bind:after="() => SaveAsync(r.Id)"></textarea></div>
                     </div>
 
@@ -557,17 +551,14 @@ else
                     }
                     else if (_stage == 5)
                     {
+                        <button class="btn btn--primary" disabled="@_busy" @onclick="() => CompleteMovement(r.Id)">✔ Завершить этап 5</button>
                         @if (r.ContractClosedAtUtc is null)
                         {
-                            <button class="btn" disabled title="Сначала закройте этап «6. Контракт»">→ 7 Логистика</button>
-                            <span style="display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:#b45309">
-                                ⛔ Этап 5 завершится только после закрытия этапа «6. Контракт»
-                            </span>
+                            <span class="muted" style="font-size:12px">Закупка уйдёт из этой вкладки, а на этап 7 попадёт после закрытия этапа «6. Контракт»</span>
                         }
                         else
                         {
-                            <button class="btn" @onclick="() => Advance(r.Id, 8)">→ 7 Логистика</button>
-                            <span class="muted" style="font-size:12px">Контракт закрыт: @Fmt(r.ContractClosedAtUtc)@ClosedBy(r.ContractClosedBy)</span>
+                            <span class="muted" style="font-size:12px">Контракт закрыт (@Fmt(r.ContractClosedAtUtc)@ClosedBy(r.ContractClosedBy)) — закупка сразу уйдёт на этап 7</span>
                         }
                     }
                     else if (_stage == 6)
@@ -579,10 +570,19 @@ else
                         else
                         {
                             <button class="btn btn--primary" disabled="@_busy" @onclick="() => CloseContract(r.Id)"
-                                    title="Зафиксировать закрытие контракта. Закупка останется на этапе 5, но её можно будет завершить">
+                                    title="Зафиксировать закрытие контракта. Если этап 5 уже завершён, закупка сразу уйдёт на этап 7">
                                 ✅ Закрыть этап «Контракт»
                             </button>
-                            <span class="muted" style="font-size:12px">Закупка на этапе 5 — после закрытия контракта этап 5 можно завершить</span>
+                            @if (r.Stage5ClosedAtUtc is not null)
+                            {
+                                <span style="display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:#b45309">
+                                    ⏳ Этап 5 завершён (@Fmt(r.Stage5ClosedAtUtc)@ClosedBy(r.Stage5ClosedBy)) — после закрытия контракта закупка уйдёт на этап 7
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="muted" style="font-size:12px">Закупка на этапе 5 — этап 5 можно завершить в любой момент</span>
+                            }
                         }
                     }
                     @* Этап 7 переводится далее кнопкой «Оповестить филиал» (в блоке полей). *@
@@ -860,10 +860,16 @@ else
     /// «Перемещение товара»: после выигрыша закупка остаётся на этапе 5, но показывается
     /// и во вкладке контракта, пока тот не закрыт вручную.
     /// </summary>
-    private static bool InStage(WorkflowRow r, int stage)
-        => stage == 6
-            ? r.Stage == 6 || (r.Stage == 5 && r.ContractClosedAtUtc is null)
-            : r.Stage == stage;
+    private static bool InStage(WorkflowRow r, int stage) => stage switch
+    {
+        // Этап 5: как только этап завершён, закупка уходит из вкладки — контракт она дожидается во вкладке 6.
+        5 => r.Stage == 5 && r.Stage5ClosedAtUtc is null,
+
+        // Этап 6: закупки своего этапа плюс все с этапа 5, у которых контракт ещё не закрыт.
+        6 => r.Stage == 6 || (r.Stage == 5 && r.ContractClosedAtUtc is null),
+
+        _ => r.Stage == stage
+    };
 
     private int Count(int stage) => _rows.Count(r => InStage(r, stage) && MatchesSearch(r));
 
@@ -1159,7 +1165,28 @@ else
         _error = null;
         var result = await WorkflowSvc.CloseContractAsync(id, _actor);
         if (!result.Success) { _error = result.Error; return; }
-        _notice = "Этап «6. Контракт» закрыт — теперь этап 5 можно завершить.";
+        var stage5Done = _rows.FirstOrDefault(x => x.Id == id)?.Stage5ClosedAtUtc is not null;
+        _notice = stage5Done
+            ? "Этап «6. Контракт» закрыт — закупка переведена на этап «7. Лог.документы»."
+            : "Этап «6. Контракт» закрыт.";
+        await LoadAsync();
+    }
+
+    /// <summary>
+    /// Завершить этап 5 «Перемещение товара». Закупка сразу уходит из вкладки этапа 5,
+    /// а на этап 7 попадает после закрытия этапа 6 «Контракт» (или немедленно, если он уже закрыт).
+    /// </summary>
+    private async Task CompleteMovement(int id)
+    {
+        _error = null;
+        var contractClosed = _rows.FirstOrDefault(x => x.Id == id)?.ContractClosedAtUtc is not null;
+
+        var result = await WorkflowSvc.CompleteMovementAsync(id, _actor);
+        if (!result.Success) { _error = result.Error; return; }
+
+        _notice = contractClosed
+            ? "Этап 5 завершён — закупка переведена на этап «7. Лог.документы»."
+            : "Этап 5 завершён. На этап 7 закупка попадёт после закрытия этапа «6. Контракт».";
         await LoadAsync();
     }
 

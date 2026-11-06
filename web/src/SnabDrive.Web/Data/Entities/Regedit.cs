@@ -89,6 +89,15 @@ public class Regedit
     /// <summary>Отметка «Оплата просрочена» (этап 10 — Оплата).</summary>
     public bool PaymentOverdue { get; set; }
 
+    /// <summary>
+    /// Этап 5 «Перемещение товара» завершается независимо от контракта: закупка уходит
+    /// из вкладки этапа 5, но на этап 7 попадает только после закрытия этапа 6.
+    /// </summary>
+    public DateTime? Stage5ClosedAtUtc { get; set; }
+
+    /// <summary>Кто завершил этап 5 «Перемещение товара».</summary>
+    public string? Stage5ClosedBy { get; set; }
+
     // ---- Воркфлоу по стадиям (web): 1 = поиск/подготовка, 2 = участие, 3 = оформление, 4 = завершено; IsLost = проигран ----
     public int Stage { get; set; } = 1;
     public bool IsLost { get; set; }
