@@ -1,5 +1,10 @@
 using System.Globalization;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
@@ -8,12 +13,49 @@ using SnabDrive.Web.Components;
 using SnabDrive.Web.Data;
 using SnabDrive.Web.Hubs;
 using SnabDrive.Web.Services;
+using SnabDrive.Web.Services.Security;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Что не получилось настроить при старте — выводится в журнал после сборки приложения.
+var startupWarnings = new List<string>();
 
 // ------------------------------------------------------------------ конфигурация
 
 builder.Services.Configure<DatabaseOptions>(builder.Configuration.GetSection(DatabaseOptions.SectionName));
+
+// Защита сайта: заголовки безопасности, CSP, лимиты запросов, источники CORS.
+// Всё настраивается секцией Security в appsettings — см. Services/Security/SecurityOptions.cs.
+builder.Services.Configure<SecurityOptions>(builder.Configuration.GetSection(SecurityOptions.SectionName));
+var security = builder.Configuration.GetSection(SecurityOptions.SectionName).Get<SecurityOptions>() ?? new SecurityOptions();
+
+// ------------------------------------------------------------------ ключи Data Protection
+// Ими шифруются cookie входа и antiforgery-токены. Без явного хранилища ключи лежат
+// в профиле пула приложений: ресайкл пула — это разлогин всех пользователей, а в саду
+// (несколько рабочих процессов) cookie, выданная одним процессом, не читается другим.
+var keysPath = string.IsNullOrWhiteSpace(security.DataProtectionKeysPath)
+    ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "SnabDrive", "keys")
+    : security.DataProtectionKeysPath;
+
+try
+{
+    Directory.CreateDirectory(keysPath);
+    var dataProtection = builder.Services.AddDataProtection()
+        .SetApplicationName("SnabDrive.Web")
+        .PersistKeysToFileSystem(new DirectoryInfo(keysPath));
+
+    // DPAPI есть только в Windows; на других ОС ключи защищает правами сама папка.
+    if (OperatingSystem.IsWindows())
+    {
+        dataProtection.ProtectKeysWithDpapi(protectToLocalMachine: true);
+    }
+}
+catch (Exception keysEx)
+{
+    // Папку создать не удалось (нет прав) — остаёмся на стандартном хранилище,
+    // но пишем об этом в журнал сразу после старта.
+    startupWarnings.Add("Не удалось создать папку ключей Data Protection " + keysPath + ": " + keysEx.Message);
+}
 
 var registryConnection = builder.Configuration.GetConnectionString("Registry")
                          ?? throw new InvalidOperationException("Не задана строка подключения ConnectionStrings:Registry");
@@ -37,6 +79,25 @@ builder.Services.AddDbContextFactory<AppIdentityDbContext>(configureProvider, Se
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddHttpContextAccessor();
 
+// HSTS: браузер запоминает, что сайт работает только по https. Заголовок выдаётся
+// вне режима разработки; в ответах по http браузеры его игнорируют, поэтому он безопасен.
+builder.Services.AddHsts(hsts =>
+{
+    hsts.MaxAge = TimeSpan.FromDays(365);
+    hsts.IncludeSubDomains = true;
+});
+
+// Перенаправление http -> https. Порт берётся из Security:HttpsPort, если задан;
+// само перенаправление включается Security:EnableHttpsRedirection после настройки HTTPS в IIS.
+builder.Services.AddHttpsRedirection(redirection =>
+{
+    var httpsPort = builder.Configuration.GetValue<int?>("Security:HttpsPort");
+    if (httpsPort is > 0)
+    {
+        redirection.HttpsPort = httpsPort;
+    }
+});
+
 builder.Services
     .AddAuthentication(options =>
     {
@@ -51,11 +112,14 @@ builder.Services
         options.User.RequireUniqueEmail = false;
         options.SignIn.RequireConfirmedAccount = false;
 
-        options.Password.RequiredLength = 6;
+        // Пароль проверяется на сервере (PasswordValidator) и при создании пользователя,
+        // и при смене пароля, поэтому обойти правило из браузера нельзя.
+        options.Password.RequiredLength = 10;
         options.Password.RequireDigit = true;
         options.Password.RequireLowercase = true;
         options.Password.RequireUppercase = true;
-        options.Password.RequireNonAlphanumeric = false;
+        options.Password.RequireNonAlphanumeric = true;
+        options.Password.RequiredUniqueChars = 3;
 
         // Защита от подбора пароля (в WPF-версии было 3 попытки и блокировка на минуту).
         options.Lockout.MaxFailedAccessAttempts = 5;
@@ -76,9 +140,16 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.ExpireTimeSpan = TimeSpan.FromHours(8);
     options.SlidingExpiration = true;
     options.Cookie.Name = "SnabDrive.Auth";
+    // HttpOnly — скрипт со страницы не может прочитать cookie (кража сессии при XSS).
     options.Cookie.HttpOnly = true;
+    // Lax — cookie не уходит на чужой сайт, поэтому подделка кросс-сайтового запроса
+    // (форма с другого домена) приходит уже без авторизации.
     options.Cookie.SameSite = SameSiteMode.Lax;
-    options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+    // Secure — по http cookie не передаётся. Ставьте Security:CookieSecurePolicy = "Always"
+    // вместе с HTTPS; до этого момента SameAsRequest, чтобы не закрыть вход на http-развёртывании.
+    options.Cookie.SecurePolicy = security.ResolveCookieSecurePolicy() == CookieSecurePolicyValue.Always
+        ? CookieSecurePolicy.Always
+        : CookieSecurePolicy.SameAsRequest;
 });
 
 builder.Services.AddAuthorization(options =>
@@ -95,7 +166,13 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-builder.Services.AddControllers();
+builder.Services.AddControllers(mvc =>
+{
+    // CSRF: любой POST/PUT/PATCH/DELETE в API обязан прийти с antiforgery-токеном
+    // (поле формы __RequestVerificationToken или заголовок RequestVerificationToken).
+    // GET/HEAD/OPTIONS не проверяются. Токен клиентам выдаёт GET /account/antiforgery-token.
+    mvc.Filters.Add(new AutoValidateAntiforgeryTokenAttribute());
+});
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -108,7 +185,91 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 builder.Services.AddSignalR();
-builder.Services.AddAntiforgery();
+
+// Antiforgery-cookie — те же правила, что и у cookie входа.
+builder.Services.AddAntiforgery(antiforgery =>
+{
+    antiforgery.Cookie.Name = "SnabDrive.Antiforgery";
+    antiforgery.Cookie.HttpOnly = true;
+    antiforgery.Cookie.SameSite = SameSiteMode.Lax;
+    antiforgery.Cookie.SecurePolicy = security.ResolveCookieSecurePolicy() == CookieSecurePolicyValue.Always
+        ? CookieSecurePolicy.Always
+        : CookieSecurePolicy.SameAsRequest;
+    antiforgery.HeaderName = "RequestVerificationToken";
+});
+
+// CORS: по умолчанию список источников пуст — кросс-доменные запросы к сайту и API
+// запрещены (браузер их блокирует, заголовки Access-Control-Allow-* не выдаются).
+// Понадобится доступ с другого домена — добавьте его в Security:AllowedOrigins.
+var corsOrigins = security.AllowedOrigins
+    .Where(origin => !string.IsNullOrWhiteSpace(origin))
+    .ToArray();
+
+if (corsOrigins.Length > 0)
+{
+    builder.Services.AddCors(cors => cors.AddDefaultPolicy(policy => policy
+        .WithOrigins(corsOrigins)
+        .WithMethods("GET", "POST", "PUT", "PATCH", "DELETE")
+        .WithHeaders("Content-Type", "Accept", "RequestVerificationToken")
+        .AllowCredentials()));
+}
+
+// ------------------------------------------------------------------ лимиты запросов
+// Защита от перебора паролей и от «заливания» сайта запросами: считается число запросов
+// с одного IP за минуту. Статика и циркул Blazor не ограничиваются, иначе интерфейс
+// начал бы тормозить на обычной работе.
+builder.Services.AddRateLimiter(limiter =>
+{
+    limiter.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    limiter.OnRejected = async (context, cancellationToken) =>
+    {
+        var response = context.HttpContext.Response;
+        response.StatusCode = StatusCodes.Status429TooManyRequests;
+        response.Headers["Retry-After"] = "60";
+        response.ContentType = "text/plain; charset=utf-8";
+        await response.WriteAsync("Слишком много запросов. Подождите минуту и попробуйте снова.", cancellationToken);
+    };
+
+    limiter.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
+    {
+        var path = httpContext.Request.Path;
+        if (path.StartsWithSegments("/_blazor") || path.StartsWithSegments("/_framework") ||
+            path.StartsWithSegments("/css") || path.StartsWithSegments("/js") ||
+            path.StartsWithSegments("/lib") || path.StartsWithSegments("/favicon.ico"))
+        {
+            return RateLimitPartition.GetNoLimiter("без ограничений");
+        }
+
+        return RateLimitPartition.GetFixedWindowLimiter("site:" + ClientKeyHelper.Get(httpContext), _ =>
+            new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = Math.Max(10, security.GlobalRequestsPerMinute),
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+                AutoReplenishment = true
+            });
+    });
+
+    limiter.AddPolicy("login", httpContext => RateLimitPartition.GetFixedWindowLimiter(
+        "login:" + ClientKeyHelper.Get(httpContext),
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = Math.Max(1, security.LoginAttemptsPerMinute),
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0,
+            AutoReplenishment = true
+        }));
+
+    limiter.AddPolicy("api", httpContext => RateLimitPartition.GetFixedWindowLimiter(
+        "api:" + ClientKeyHelper.Get(httpContext),
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = Math.Max(10, security.ApiRequestsPerMinute),
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0,
+            AutoReplenishment = true
+        }));
+});
 
 builder.Services.AddSingleton<IRegistryEventBus, RegistryEventBus>();
 builder.Services.AddSingleton<IPresenceService, PresenceService>();
@@ -140,6 +301,14 @@ builder.Services.AddSingleton<ICellEditLockService, CellEditLockService>();
 builder.Services.AddScoped<UserSessionState>();
 builder.Services.AddScoped<IToastService, ToastService>();
 
+// Размер тела запроса: 20 МБ под вложения (совпадает с AttachmentLimits).
+// Больше — сразу 413, без чтения тела в память.
+const long maxRequestBodyBytes = 20 * 1024 * 1024L;
+
+builder.WebHost.ConfigureKestrel(kestrel => kestrel.Limits.MaxRequestBodySize = maxRequestBodyBytes);
+builder.Services.Configure<Microsoft.AspNetCore.Server.IIS.IISServerOptions>(iis => iis.MaxRequestBodySize = maxRequestBodyBytes);
+builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(form => form.MultipartBodyLengthLimit = maxRequestBodyBytes);
+
 var app = builder.Build();
 
 // ------------------------------------------------------------------ конвейер
@@ -150,7 +319,25 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
+// Заголовки безопасности — до всего остального, чтобы они попадали и в ответы с ошибками.
+app.UseMiddleware<SecurityHeadersMiddleware>();
+
+// http -> https: включается Security:EnableHttpsRedirection после настройки сертификата.
+if (app.Configuration.GetValue<bool>("Security:EnableHttpsRedirection"))
+{
+    app.UseHttpsRedirection();
+}
+
 app.UseStaticFiles();
+
+// Статика уже отдана, поэтому лимиты действуют только на страницы и API.
+app.UseRateLimiter();
+
+if (corsOrigins.Length > 0)
+{
+    app.UseCors();
+}
+
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseAntiforgery();
@@ -164,6 +351,16 @@ if (app.Environment.IsDevelopment())
 app.MapControllers();
 app.MapHub<RegistryHub>(RegistryHub.Route);
 app.MapAccountEndpoints();
+
+// Токен для клиентов API (Swagger, внешние виджеты): без него POST/PUT/DELETE вернут 400.
+// Отдаётся только авторизованным; прочитать его с чужого домена не выйдет — мешает same-origin.
+app.MapGet("/account/antiforgery-token", (IAntiforgery antiforgery, HttpContext httpContext) =>
+{
+    var tokens = antiforgery.GetAndStoreTokens(httpContext);
+    return Results.Ok(new { token = tokens.RequestToken, headerName = "RequestVerificationToken" });
+})
+.RequireAuthorization()
+.ExcludeFromDescription();
 
 // Скачивание вложений из БД (таблица [Attachments]) — файлы не лежат на файловой системе IIS.
 // Защищено глобальным FallbackPolicy (RequireAuthenticatedUser): cookie аутентификации приходит вместе с запросом.
@@ -251,6 +448,19 @@ catch (CultureNotFoundException)
 using (var scope = app.Services.CreateScope())
 {
     var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+
+    foreach (var warning in startupWarnings)
+    {
+        logger.LogWarning("{Warning}", warning);
+    }
+
+    logger.LogInformation(
+        "Защита: заголовки — {Headers}, CSP — {Csp}, лимит сайта — {Global}/мин, вход — {Login}/мин, CORS — {Cors}",
+        security.EnableSecurityHeaders ? "включены" : "ВЫКЛЮЧЕНЫ",
+        string.IsNullOrWhiteSpace(security.BuildContentSecurityPolicy()) ? "не задана" : "включена",
+        security.GlobalRequestsPerMinute,
+        security.LoginAttemptsPerMinute,
+        corsOrigins.Length == 0 ? "кросс-доменные запросы запрещены" : string.Join(", ", corsOrigins));
     try
     {
         await DatabaseBootstrapper.InitializeAsync(scope.ServiceProvider, logger);
@@ -262,6 +472,24 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.Run();
+
+/// <summary>
+/// Ключ для лимитов запросов. IPv6-адрес, отображённый на IPv4, приводим к обычному виду,
+/// иначе один и тот же клиент попадает в разные корзины.
+/// </summary>
+file static class ClientKeyHelper
+{
+    public static string Get(HttpContext httpContext)
+    {
+        var ip = httpContext.Connection.RemoteIpAddress;
+        if (ip is null)
+        {
+            return "unknown";
+        }
+
+        return ip.IsIPv4MappedToIPv6 ? ip.MapToIPv4().ToString() : ip.ToString();
+    }
+}
 
 /// <summary>Точка входа, доступная для интеграционных тестов (WebApplicationFactory).</summary>
 public partial class Program;

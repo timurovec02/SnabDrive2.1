@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SnabDrive.Web.Domain;
@@ -10,6 +11,7 @@ namespace SnabDrive.Web.Api;
 [ApiController]
 [Route("api/regedit")]
 [Authorize]
+[EnableRateLimiting("api")]
 [Produces("application/json")]
 public class RegeditController : ControllerBase
 {

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -13,6 +14,7 @@ namespace SnabDrive.Web.Api;
 [ApiController]
 [Route("api/users")]
 [Authorize(Policy = AppPolicies.ManageSystem)]
+[EnableRateLimiting("api")]
 [Produces("application/json")]
 public class UsersController : ControllerBase
 {

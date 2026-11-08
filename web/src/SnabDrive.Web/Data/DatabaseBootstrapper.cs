@@ -238,7 +238,7 @@ public static class DatabaseBootstrapper
         var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
         var login = options.SeedAdminLogin.Trim();
 
-        if (string.IsNullOrWhiteSpace(login) || string.IsNullOrWhiteSpace(options.SeedAdminPassword))
+        if (string.IsNullOrWhiteSpace(login))
         {
             return;
         }
@@ -246,6 +246,29 @@ public static class DatabaseBootstrapper
         var existing = await userManager.FindByNameAsync(login);
         if (existing is not null)
         {
+            // Администратор уже есть — пароль из конфигурации больше не используется.
+            return;
+        }
+
+        var password = options.SeedAdminPassword ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(password))
+        {
+            logger.LogWarning(
+                "Администратор «{Login}» не создан: пароль не задан. Задайте переменную окружения " +
+                "Database__SeedAdminPassword (или Database:SeedAdminPassword в appsettings.Production.json) " +
+                "и перезапустите сайт — пароль в репозиторий не кладётся.",
+                login);
+            return;
+        }
+
+        if (IsWeakSeedPassword(password))
+        {
+            logger.LogError(
+                "Администратор «{Login}» НЕ создан: пароль из конфигурации слишком простой либо совпадает " +
+                "с известным значением по умолчанию. Нужен пароль от 10 символов с буквами в обоих регистрах, " +
+                "цифрой и спецсимволом; задайте его через Database__SeedAdminPassword.",
+                login);
             return;
         }
 
@@ -257,11 +280,14 @@ public static class DatabaseBootstrapper
             DisplayName = "Администратор"
         };
 
-        var created = await userManager.CreateAsync(admin, options.SeedAdminPassword);
+        var created = await userManager.CreateAsync(admin, password);
         if (created.Succeeded)
         {
             await userManager.AddToRoleAsync(admin, AppRoles.Admin);
-            logger.LogWarning("Создан администратор «{Login}» со стандартным паролем из конфигурации — смените его после первого входа!", login);
+            logger.LogWarning(
+                "Создан администратор «{Login}» с паролем из конфигурации. Смените пароль после первого входа " +
+                "и уберите значение Database__SeedAdminPassword с сервера.",
+                login);
         }
         else
         {
@@ -269,6 +295,17 @@ public static class DatabaseBootstrapper
                 string.Join("; ", created.Errors.Select(e => e.Description)));
         }
     }
+
+    /// <summary>Значения, которые часто оставляют «по умолчанию» и которые легко подбираются.</summary>
+    private static readonly string[] KnownSeedPasswords =
+    {
+        "ChangeMe-123!", "ChangeMe123!", "ChangeMe", "admin", "Admin123!", "Password1!", "P@ssw0rd", "SnabDrive1!"
+    };
+
+    /// <summary>Пароль из конфигурации не годится для боевой учётки администратора.</summary>
+    private static bool IsWeakSeedPassword(string password) =>
+        password.Length < 10 ||
+        KnownSeedPasswords.Contains(password, StringComparer.OrdinalIgnoreCase);
 
     private static async Task ImportLegacyUsersAsync(IServiceProvider services, ILogger logger)
     {

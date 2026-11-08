@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Antiforgery;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Identity;
 using SnabDrive.Web.Data;
 using SnabDrive.Web.Data.Entities;
@@ -17,8 +18,11 @@ public static class AccountEndpoints
 {
     public static IEndpointRouteBuilder MapAccountEndpoints(this IEndpointRouteBuilder app)
     {
+        // RequireRateLimiting("login") — не больше Security:LoginAttemptsPerMinute попыток
+        // в минуту с одного IP: перебор пароля упирается в 429 ещё до проверки учётки.
         app.MapPost("/account/login", HandleLoginAsync)
             .AllowAnonymous()
+            .RequireRateLimiting("login")
             .AddEndpointFilter(new AntiforgeryEndpointFilter("/login?error=token"));
 
         app.MapPost("/account/logout", HandleLogoutAsync)

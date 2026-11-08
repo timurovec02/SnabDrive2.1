@@ -17,6 +17,45 @@ public static class AttachmentLimits
 
     public static bool IsTooBig(long sizeBytes) => sizeBytes > MaxFileSizeBytes;
 
+    /// <summary>
+    /// Разрешённые расширения загружаемых файлов.
+    /// Список положительный («разрешено только это»), а не отрицательный: новый опасный
+    /// тип не попадёт в систему просто потому, что его никто не разрешил.
+    ///
+    /// Намеренно НЕ разрешены: исполняемые файлы (.exe, .dll, .bat, .cmd, .scr, .msi, .ps1,
+    /// .vbs, .js, .jar, .hta, .lnk, .reg), веб-сценарии (.asp, .aspx, .php, .jsp, .cgi)
+    /// и разметка (.html, .htm, .svg, .xml) — последние используются для хранения чужого
+    /// скрипта, который браузер выполнил бы при открытии файла с нашего домена.
+    /// </summary>
+    public static readonly IReadOnlySet<string> AllowedExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    {
+        ".pdf", ".doc", ".docx", ".rtf", ".odt", ".xls", ".xlsx", ".ods", ".ppt", ".pptx", ".odp",
+        ".csv", ".txt", ".json", ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tif", ".tiff", ".webp",
+        ".zip", ".rar", ".7z", ".msg", ".eml"
+    };
+
+    /// <summary>Значение атрибута accept у InputFile — подсказка браузеру (проверка всё равно на сервере).</summary>
+    public static string AcceptAttribute => string.Join(',', AllowedExtensions.OrderBy(x => x, StringComparer.Ordinal));
+
+    /// <summary>Расширение файла в нижнем регистре; пусто, если расширения нет.</summary>
+    public static string ExtensionOf(string fileName) => Path.GetExtension(fileName ?? string.Empty).ToLowerInvariant();
+
+    /// <summary>Проверка типа файла по расширению. Файлы без расширения не принимаем.</summary>
+    public static bool IsAllowed(string fileName)
+    {
+        var extension = ExtensionOf(fileName);
+        return extension.Length > 0 && AllowedExtensions.Contains(extension);
+    }
+
+    /// <summary>Сообщение об отказе по типу файла — на русском.</summary>
+    public static string NotAllowedMessage(string fileName)
+    {
+        var extension = ExtensionOf(fileName);
+        var shown = extension.Length > 0 ? extension : "без расширения";
+        return $"Файл «{fileName}» ({shown}) — такой тип загружать нельзя. " +
+               $"Разрешены документы, таблицы, изображения и архивы: {string.Join(", ", AllowedExtensions.OrderBy(x => x, StringComparer.Ordinal))}.";
+    }
+
     /// <summary>Человекочитаемый размер: «850 КБ», «27,4 МБ».</summary>
     public static string Size(long bytes)
     {

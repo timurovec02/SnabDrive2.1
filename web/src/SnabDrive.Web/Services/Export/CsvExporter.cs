@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using SnabDrive.Web.Domain;
 
@@ -62,15 +63,36 @@ public static class CsvExporter
     private static string FormatMoney(decimal value) =>
         value.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
 
-    private static string Escape(string value)
+    /// <summary>
+    /// Экранирование значения для CSV.
+    /// Кроме кавычек и разделителей закрываем инъекцию формул: ячейка, начинающаяся со знака
+    /// формулы (=, +, @, табуляция, перевод строки), в Excel исполняется как формула, поэтому
+    /// перед ней ставится апостроф и значение остаётся текстом. Иначе пользователь с правом
+    /// редактировать реестр мог бы «подложить» DDE-формулу (=cmd|...) тому, кто откроет выгрузку.
+    /// </summary>
+    internal static string Escape(string value)
     {
         if (string.IsNullOrEmpty(value))
         {
             return string.Empty;
         }
 
-        var needsQuotes = value.Contains(';') || value.Contains('"') || value.Contains('\n') || value.Contains('\r');
         var escaped = value.Replace("\"", "\"\"");
+
+        var first = escaped[0];
+        var looksLikeFormula = first is '=' or '+' or '@' or '\t' or '\r'
+                               || (first == '-' && !IsPlainNumber(escaped));
+        if (looksLikeFormula)
+        {
+            escaped = "'" + escaped;
+        }
+
+        var needsQuotes = escaped.Contains(';') || escaped.Contains('"') || escaped.Contains('\n') || escaped.Contains('\r')
+                          || escaped.StartsWith('\'');
         return needsQuotes ? $"\"{escaped}\"" : escaped;
     }
+
+    /// <summary>Минус в начале допустим у отрицательных чисел — их апострофом не ломаем.</summary>
+    private static bool IsPlainNumber(string value) =>
+        decimal.TryParse(value, NumberStyles.Any, CultureInfo.InvariantCulture, out _);
 }

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SnabDrive.Web.Domain;
@@ -9,6 +10,7 @@ namespace SnabDrive.Web.Api;
 [ApiController]
 [Route("api/audit")]
 [Authorize(Policy = AppPolicies.ManageSystem)]
+[EnableRateLimiting("api")]
 [Produces("application/json")]
 public class AuditController : ControllerBase
 {

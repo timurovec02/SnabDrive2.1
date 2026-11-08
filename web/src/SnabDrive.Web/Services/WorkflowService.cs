@@ -749,7 +749,16 @@ public sealed class WorkflowService : IWorkflowService
             return Result<string>.Fail("Запись не найдена.");
         }
 
+        // Path.GetFileName отрезает любой путь — имя файла нельзя использовать,
+        // чтобы писать мимо таблицы вложений (../ и абсолютные пути).
         var safeName = Path.GetFileName(fileName);
+
+        // Тип файла проверяется на сервере, а не только подсказкой accept в браузере:
+        // запрос можно отправить напрямую, минуя страницу.
+        if (safeName.Length == 0 || safeName.Any(char.IsControl) || !AttachmentLimits.IsAllowed(safeName))
+        {
+            return Result<string>.Fail(AttachmentLimits.NotAllowedMessage(safeName));
+        }
         var (bytes, sizeError) = await AttachmentLimits.ReadAtMostAsync(content, safeName, cancellationToken);
         if (bytes is null)
         {
@@ -957,7 +966,16 @@ public sealed class WorkflowService : IWorkflowService
             return Result<string>.Fail("Запись не найдена.");
         }
 
+        // Path.GetFileName отрезает любой путь — имя файла нельзя использовать,
+        // чтобы писать мимо таблицы вложений (../ и абсолютные пути).
         var safeName = Path.GetFileName(fileName);
+
+        // Тип файла проверяется на сервере, а не только подсказкой accept в браузере:
+        // запрос можно отправить напрямую, минуя страницу.
+        if (safeName.Length == 0 || safeName.Any(char.IsControl) || !AttachmentLimits.IsAllowed(safeName))
+        {
+            return Result<string>.Fail(AttachmentLimits.NotAllowedMessage(safeName));
+        }
 
         // Содержимое сохраняем в БД (таблица [Attachments]), а не в wwwroot — файлы не зависят от IIS.
         // Размер проверяется на сервере, а не только в браузере: большой файл не вычитывается до конца.
