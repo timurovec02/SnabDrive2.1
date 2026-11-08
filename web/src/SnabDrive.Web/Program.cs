@@ -303,10 +303,14 @@ builder.Services.AddScoped<IToastService, ToastService>();
 
 // Размер тела запроса: 20 МБ под вложения (совпадает с AttachmentLimits).
 // Больше — сразу 413, без чтения тела в память.
+//
+// Под IIS лимит задаётся в web.config (requestLimits maxAllowedContentLength): его
+// проверяет сам IIS до передачи запроса приложению, поэтому тип IISServerOptions
+// здесь не нужен — он, к тому же, живёт в сборке Microsoft.AspNetCore.Server.IIS,
+// которой нет в общем фреймворке Microsoft.AspNetCore.App.
 const long maxRequestBodyBytes = 20 * 1024 * 1024L;
 
 builder.WebHost.ConfigureKestrel(kestrel => kestrel.Limits.MaxRequestBodySize = maxRequestBodyBytes);
-builder.Services.Configure<Microsoft.AspNetCore.Server.IIS.IISServerOptions>(iis => iis.MaxRequestBodySize = maxRequestBodyBytes);
 builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(form => form.MultipartBodyLengthLimit = maxRequestBodyBytes);
 
 var app = builder.Build();
