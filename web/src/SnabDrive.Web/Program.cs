@@ -83,7 +83,7 @@ builder.Services.AddHttpContextAccessor();
 // вне режима разработки; в ответах по http браузеры его игнорируют, поэтому он безопасен.
 builder.Services.AddHsts(hsts =>
 {
-    hsts.MaxAge = TimeSpan.FromDays(365);
+    hsts.MaxAge = TimeSpan.FromDays(security.HstsMaxAgeDays);
     hsts.IncludeSubDomains = true;
 });
 
@@ -320,7 +320,13 @@ var app = builder.Build();
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/error", createScopeForErrors: true);
-    app.UseHsts();
+
+    // HSTS — только когда он включён: получив заголовок, браузер перестанет пускать
+    // сайт по http на весь срок, и при истёкшем сертификате обойти это будет нельзя.
+    if (security.EnableHsts)
+    {
+        app.UseHsts();
+    }
 }
 
 // Заголовки безопасности — до всего остального, чтобы они попадали и в ответы с ошибками.

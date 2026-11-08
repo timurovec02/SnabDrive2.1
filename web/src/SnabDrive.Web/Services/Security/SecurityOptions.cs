@@ -60,6 +60,17 @@ public sealed class SecurityOptions
     /// </summary>
     public string DataProtectionKeysPath { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Выдавать ли заголовок Strict-Transport-Security. Браузер, получив его по https,
+    /// запоминает требование на весь срок и больше не пускает сайт по http — с ошибкой,
+    /// которую пользователь не может пропустить. Поэтому включайте HSTS только когда
+    /// сертификат работает стабильно и за его сроком следят.
+    /// </summary>
+    public bool EnableHsts { get; set; } = true;
+
+    /// <summary>Срок действия HSTS в днях. Начинать разумно с 30, потом поднимать до 365.</summary>
+    public int HstsMaxAgeDays { get; set; } = 365;
+
     /// <summary>Запросов в минуту с одного IP на всё приложение (кроме статики).</summary>
     public int GlobalRequestsPerMinute { get; set; } = 1200;
 
