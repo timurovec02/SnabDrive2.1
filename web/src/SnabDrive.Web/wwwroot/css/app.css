@@ -2971,3 +2971,260 @@ body {
     background: #fef3f2;
     border-color: #fda29b;
 }
+
+/* ========================================================================
+   Адаптивная вёрстка — один и тот же набор данных на любом экране.
+
+   Принципы:
+   1. Ничего не скрываем. На узком экране содержимое перестраивается
+      (в одну колонку, с переносом, с прокруткой внутри блока), а не прячется.
+   2. Широкие таблицы (реестр, Контур, журнал) сохраняют горизонтальную
+      прокрутку внутри своей области — колонки не выключаются.
+   3. Боковое меню на узких экранах становится горизонтальной лентой сверху:
+      иконки и подписи остаются на месте, при нехватке ширины лента
+      прокручивается. Кнопка «свернуть меню» при этом просто ничего не ломает.
+   4. min(100%, Npx) во всех сетках: колонка никогда не шире контейнера,
+      поэтому страница не «вылетает» вбок на телефоне.
+   ======================================================================== */
+
+/* --- базовая защита от переполнения (действует на всех экранах) --- */
+img,
+video,
+canvas,
+svg {
+    max-width: 100%;
+}
+
+.input,
+.wf-input,
+.wf-area,
+.file-input,
+select,
+textarea {
+    max-width: 100%;
+}
+
+/* Колонка не может быть шире доступной ширины — иначе на телефоне был бы
+   горизонтальный вылет всей страницы. */
+.wf-grid {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+}
+
+/* --- узкое окно на десктопе / крупный планшет --- */
+@media (max-width: 1280px) {
+    .app-main {
+        padding: 14px;
+    }
+
+    .wf-grid {
+        gap: 14px 16px;
+    }
+}
+
+@media (max-width: 1024px) {
+    .app-main {
+        padding: 12px;
+    }
+
+    .card {
+        padding: 12px;
+    }
+
+    .search .input {
+        width: 220px;
+    }
+
+    .grid-wrapper {
+        max-height: calc(100vh - 240px);
+    }
+
+    .presence__panel {
+        max-width: min(320px, calc(100vw - 24px));
+    }
+}
+
+/* --- планшет: меню ложится горизонтальной лентой, ничего не прячется --- */
+@media (max-width: 860px) {
+    .app-body {
+        flex-direction: column;
+    }
+
+    .nav {
+        width: auto;
+        flex-direction: row;
+        align-items: center;
+        flex-wrap: nowrap;
+        gap: 4px;
+        padding: 6px 8px;
+        border-right: 0;
+        border-bottom: 1px solid var(--border);
+        overflow-x: auto;
+        overflow-y: hidden;
+        flex-shrink: 0;
+        scrollbar-width: thin;
+    }
+
+    /* Ленту можно прокрутить пальцем — полосу видно, в отличие от вертикального меню. */
+    .nav::-webkit-scrollbar {
+        height: 6px;
+        width: 6px;
+        display: block;
+    }
+
+    .nav::-webkit-scrollbar-thumb {
+        background: var(--border-strong);
+        border-radius: 3px;
+    }
+
+    .nav__item {
+        flex: 0 0 auto;
+        white-space: nowrap;
+    }
+
+    /* Подписи пунктов остаются видимыми: прежнее правило для узких экранов
+       прятало их (display:none), из-за чего на планшете пропадали названия вкладок. */
+    .nav__item span:not(.nav__icon) {
+        display: inline;
+    }
+
+    .nav__divider {
+        width: 1px;
+        height: 20px;
+        margin: 0 6px;
+        flex: 0 0 auto;
+    }
+
+    .nav__group-title {
+        flex: 0 0 auto;
+        padding: 0 4px;
+        white-space: nowrap;
+    }
+
+    /* Свёрнутое состояние меню на ленте не имеет смысла — подписи возвращаем. */
+    .app-shell.nav-collapsed .nav {
+        width: auto;
+    }
+
+    .app-shell.nav-collapsed .nav__item {
+        justify-content: flex-start;
+    }
+
+    .app-shell.nav-collapsed .nav__item .nav__label {
+        display: inline;
+    }
+
+    .app-shell.nav-collapsed .nav__group-title {
+        display: block;
+    }
+
+    /* Таблица занимает столько места, сколько нужно: на планшете удобнее
+       прокручивать страницу, чем маленькое окно внутри страницы. */
+    .grid-wrapper {
+        max-height: none;
+    }
+
+    /* Таблицы без собственной области прокрутки (пользователи, журнал,
+       статистика) прокручиваются внутри карточки, а не растягивают страницу. */
+    .card {
+        overflow-x: auto;
+    }
+
+    .search {
+        flex: 1 1 200px;
+    }
+
+    .search .input {
+        width: 100%;
+    }
+
+    .modal,
+    .modal--small {
+        width: calc(100vw - 20px);
+        max-height: 92vh;
+        overflow: auto;
+    }
+}
+
+/* --- телефон --- */
+@media (max-width: 620px) {
+    .app-header {
+        height: auto;
+        min-height: 52px;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 8px 10px;
+    }
+
+    .app-title {
+        font-size: 15px;
+    }
+
+    .app-subtitle {
+        font-size: 11px;
+    }
+
+    .app-main {
+        padding: 10px;
+    }
+
+    .card {
+        padding: 10px;
+    }
+
+    .wf-grid {
+        gap: 12px;
+    }
+
+    .wf-label {
+        font-size: 14px;
+    }
+
+    .toolbar {
+        gap: 6px;
+    }
+
+    /* Кнопки и поля в панели инструментов делят строку между собой. */
+    .toolbar .btn,
+    .toolbar .input {
+        flex: 1 1 auto;
+    }
+
+    .pill-tabs {
+        gap: 4px;
+        padding: 4px;
+    }
+
+    .pill-tabs > button {
+        font-size: 12px;
+        padding: 6px 8px;
+    }
+
+    .modal,
+    .modal--small {
+        width: calc(100vw - 12px);
+    }
+
+    .login-card {
+        width: calc(100vw - 24px);
+        max-width: 100%;
+    }
+
+    .ctx-menu {
+        width: min(240px, calc(100vw - 16px));
+    }
+}
+
+/* --- совсем узкий экран --- */
+@media (max-width: 420px) {
+    .app-main {
+        padding: 8px;
+    }
+
+    .card {
+        padding: 8px;
+    }
+
+    .wf-grid {
+        gap: 10px;
+    }
+}
