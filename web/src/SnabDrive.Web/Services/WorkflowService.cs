@@ -90,7 +90,8 @@ public sealed record WorkflowRow(
     string? ContractClosedBy,
     bool PaymentOverdue,
     DateTime? Stage5ClosedAtUtc,
-    string? Stage5ClosedBy);
+    string? Stage5ClosedBy,
+    string? DeliveryTerms);
 
 /// <summary>Модель редактирования строки воркфлоу.</summary>
 public sealed class WorkflowEdit
@@ -117,6 +118,9 @@ public sealed class WorkflowEdit
 
     /// <summary>Дата доставки (бывший «Срок поставки»).</summary>
     public DateTime? DeliveryDate { get; set; }
+
+    /// <summary>«Сроки доставки» — текст (этап 1 и этапы 6 — «Завершена»).</summary>
+    public string DeliveryTerms { get; set; } = string.Empty;
 
     /// <summary>Флажок «Звони» (стадия 2 — Согласование).</summary>
     public bool IsCall { get; set; }
@@ -277,7 +281,7 @@ public sealed class WorkflowService : IWorkflowService
                 r.StageStartedAtUtc, r.StageStartedBy, r.StageCompletedAtUtc, r.StageCompletedBy,
                 r.ApplicationEndDate,
                 r.ContractClosedAtUtc, r.ContractClosedBy, r.PaymentOverdue,
-                r.Stage5ClosedAtUtc, r.Stage5ClosedBy))
+                r.Stage5ClosedAtUtc, r.Stage5ClosedBy, r.DeliveryTerms))
             .ToListAsync(cancellationToken);
     }
 
@@ -309,6 +313,7 @@ public sealed class WorkflowService : IWorkflowService
         item.ApplicationEndDate = edit.ApplicationEndDate;
         item.MinPrice = edit.MinPrice;
         item.DeliveryDate = edit.DeliveryDate;
+        item.DeliveryTerms = string.IsNullOrWhiteSpace(edit.DeliveryTerms) ? null : edit.DeliveryTerms.Trim();
         item.IsCall = edit.IsCall;
         item.IsByRequest = edit.IsByRequest;
         item.PaymentOverdue = edit.PaymentOverdue;

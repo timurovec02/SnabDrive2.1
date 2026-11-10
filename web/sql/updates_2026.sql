@@ -339,6 +339,14 @@ IF COL_LENGTH('dbo.RegistryItems', 'Stage5ClosedBy') IS NULL
     ALTER TABLE dbo.RegistryItems ADD Stage5ClosedBy NVARCHAR(256) NULL;
 GO
 
+/* ---- «Сроки доставки»: текстовые сроки вместо даты (этап 1 и этапы 6 — «Завершена») ---- */
+IF COL_LENGTH('dbo.RegistryItems','DeliveryTerms') IS NULL
+BEGIN
+    EXEC sp_executesql N'ALTER TABLE dbo.RegistryItems ADD DeliveryTerms NVARCHAR(500) NULL;';
+    PRINT 'Добавлена колонка RegistryItems.DeliveryTerms.';
+END
+GO
+
 -- ============================================================================
 -- Самопроверка: какие из нужных колонок так и не появились.
 -- Пустой результат = схема соответствует текущей версии приложения.
@@ -356,6 +364,7 @@ INSERT INTO @need VALUES
  ('RegistryItems','ContractClosedAtUtc'),('RegistryItems','ContractClosedBy'),
  ('RegistryItems','PaymentOverdue'),
  ('RegistryItems','Stage5ClosedAtUtc'),('RegistryItems','Stage5ClosedBy'),
+ ('RegistryItems','DeliveryTerms'),
  ('ArchiveRegistryItems','EisLink'),('ArchiveRegistryItems','PurchaseNumber'),
  ('ArchiveRegistryItems','DeliveryDate'),('ArchiveRegistryItems','ApplicationEndDate'),
  ('KonturFavorites','ApplicationEndDate'),('KonturTemplates','ApplicationEndDate'),

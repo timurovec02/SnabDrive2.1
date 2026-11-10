@@ -117,6 +117,10 @@ public class Regedit
 
     // Дополнительные поля воркфлоу
     public string? Place { get; set; }          // «Место» (стадия торгов)
+
+    /// <summary>«Сроки доставки» — текстовые сроки (этап 1 и этапы 6 — «Завершена»).
+    /// Отдельное поле от даты доставки: на ранних этапах точная дата ещё неизвестна.</summary>
+    public string? DeliveryTerms { get; set; }
     public string? Attachments { get; set; }    // имена сохранённых файлов (через ;)
 
     public virtual B2BStatus? B2BStatus { get; set; }

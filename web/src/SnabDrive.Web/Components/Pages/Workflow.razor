@@ -228,9 +228,10 @@ else
                             <label class="wf-label">Наша минимальная сумма</label>
                             <input type="number" class="wf-input" @bind="_edits[r.Id].MinPrice" @bind:after="() => SaveAsync(r.Id)" />
                         </div>
-                        <div class="wf-field" style='@FieldStyle(r.Id, "DeliveryDate")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "DeliveryDate", ev)' @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true">
-                            <label class="wf-label">Дата доставки</label>
-                            <input type="date" class="wf-input" @bind="_edits[r.Id].DeliveryDate" @bind:format="yyyy-MM-dd" @bind:after="() => SaveAsync(r.Id)" />
+                        <div class="wf-field" style='@FieldStyle(r.Id, "DeliveryTerms")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "DeliveryTerms", ev)' @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true">
+                            <label class="wf-label">Сроки доставки</label>
+                            <input class="wf-input" @bind="_edits[r.Id].DeliveryTerms" @bind:after="() => SaveAsync(r.Id)"
+                                   placeholder="напр. 10 рабочих дней с момента подписания" />
                         </div>
                         <div class="wf-field" style='@FieldStyle(r.Id, "Note")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "Note", ev)' @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true">
                             <label class="wf-label">Примечание</label>
@@ -270,6 +271,10 @@ else
                         <div class="wf-field" style='@FieldStyle(r.Id, "ApplicationEndDate")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "ApplicationEndDate", ev)' @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true"><label class="wf-label">Окончание приема заявок</label><div class="wf-readonly">@Fmt(r.ApplicationEndDate)</div></div>
                         <div class="wf-field" style='@FieldStyle(r.Id, "NMCK")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "NMCK", ev)' @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true"><label class="wf-label">НМЦК</label><div class="wf-readonly">@r.NMCK.ToString("N2")</div></div>
                         <div class="wf-field" style='@FieldStyle(r.Id, "MinPrice")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "MinPrice", ev)' @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true"><label class="wf-label">Наша минимальная сумма</label><div class="wf-readonly">@r.MinPrice.ToString("N2")</div></div>
+                        <div class="wf-field" style='@FieldStyle(r.Id, "Note")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "Note", ev)' @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true">
+                            <label class="wf-label">Примечание</label>
+                            <textarea class="wf-area" @bind="_edits[r.Id].Note" @bind:after="() => SaveAsync(r.Id)"></textarea>
+                        </div>
                     </div>
                 }
                 @* ===== Этап 4 «Торги»: наименование/заказчик/тип — чтение, дата торгов — редактируется;
@@ -309,10 +314,15 @@ else
                         <div class="wf-field" style='@FieldStyle(r.Id, "ResultPrice")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "ResultPrice", ev)' @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true">
                             <label class="wf-label">Итог цена</label>
                             <input type="number" class="wf-input" @bind="_edits[r.Id].ResultPrice" @bind:after="() => SaveAsync(r.Id)" />
+                            <div class="wf-hint">снижение от НМЦК: @DiscountText(_edits[r.Id].NMCK, _edits[r.Id].ResultPrice)</div>
                         </div>
                         <div class="wf-field" style='@FieldStyle(r.Id, "Place")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "Place", ev)' @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true">
                             <label class="wf-label">Место на торгах</label>
                             <input class="wf-input" @bind="_edits[r.Id].Place" @bind:after="() => SaveAsync(r.Id)" />
+                        </div>
+                        <div class="wf-field" style='@FieldStyle(r.Id, "Note")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "Note", ev)' @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true">
+                            <label class="wf-label">Примечание</label>
+                            <textarea class="wf-area" @bind="_edits[r.Id].Note" @bind:after="() => SaveAsync(r.Id)"></textarea>
                         </div>
                     </div>
                 }
@@ -355,6 +365,7 @@ else
                         <div class="wf-field" style='@FieldStyle(r.Id, "ResultPrice")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "ResultPrice", ev)' @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true">
                             <label class="wf-label">Итог цена</label>
                             <div class="wf-readonly">@r.ResultPrice.ToString("N2")</div>
+                            <div class="wf-hint">снижение от НМЦК: @DiscountText(_edits[r.Id].NMCK, _edits[r.Id].ResultPrice)</div>
                         </div>
                         <div class="wf-field" style='@FieldStyle(r.Id, "ExpectedDeliveryDate")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "ExpectedDeliveryDate", ev)' @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true">
                             <label class="wf-label">Ожидаемая дата доставки</label>
@@ -385,6 +396,12 @@ else
                         <div class="wf-field" style='@FieldStyle(r.Id, "ResultPrice")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "ResultPrice", ev)' @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true">
                             <label class="wf-label">Итог цена</label>
                             <div class="wf-readonly">@r.ResultPrice.ToString("N2")</div>
+                            <div class="wf-hint">снижение от НМЦК: @DiscountText(_edits[r.Id].NMCK, _edits[r.Id].ResultPrice)</div>
+                        </div>
+                        <div class="wf-field" style='@FieldStyle(r.Id, "DeliveryTerms")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "DeliveryTerms", ev)' @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true">
+                            <label class="wf-label">Сроки доставки</label>
+                            <input class="wf-input" @bind="_edits[r.Id].DeliveryTerms" @bind:after="() => SaveAsync(r.Id)"
+                                   placeholder="напр. 10 рабочих дней с момента подписания" />
                         </div>
                         <div class="wf-field" style='@FieldStyle(r.Id, "ContractStatusId")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "ContractStatusId", ev)' @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true">
                             <label class="wf-label">Статус контракта</label>
@@ -409,6 +426,10 @@ else
                                 <span>✅ Проверен</span>
                             </label>
                         </div>
+                        <div class="wf-field" style='@FieldStyle(r.Id, "Note")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "Note", ev)' @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true">
+                            <label class="wf-label">Примечание</label>
+                            <textarea class="wf-area" @bind="_edits[r.Id].Note" @bind:after="() => SaveAsync(r.Id)"></textarea>
+                        </div>
                     </div>
                 }
                 @* ===== Этап 7 «Логистические документы»: дата доставки, файл, филиал, оповещение ===== *@
@@ -422,6 +443,11 @@ else
                         <div class="wf-field" style='@FieldStyle(r.Id, "Customer")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "Customer", ev)' @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true">
                             <label class="wf-label">Заказчик</label>
                             <div class="wf-readonly">@r.Customer</div>
+                        </div>
+                        <div class="wf-field" style='@FieldStyle(r.Id, "DeliveryTerms")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "DeliveryTerms", ev)' @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true">
+                            <label class="wf-label">Сроки доставки</label>
+                            <input class="wf-input" @bind="_edits[r.Id].DeliveryTerms" @bind:after="() => SaveAsync(r.Id)"
+                                   placeholder="напр. 10 рабочих дней с момента подписания" />
                         </div>
                         <div class="wf-field" style='@FieldStyle(r.Id, "ExpectedDeliveryDate")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "ExpectedDeliveryDate", ev)' @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true">
                             <label class="wf-label">Ожидаемая дата доставки</label>
@@ -454,6 +480,10 @@ else
                             <InputFile OnChange="ev => OnBranchFileAsync(ev, r.Id)" class="file-input"
                                        accept="@AttachmentLimits.AcceptAttribute" title="@AttachmentLimits.FileHint" />
                         </div>
+                        <div class="wf-field" style='@FieldStyle(r.Id, "Note")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "Note", ev)' @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true">
+                            <label class="wf-label">Примечание</label>
+                            <textarea class="wf-area" @bind="_edits[r.Id].Note" @bind:after="() => SaveAsync(r.Id)"></textarea>
+                        </div>
                     </div>
                     <div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center">
                         <button class="btn btn-primary" disabled="@(_edits[r.Id].BranchId is null)" @onclick="() => NotifyBranch(r.Id)">
@@ -482,6 +512,11 @@ else
                             <label class="wf-label">Место поставки</label>
                             <textarea class="wf-area" @bind="_edits[r.Id].PlaceOfDelivery" @bind:after="() => SaveAsync(r.Id)"></textarea>
                         </div>
+                        <div class="wf-field" style='@FieldStyle(r.Id, "DeliveryTerms")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "DeliveryTerms", ev)' @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true">
+                            <label class="wf-label">Сроки доставки</label>
+                            <input class="wf-input" @bind="_edits[r.Id].DeliveryTerms" @bind:after="() => SaveAsync(r.Id)"
+                                   placeholder="напр. 10 рабочих дней с момента подписания" />
+                        </div>
                         <div class="wf-field" style='@FieldStyle(r.Id, "ExpectedDeliveryDate")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "ExpectedDeliveryDate", ev)' @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true">
                             <label class="wf-label">Ожидаемая дата доставки</label>
                             <input type="date" class="wf-input" style="@Highlight(r.IsEisFilled)"
@@ -507,8 +542,13 @@ else
                         <div class="wf-field" style='@FieldStyle(r.Id, "ReserveNumber")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "ReserveNumber", ev)' @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true"><label class="wf-label">Номер резерва</label><input class="wf-input" @bind="_edits[r.Id].ReserveNumber" @bind:after="() => SaveAsync(r.Id)" /></div>
                         <div class="wf-field" style='@FieldStyle(r.Id, "BiddingDate")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "BiddingDate", ev)' @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true"><label class="wf-label">Дата торгов</label><input class="wf-input" value="@Fmt(r.BiddingDate)" disabled /></div>
                         <div class="wf-field" style='@FieldStyle(r.Id, "NMCK")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "NMCK", ev)' @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true"><label class="wf-label">НМЦК</label><input type="number" class="wf-input" @bind="_edits[r.Id].NMCK" @bind:after="() => SaveAsync(r.Id)" /></div>
-                        <div class="wf-field" style='@FieldStyle(r.Id, "ResultPrice")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "ResultPrice", ev)' @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true"><label class="wf-label">Итог цена</label><div class="wf-readonly">@r.ResultPrice.ToString("N2")</div></div>
+                        <div class="wf-field" style='@FieldStyle(r.Id, "ResultPrice")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "ResultPrice", ev)' @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true"><label class="wf-label">Итог цена</label><div class="wf-readonly">@r.ResultPrice.ToString("N2")</div><div class="wf-hint">снижение от НМЦК: @DiscountText(_edits[r.Id].NMCK, _edits[r.Id].ResultPrice)</div></div>
                         <div class="wf-field" style='@FieldStyle(r.Id, "Place")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "Place", ev)' @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true"><label class="wf-label">Место на торгах</label><input class="wf-input" @bind="_edits[r.Id].Place" @bind:after="() => SaveAsync(r.Id)" /></div>
+                        <div class="wf-field" style='@FieldStyle(r.Id, "DeliveryTerms")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "DeliveryTerms", ev)' @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true">
+                            <label class="wf-label">Сроки доставки</label>
+                            <input class="wf-input" @bind="_edits[r.Id].DeliveryTerms" @bind:after="() => SaveAsync(r.Id)"
+                                   placeholder="напр. 10 рабочих дней с момента подписания" />
+                        </div>
                         <div class="wf-field" style='@FieldStyle(r.Id, "Note")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "Note", ev)' @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true"><label class="wf-label">Примечание</label><textarea class="wf-area" @bind="_edits[r.Id].Note" @bind:after="() => SaveAsync(r.Id)"></textarea></div>
                     </div>
 
@@ -792,6 +832,7 @@ else
                     ApplicationEndDate = r.ApplicationEndDate,
                     MinPrice = r.MinPrice,
                     DeliveryDate = r.DeliveryDate,
+                    DeliveryTerms = r.DeliveryTerms ?? string.Empty,
                     IsCall = r.IsCall,
                     IsByRequest = r.IsByRequest,
                     ExpectedDeliveryDate = r.ExpectedDeliveryDate,
@@ -1107,6 +1148,7 @@ else
         ["NameLink"] = "Наименование",
         ["Customer"] = "Заказчик",
         ["TypeOfPurchaseId"] = "Тип закупки",
+        ["DeliveryTerms"] = "Сроки доставки",
         ["PlaceOfDelivery"] = "Место поставки",
         ["ReserveNumber"] = "Номер резерва",
         ["B2BStatusId"] = "Статус резерва B2B",
@@ -1154,6 +1196,23 @@ else
     /// Цвет хранится в самом справочнике ([TypeOfPurchase].ColorCode) и задаётся
     /// на странице «Справочники», поэтому раскраска в реестре и в «Задачах» не может разойтись.
     /// </summary>
+    /// <summary>
+    /// Насколько итоговая цена ниже НМЦК — справочная информация рядом с полем «Итог цена».
+    /// Считается на лету из текущих значений формы и нигде не хранится.
+    /// </summary>
+    private static string DiscountText(decimal nmck, decimal resultPrice)
+    {
+        if (nmck <= 0 || resultPrice <= 0)
+        {
+            return "—";
+        }
+
+        var percent = (nmck - resultPrice) / nmck * 100m;
+        return percent >= 0
+            ? percent.ToString("0.#") + " %"
+            : "выше НМЦК на " + (-percent).ToString("0.#") + " %";
+    }
+
     private string DictStyle(int? dictionaryId)
     {
         if (dictionaryId is null)
