@@ -279,6 +279,7 @@ builder.Services.AddScoped<IRegistryNotifier, SignalRRegistryNotifier>();
 builder.Services.AddScoped<IRegistryService, RegistryService>();
 builder.Services.AddScoped<IStageHistoryService, StageHistoryService>();
 builder.Services.AddScoped<IKonturService, KonturService>();
+builder.Services.AddScoped<ILegacyImportService, LegacyImportService>();
 builder.Services.AddSingleton<KonturScheduleStore>();
 builder.Services.AddSingleton<KonturSchedulerState>();
 builder.Services.AddSingleton<KonturSchedulerService>();

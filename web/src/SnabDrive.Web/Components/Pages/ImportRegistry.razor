@@ -1,0 +1,328 @@
+@page "/import-registry"
+@using System.Security.Claims
+@using SnabDrive.Web.Domain
+@using SnabDrive.Web.Services
+@inject ILegacyImportService Importer
+@inject IToastService Toasts
+@inject IJSRuntime JS
+@inject AuthenticationStateProvider AuthStateProvider
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = AppRoles.Admin)]
+
+<PageTitle>Импорт реестра</PageTitle>
+<PageHeader Icon="📥"
+            Title="Импорт реестра"
+            Subtitle="Перенос старой выгрузки закупок (CSV из Excel) в реестр сайта. Берутся колонки A..Q." />
+
+<div class="alert alert--warn">
+    <span>⚠ Перед импортом на сервере должен быть выполнен <strong>web/sql/updates_2026.sql</strong> — без него в базе нет колонки «Сроки доставки».</span>
+</div>
+
+<div class="section-card">
+    <h2>Файл выгрузки</h2>
+    <p class="section-card__hint">
+        Строка заголовков находится сама — по словам «Заказчик» и «НМЦК». Разбор ничего не пишет в базу:
+        сначала видно, что куда ляжет, и только потом запись. Повторный импорт того же файла не создаёт дублей —
+        закупка определяется по номеру, а если номера в файле нет, то по заказчику, НМЦК и дате размещения.
+    </p>
+
+    <div class="import-picker">
+        <InputFile OnChange="OnFileAsync" class="file-input" accept=".csv,.txt,.xlsx" disabled="@_busy" />
+        @if (_fileName is not null)
+        {
+            <span class="import-picker__name">@_fileName</span>
+        }
+        @if (_busy)
+        {
+            <span class="import-picker__name">обрабатываем…</span>
+        }
+    </div>
+
+    @if (_error is not null)
+    {
+        <div class="alert alert--warn">
+            <span>@_error</span>
+            <button type="button" class="alert__close" @onclick="() => _error = null" title="Скрыть">✕</button>
+        </div>
+    }
+
+    @if (_done is not null)
+    {
+        <div class="alert alert-ok">
+            <span>✔ @_done</span>
+            <button type="button" class="alert__close" @onclick="() => _done = null" title="Скрыть">✕</button>
+        </div>
+    }
+</div>
+
+@if (_preview is not null)
+{
+    <div class="section-card">
+        <h2>Что разобрали в файле «@_preview.FileName»</h2>
+        <p class="section-card__hint">
+            Строк с данными: <strong>@_preview.Rows.Count</strong>.
+            @if (_preview.Duplicates > 0)
+            {
+                <span>К импорту: <strong>@_preview.NewRows</strong>, уже есть в реестре и будет пропущено: <strong>@_preview.Duplicates</strong>.</span>
+            }
+            else
+            {
+                <span>К импорту: <strong>@_preview.NewRows</strong>.</span>
+            }
+        </p>
+
+        <div class="import-stats">
+            @foreach (var stat in _preview.Stats)
+            {
+                <div class="import-stat">
+                    <div class="import-stat__title">@stat.Title</div>
+                    <div class="import-stat__value">@stat.Count</div>
+                    @if (stat.Hint is not null)
+                    {
+                        <div class="import-stat__hint">@stat.Hint</div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="section-card">
+        <h2>На какие стадии встанут закупки</h2>
+        <p class="section-card__hint">
+            Стадия выводится из данных файла: подписан контракт → «Ожидание доставки», есть итоговая сумма → «Контракт»,
+            есть дата торгов → «Торги», есть размещение на площадке → «Подача заявки», иначе «Контур и подготовка».
+        </p>
+        <div class="import-stages">
+            @foreach (var stage in _preview.Stages)
+            {
+                <span class="badge badge--ok">@stage.Title — @stage.Count</span>
+            }
+        </div>
+    </div>
+
+    @if (_preview.UnknownTypes.Count > 0 || _preview.UnknownStatuses.Count > 0)
+    {
+        <div class="section-card">
+            <h2>Значения, которых нет в справочниках</h2>
+            <p class="section-card__hint">
+                Справочники импортом не меняются: поле останется пустым. Значения можно добавить на вкладке «Справочники»
+                и запустить импорт ещё раз — тогда они подхватятся.
+            </p>
+            <ul class="import-list">
+                @foreach (var item in _preview.UnknownTypes)
+                {
+                    <li>Тип закупки «@item.Title» — @item.Count строк</li>
+                }
+                @foreach (var item in _preview.UnknownStatuses)
+                {
+                    <li>Статус резерва B2B «@item.Title» — @item.Count строк</li>
+                }
+            </ul>
+        </div>
+    }
+
+    @if (_preview.Warnings.Count > 0)
+    {
+        <div class="section-card">
+            <h2>Предупреждения разбора</h2>
+            <ul class="import-list">
+                @foreach (var warning in _preview.Warnings)
+                {
+                    <li>@warning.Title — @warning.Count</li>
+                }
+            </ul>
+        </div>
+    }
+
+    @if (_preview.IgnoredColumns.Count > 0)
+    {
+        <div class="section-card">
+            <h2>Колонки, которые не импортируются</h2>
+            <p class="section-card__hint">Для них нет поля в реестре, либо они за пределами колонок A..Q.</p>
+            <ul class="import-list">
+                @foreach (var column in _preview.IgnoredColumns)
+                {
+                    <li>@column</li>
+                }
+            </ul>
+        </div>
+    }
+
+    <div class="section-card">
+        <h2>Первые строки разбора</h2>
+        <div class="grid-wrapper import-preview">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Строка</th>
+                        <th>Наименование</th>
+                        <th>Номер закупки</th>
+                        <th>НМЦК</th>
+                        <th>Итог</th>
+                        <th>Стадия</th>
+                        <th>Что не разобрали</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in _preview.Rows.Take(50))
+                    {
+                        <tr class="@(row.IsDuplicate ? "import-row--skip" : null)">
+                            <td class="nowrap">@row.SourceRow</td>
+                            <td>
+                                @row.NameLink
+                                @if (!string.IsNullOrEmpty(row.Customer))
+                                {
+                                    <div class="import-cell__hint">@row.Customer</div>
+                                }
+                            </td>
+                            <td>@(row.PurchaseNumber.Length > 0 ? row.PurchaseNumber : "—")</td>
+                            <td class="nowrap">@Money(row.NMCK)</td>
+                            <td class="nowrap">@Money(row.ResultPrice)</td>
+                            <td class="nowrap">@(WorkflowStages.Name(row.Stage))@(row.IsDuplicate ? " (дубль)" : string.Empty)</td>
+                            <td>
+                                @if (row.Problems.Count > 0)
+                                {
+                                    <span class="import-cell__hint">@string.Join("; ", row.Problems)</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="import-actions">
+        <button type="button" class="btn btn--primary" disabled="@(_busy || _preview.NewRows == 0)" @onclick="ImportAsync">
+            Импортировать @_preview.NewRows записей
+        </button>
+        <button type="button" class="btn" disabled="@_busy" @onclick="Reset">Отменить</button>
+    </div>
+}
+
+@code {
+    private LegacyImportPreview? _preview;
+    private ChangeActor _actor = new(string.Empty, "system");
+    private string? _fileName;
+    private string? _error;
+    private string? _done;
+    private bool _busy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var state = await AuthStateProvider.GetAuthenticationStateAsync();
+            var user = state.User;
+            if (user.Identity?.IsAuthenticated == true)
+            {
+                _actor = new ChangeActor(user.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty,
+                    user.Identity.Name ?? "system");
+            }
+        }
+        catch
+        {
+            // Пререндер (F5) может не иметь контекста — цепь повторит инициализацию.
+        }
+    }
+
+    private async Task OnFileAsync(InputFileChangeEventArgs ev)
+    {
+        _busy = true;
+        _error = null;
+        _done = null;
+        _preview = null;
+        _fileName = ev.File.Name;
+
+        // Те же проверки размера и типа, что и для вложений закупки.
+        if (!AttachmentLimits.IsAllowed(ev.File.Name))
+        {
+            _error = AttachmentLimits.NotAllowedMessage(ev.File.Name);
+            _busy = false;
+            return;
+        }
+
+        if (AttachmentLimits.IsTooBig(ev.File.Size))
+        {
+            _error = AttachmentLimits.TooBigMessage(ev.File.Name, ev.File.Size);
+            _busy = false;
+            return;
+        }
+
+        try
+        {
+            await using var stream = ev.File.OpenReadStream(AttachmentLimits.MaxFileSizeBytes);
+            var result = await Importer.ParseAsync(stream, ev.File.Name);
+            if (result.Success && result.Value is not null)
+            {
+                _preview = result.Value;
+            }
+            else
+            {
+                _error = result.Error ?? "Не удалось разобрать файл.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = $"Не удалось прочитать файл: {ex.Message}";
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task ImportAsync()
+    {
+        if (_preview is null || _preview.NewRows == 0)
+        {
+            return;
+        }
+
+        var ok = await JS.InvokeAsync<bool>("confirm",
+            $"Добавить в реестр {_preview.NewRows} записей из файла «{_preview.FileName}»?");
+        if (!ok)
+        {
+            return;
+        }
+
+        _busy = true;
+        _error = null;
+        _done = null;
+        try
+        {
+            var result = await Importer.ImportAsync(_preview.Rows, _actor);
+            if (result.Success && result.Value is not null)
+            {
+                var report = result.Value;
+                _done = $"Добавлено записей: {report.Imported}" +
+                        (report.SkippedDuplicates > 0 ? $", пропущено дублей: {report.SkippedDuplicates}" : string.Empty) + ".";
+                Toasts.Show(_done, ToastKind.Success);
+                _preview = null;
+                _fileName = null;
+            }
+            else
+            {
+                _error = result.Error ?? "Не удалось импортировать файл.";
+                Toasts.Show(_error, ToastKind.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = $"Не удалось импортировать файл: {ex.Message}";
+            Toasts.Show(_error, ToastKind.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private void Reset()
+    {
+        _preview = null;
+        _fileName = null;
+        _error = null;
+    }
+
+    private static string Money(decimal value) => MoneyFormat.Money(value);
+}
