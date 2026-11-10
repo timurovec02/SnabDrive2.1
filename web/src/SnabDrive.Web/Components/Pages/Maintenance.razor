@@ -29,6 +29,15 @@
     <h2>Что можно очистить</h2>
     <p class="section-card__hint">Каждый пункт затрагивает только свой набор данных. Перед очисткой рабочего контура сделайте резервную копию базы.</p>
 
+    <label class="chk" title="Сбросить счётчик Id, чтобы новые записи снова начинались с первого">
+        <input type="checkbox" @bind="_resetIds" /> начинать нумерацию записей заново (Id с 1)
+    </label>
+    <p class="section-card__hint">
+        Обычно удаление строк не трогает счётчик: следующая закупка получила бы Id = 114, 115 и так далее.
+        Со включённой галкой после очистки счётчик обнуляется, и первая новая запись снова будет № 1.
+        Ссылки вида «закупка № 42» в старых письмах и закладках после этого станут указывать на другую запись.
+    </p>
+
     <div class="clean-grid">
         @foreach (var item in Datasets)
         {
@@ -48,6 +57,9 @@
     private bool _busy;
     private string? _message;
 
+    /// <summary>Сбрасывать ли счётчик Id при очистке (новые записи снова с 1).</summary>
+    private bool _resetIds = true;
+
     /// <summary>Что можно очистить: ключ для сервиса, название и пояснение для интерфейса.</summary>
     private static readonly (string Key, string Title, string Hint, string Icon)[] Datasets =
     {
@@ -64,7 +76,8 @@
     private async Task Clear(string dataset, string label)
     {
         var ok = await JS.InvokeAsync<bool>("confirm",
-            $"ВНИМАНИЕ: все записи «{label}» будут безвозвратно удалены из базы данных. Продолжить?");
+            $"ВНИМАНИЕ: все записи «{label}» будут безвозвратно удалены из базы данных." +
+            (_resetIds ? " Нумерация записей начнётся заново, с Id = 1." : string.Empty) + " Продолжить?");
         if (!ok) return;
 
         _busy = true;
@@ -75,9 +88,10 @@
             var user = state.User;
             var actor = new ChangeActor(user.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty,
                                         user.Identity?.Name ?? "admin");
-            var result = await MaintenanceSvc.ClearAsync(dataset, actor);
+            var result = await MaintenanceSvc.ClearAsync(dataset, actor, _resetIds);
             _message = result.Success
-                ? $"«{label}» очищено. Удалено записей: {result.Value}."
+                ? $"«{label}» очищено. Удалено записей: {result.Value}." +
+                  (_resetIds ? " Нумерация сброшена — новые записи снова с Id = 1." : string.Empty)
                 : $"Ошибка: {result.Error}";
             Toasts.Show(_message, result.Success ? ToastKind.Success : ToastKind.Error);
         }
