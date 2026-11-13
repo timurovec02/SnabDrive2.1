@@ -14,7 +14,7 @@
 
 <PageTitle>Пользователи — Снабдрайв</PageTitle>
 
-<div class="page">
+<div class="page page--fill">
     <PageHeader IconName="users"
                 Title="Пользователи и роли"
                 Subtitle="Учётные записи, роли и личные права: доступ к вкладкам, колонкам реестра, выгрузке из Контур и переводу закупок между стадиями.">
@@ -25,52 +25,54 @@
     </PageHeader>
 
     <div class="page__section">
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>Логин</th>
-                    <th>Отображаемое имя</th>
-                    <th>Email</th>
-                    <th>Роль</th>
-                    <th>Статус</th>
-                    <th>Последний вход</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var user in _users)
-                {
-                    <tr class="@(user.IsOnline ? "is-online" : null)">
-                        <td>@user.UserName</td>
-                        <td>@user.DisplayName</td>
-                        <td>@user.Email</td>
-                        <td>@AppRoles.DisplayName(user.Role)</td>
-                        <td>
-                            @if (user.IsBlocked)
-                            {
-                                <span class="badge badge--danger">заблокирован</span>
-                            }
-                            else if (user.IsOnline)
-                            {
-                                <span class="badge badge--success">онлайн</span>
-                            }
-                            else
-                            {
-                                <span class="badge">офлайн</span>
-                            }
-                        </td>
-                        <td>@(user.LastLoginUtc?.ToLocalTime().ToString("dd.MM.yyyy HH:mm") ?? "—")</td>
-                        <td class="row-actions">
-                            <button type="button" class="btn btn--small" @onclick="() => StartEdit(user)">Изменить</button>
-                            <button type="button" class="btn btn--small" @onclick="() => OpenColumns(user)">Колонки</button>
-                            <button type="button" class="btn btn--small" @onclick="() => TestNotifyAsync(user)"
-                                    title="Отправить тестовое уведомление в Битрикс24">Проверить</button>
-                            <button type="button" class="btn btn--small btn--danger" @onclick="() => AskDelete(user)">Удалить</button>
-                        </td>
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Логин</th>
+                        <th>Отображаемое имя</th>
+                        <th>Email</th>
+                        <th>Роль</th>
+                        <th>Статус</th>
+                        <th>Последний вход</th>
+                        <th></th>
                     </tr>
-                }
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    @foreach (var user in _users)
+                    {
+                        <tr class="@(user.IsOnline ? "is-online" : null)">
+                            <td>@user.UserName</td>
+                            <td>@user.DisplayName</td>
+                            <td>@user.Email</td>
+                            <td>@AppRoles.DisplayName(user.Role)</td>
+                            <td>
+                                @if (user.IsBlocked)
+                                {
+                                    <span class="badge badge--danger">заблокирован</span>
+                                }
+                                else if (user.IsOnline)
+                                {
+                                    <span class="badge badge--success">онлайн</span>
+                                }
+                                else
+                                {
+                                    <span class="badge">офлайн</span>
+                                }
+                            </td>
+                            <td>@(user.LastLoginUtc?.ToLocalTime().ToString("dd.MM.yyyy HH:mm") ?? "—")</td>
+                            <td class="row-actions">
+                                <button type="button" class="btn btn--small" @onclick="() => StartEdit(user)">Изменить</button>
+                                <button type="button" class="btn btn--small" @onclick="() => OpenColumns(user)">Колонки</button>
+                                <button type="button" class="btn btn--small" @onclick="() => TestNotifyAsync(user)"
+                                        title="Отправить тестовое уведомление в Битрикс24">Проверить</button>
+                                <button type="button" class="btn btn--small btn--danger" @onclick="() => AskDelete(user)">Удалить</button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 

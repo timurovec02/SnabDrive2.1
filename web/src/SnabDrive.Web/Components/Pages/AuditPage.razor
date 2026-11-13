@@ -4,7 +4,7 @@
 
 <PageTitle>Журнал изменений — Снабдрайв</PageTitle>
 
-<div class="page">
+<div class="page page--fill">
     <PageHeader IconName="audit"
                 Title="Журнал изменений"
                 Subtitle="Кто, когда и что менял в реестре, справочниках и пользователях. Записи не удаляются и не редактируются.">
@@ -41,49 +41,51 @@
     </div>
 
     <div class="page__section">
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>Когда</th>
-                    <th>Кто</th>
-                    <th>Операция</th>
-                    <th>Объект</th>
-                    <th>Что изменилось</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var entry in _data.Items)
-                {
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
                     <tr>
-                        <td class="nowrap">@entry.CreatedAtLocal</td>
-                        <td>@entry.UserName</td>
-                        <td><span class="badge badge--@BadgeClass(entry.Action)">@ActionTitle(entry.Action)</span></td>
-                        <td>@EntityTitle(entry.EntityName) @(entry.EntityId > 0 ? $"#{entry.EntityId}" : string.Empty)</td>
-                        <td>
-                            <div class="audit-summary">@entry.Summary</div>
-                            @if (entry.Changes.Count > 0)
-                            {
-                                <ul class="audit-changes">
-                                    @foreach (var change in entry.Changes)
-                                    {
-                                        <li>
-                                            <span class="audit-field">@change.Key:</span>
-                                            <span class="audit-old">@(string.IsNullOrEmpty(change.Value.Old) ? "—" : change.Value.Old)</span>
-                                            →
-                                            <span class="audit-new">@(string.IsNullOrEmpty(change.Value.New) ? "—" : change.Value.New)</span>
-                                        </li>
-                                    }
-                                </ul>
-                            }
-                        </td>
+                        <th>Когда</th>
+                        <th>Кто</th>
+                        <th>Операция</th>
+                        <th>Объект</th>
+                        <th>Что изменилось</th>
                     </tr>
-                }
-                @if (_data.Items.Count == 0)
-                {
-                    <tr><td class="registry-grid__empty" colspan="5">Записей журнала нет</td></tr>
-                }
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    @foreach (var entry in _data.Items)
+                    {
+                        <tr>
+                            <td class="nowrap">@entry.CreatedAtLocal</td>
+                            <td>@entry.UserName</td>
+                            <td><span class="badge badge--@BadgeClass(entry.Action)">@ActionTitle(entry.Action)</span></td>
+                            <td>@EntityTitle(entry.EntityName) @(entry.EntityId > 0 ? $"#{entry.EntityId}" : string.Empty)</td>
+                            <td>
+                                <div class="audit-summary">@entry.Summary</div>
+                                @if (entry.Changes.Count > 0)
+                                {
+                                    <ul class="audit-changes">
+                                        @foreach (var change in entry.Changes)
+                                        {
+                                            <li>
+                                                <span class="audit-field">@change.Key:</span>
+                                                <span class="audit-old">@(string.IsNullOrEmpty(change.Value.Old) ? "—" : change.Value.Old)</span>
+                                                →
+                                                <span class="audit-new">@(string.IsNullOrEmpty(change.Value.New) ? "—" : change.Value.New)</span>
+                                            </li>
+                                        }
+                                    </ul>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    @if (_data.Items.Count == 0)
+                    {
+                        <tr><td class="registry-grid__empty" colspan="5">Записей журнала нет</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
     </div>
 
     <div class="pager">
