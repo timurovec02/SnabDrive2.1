@@ -6,7 +6,7 @@
 @inject IDbContextFactory<AppIdentityDbContext> IdentityFactory
 @inject IDbContextFactory<RegistryDbContext> RegistryFactory
 
-<PageHeader Icon="📈"
+<PageHeader IconName="stats"
             Title="Статистика активности"
             Subtitle="Кто и сколько выполнил операций: добавление, изменение, удаление, архивация и переводы по стадиям воркфлоу.">
     <Actions>
@@ -34,7 +34,7 @@
 else if (_rows.Count == 0)
 {
     <div class="empty-state">
-        <div class="empty-state__icon">📭</div>
+        <div class="empty-state__icon"><Icon Name="inbox" /></div>
         <div class="empty-state__title">За выбранный период операций нет</div>
         <div>Измените диапазон дат и нажмите «Показать».</div>
     </div>

@@ -56,7 +56,7 @@
 
         @if (SchedulerState.IsRunning)
         {
-            <div class="alert alert--warn" role="status">⏳ Идёт выгрузка и импорт файлов — страницы Контур разблокируются автоматически.</div>
+            <div class="alert alert--warn" role="status"><Icon Name="refresh" Class="alert__icon icon--spin" /> Идёт выгрузка и импорт файлов — страницы Контур разблокируются автоматически.</div>
         }
         else if (!string.IsNullOrWhiteSpace(SchedulerState.LastMessage))
         {
@@ -66,7 +66,7 @@
         @* ---------------- два расписания ---------------- *@
         <div class="sched-grid">
             <div class="section-card">
-                <h2>★ Избранное</h2>
+                <h2 class="section-title"><Icon Name="favorites" /> Избранное</h2>
                 <p class="section-card__hint">
                     Запускает RunBoth.cmd: выгружаются два файла — Kontur_*.xlsx и TenderLand_*.xlsx.
                     Оба импортируются в «Контур избранное», дубли по номеру закупки отбрасываются.
@@ -92,13 +92,13 @@
 
                 <div class="sched-actions">
                     <button type="button" class="btn btn--small" disabled="@SchedulerState.IsRunning"
-                            @onclick="() => RunNow(ExportMode.Favorites)">▶ Выгрузить сейчас</button>
+                            @onclick="() => RunNow(ExportMode.Favorites)"><Icon Name="download" /> Выгрузить сейчас</button>
                     <span class="muted">запусков в сутки: @_times.Count</span>
                 </div>
             </div>
 
             <div class="section-card">
-                <h2>🎯 Шаблоны</h2>
+                <h2 class="section-title"><Icon Name="templates" /> Шаблоны</h2>
                 <p class="section-card__hint">
                     Выгрузка «Контур шаблоны» (--templates), обычно в начале и конце рабочего дня.
                     Метка проставляется автоматически при повторной выгрузке.
@@ -124,7 +124,7 @@
 
                 <div class="sched-actions">
                     <button type="button" class="btn btn--small" disabled="@SchedulerState.IsRunning"
-                            @onclick="() => RunNow(ExportMode.Templates)">▶ Выгрузить сейчас</button>
+                            @onclick="() => RunNow(ExportMode.Templates)"><Icon Name="download" /> Выгрузить сейчас</button>
                     <span class="muted">запусков в сутки: @_templatesTimes.Count</span>
                 </div>
             </div>
@@ -135,13 +135,13 @@
                 <input type="checkbox" @bind="_enabled" /> планировщик включён
             </label>
             <div class="toolbar__spacer"></div>
-            <button type="button" class="btn" @onclick="ResetChanges">↺ Отменить изменения</button>
-            <button type="button" class="btn btn--primary" @onclick="SaveSchedule">💾 Сохранить расписание</button>
+            <button type="button" class="btn" @onclick="ResetChanges"><Icon Name="refresh" /> Отменить изменения</button>
+            <button type="button" class="btn btn--primary" @onclick="SaveSchedule"><Icon Name="save" /> Сохранить расписание</button>
         </div>
 
         @* ---------------- как настроен запуск ---------------- *@
         <div class="section-card">
-            <h2>⚙ Параметры запуска</h2>
+            <h2 class="section-title"><Icon Name="settings" /> Параметры запуска</h2>
             <p class="section-card__hint">Значения берутся из appsettings (секция Kontur). Меняются администратором на сервере.</p>
             <dl class="cfg-list">
                 <div><dt>Задача Windows (избранное)</dt><dd>@(Blank(Options.TaskName))</dd></div>
@@ -156,7 +156,7 @@
 
         @* ---------------- журнал ---------------- *@
         <div class="section-card">
-            <h2>📜 Журнал запусков</h2>
+            <h2 class="section-title"><Icon Name="audit" /> Журнал запусков</h2>
             @if (_log.Count == 0)
             {
                 <p class="section-card__hint">Записей пока нет — журнал заполняется после первого запуска экспортёра.</p>

@@ -1988,6 +1988,13 @@ body {
     line-height: 1;
 }
 
+.empty-state__icon .icon {
+    width: 30px;
+    height: 30px;
+    stroke-width: 1.6;
+    color: var(--text-muted);
+}
+
 .empty-state__title {
     margin: 8px 0 4px;
     font-size: 15px;
@@ -3117,16 +3124,10 @@ textarea {
         display: block;
     }
 
-    /* Таблица занимает столько места, сколько нужно: на планшете удобнее
-       прокручивать страницу, чем маленькое окно внутри страницы. */
+    /* Свою область прокрутки у таблицы сохраняем и на планшете: без неё
+       «липкая» шапка не работает — заголовки уезжают вместе со страницей. */
     .grid-wrapper {
-        max-height: none;
-    }
-
-    /* Таблицы без собственной области прокрутки (пользователи, журнал,
-       статистика) прокручиваются внутри карточки, а не растягивают страницу. */
-    .card {
-        overflow-x: auto;
+        max-height: calc(100vh - 220px);
     }
 
     .search {
@@ -3344,4 +3345,229 @@ textarea {
     .import-preview {
         max-height: none;
     }
+}
+
+/* ==========================================================================
+   Липкие заголовки таблиц, панель фильтров и панель «Онлайн»
+   ========================================================================== */
+
+/* 1. Панель «Онлайн» выпадала вниз и обрезалась по краю шапки: overflow:hidden
+      делает из шапки контейнер прокрутки и прячет всё, что выходит за границы.
+      Заодно поднимаем шапку над содержимым, чтобы список был поверх карточек. */
+.app-header {
+    overflow: visible;
+    position: relative;
+    z-index: 30;
+}
+
+/* 2. Ни таблица, ни её секция не должны быть контейнером прокрутки:
+      «липкая» шапка прилипает к ближайшему скроллящемуся предку, и если это
+      сама таблица (overflow:hidden) — заголовок уезжает вместе со страницей. */
+.data-table,
+.page__section {
+    overflow: visible;
+}
+
+.data-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 6;
+    background: var(--surface-3);
+    /* При border-collapse:separate нижняя граница у липкой ячейки остаётся,
+       но тень надёжнее — её не перекрывают строки при прокрутке. */
+    box-shadow: inset 0 -1px 0 var(--border);
+}
+
+/* Скругление углов, которое раньше обеспечивал overflow:hidden. */
+.data-table thead th:first-child { border-top-left-radius: var(--radius); }
+.data-table thead th:last-child { border-top-right-radius: var(--radius); }
+.registry-grid thead th:first-child { border-top-left-radius: 7px; }
+
+/* Длинные слова в ячейках ломаем сами — иначе широкая таблица разъезжается
+   за пределы карточки, и её пришлось бы скрывать в overflow-контейнере. */
+.data-table td {
+    overflow-wrap: anywhere;
+}
+
+/* 3. Панель поиска и фильтров остаётся на виду при прокрутке страницы.
+      Отрицательные поля растягивают фон на поля .app-main, чтобы строки
+      не проглядывали по бокам. */
+.toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 12;
+    background: var(--bg);
+    margin-left: -16px;
+    margin-right: -16px;
+    padding: 8px 16px;
+}
+
+/* 4. Сетка реестра и таблиц Контур прокручивается внутри себя на любой ширине:
+      «липкой» шапке нужен собственный скролл-контейнер. */
+.grid-wrapper,
+.table-wrap {
+    max-height: calc(100vh - 230px);
+}
+
+@media (max-width: 620px) {
+    .toolbar {
+        margin-left: -12px;
+        margin-right: -12px;
+        padding: 6px 12px;
+    }
+
+    .grid-wrapper,
+    .table-wrap {
+        max-height: calc(100vh - 210px);
+    }
+}
+
+/* ==========================================================================
+   Векторные иконки (Feather, MIT) — см. Components/Shared/Icon.razor
+   ========================================================================== */
+.icon {
+    width: 18px;
+    height: 18px;
+    flex: 0 0 auto;
+    vertical-align: -0.22em;   /* значок стоит на одной линии с текстом */
+    stroke: currentColor;
+    fill: none;
+}
+
+/* Значок пункта меню: тот же размер, что был у эмодзи, чтобы вёрстка не поехала. */
+.nav__icon {
+    display: inline-block;
+    width: 19px;
+    height: 19px;
+    flex: 0 0 auto;
+    opacity: .82;
+}
+
+.nav__item:hover .nav__icon,
+.nav__item.active .nav__icon {
+    opacity: 1;
+}
+
+/* Значок в шапке вкладки (PageHeader). */
+.page-hero__svg {
+    width: 22px;
+    height: 22px;
+    stroke-width: 1.9;
+    vertical-align: 0;   /* плитка центрирует значок сама */
+}
+
+/* Значок внутри кнопки — чуть меньше и с отступом от подписи. */
+.btn .icon {
+    width: 15px;
+    height: 15px;
+    margin-right: 5px;
+}
+
+.btn .icon:only-child,
+.btn--ghost .icon:only-child {
+    margin-right: 0;
+}
+
+/* Значки-«плитки» в списке очистки данных. */
+.clean-item__icon-svg {
+    width: 20px;
+    height: 20px;
+    color: var(--danger);
+}
+
+@media (max-width: 620px) {
+    .page-hero__icon .page-hero__svg {
+        width: 19px;
+        height: 19px;
+    }
+}
+
+/* Значки внутри плашек, кнопок-крестиков и карточки задачи. */
+.alert__icon {
+    width: 15px;
+    height: 15px;
+    stroke-width: 2.1;
+    margin-right: 2px;
+}
+
+.alert__close-icon,
+.ctx-menu__close-icon {
+    width: 13px;
+    height: 13px;
+    stroke-width: 2.4;
+}
+
+.wf-link-icon {
+    width: 16px;
+    height: 16px;
+    color: var(--primary);
+}
+
+.wf-meta-icon {
+    width: 14px;
+    height: 14px;
+    stroke-width: 2.1;
+    opacity: .75;
+}
+
+.wf-meta-icon--ok {
+    color: var(--success);
+    opacity: 1;
+}
+
+.ctx-menu__icon-svg {
+    width: 16px;
+    height: 16px;
+    color: var(--text-muted);
+}
+
+.ctx-menu__tick-icon {
+    width: 14px;
+    height: 14px;
+    stroke-width: 2.6;
+}
+
+.cell-lock__icon {
+    width: 11px;
+    height: 11px;
+    stroke-width: 2.4;
+}
+
+/* Стрелка «истории этапов»: одна и та же, просто поворачивается. */
+.stage-history__caret-svg {
+    width: 12px;
+    height: 12px;
+    color: var(--text-muted);
+    transition: transform .15s ease;
+}
+
+.stage-history__caret-svg--open {
+    transform: rotate(180deg);
+}
+
+/* «Крутящиеся» значки: загрузка страницы и фоновая выгрузка Контура. */
+.icon--spin,
+.boot-spin__icon {
+    animation: icon-spin 1.1s linear infinite;
+    transform-origin: 50% 50%;
+}
+
+.boot-spin__icon {
+    width: 34px;
+    height: 34px;
+    stroke-width: 1.8;
+    color: var(--primary);
+}
+
+@keyframes icon-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Дата торгов в карточке задачи — значок чуть крупнее подписи. */
+.wf-date-icon {
+    width: 17px;
+    height: 17px;
+    color: var(--warning);
 }

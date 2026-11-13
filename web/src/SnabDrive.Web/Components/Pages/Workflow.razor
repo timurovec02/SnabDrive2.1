@@ -18,22 +18,22 @@
 @if (_error is not null)
 {
     <div class="alert alert-error" role="alert">
-        <span>⚠ @_error</span>
-        <button type="button" class="alert__close" @onclick="() => _error = null" title="Скрыть">✕</button>
+        <span><Icon Name="warn" Class="alert__icon" /> @_error</span>
+        <button type="button" class="alert__close" @onclick="() => _error = null" title="Скрыть"><Icon Name="close" Class="alert__close-icon" /></button>
     </div>
 }
 @if (_notice is not null)
 {
     <div class="alert alert-ok" role="status">
-        <span>✔ @_notice</span>
-        <button type="button" class="alert__close" @onclick="() => _notice = null" title="Скрыть">✕</button>
+        <span><Icon Name="check" Class="alert__icon" /> @_notice</span>
+        <button type="button" class="alert__close" @onclick="() => _notice = null" title="Скрыть"><Icon Name="close" Class="alert__close-icon" /></button>
     </div>
 }
 
 @if (_isTenderHead && (_biddingTomorrow > 0 || _biddingToday > 0))
 {
     <div class="alert alert--warn">
-        🔔 <strong>Предстоящие торги:</strong>
+        <Icon Name="bell" Class="alert__icon" /> <strong>Предстоящие торги:</strong>
         @if (_biddingTomorrow > 0)
         {
             <span>завтра — @_biddingTomorrow</span>
@@ -59,11 +59,11 @@
 
 <div class="toolbar" style="flex-wrap:wrap;gap:8px;margin:0 0 16px">
     <div style="display:flex;align-items:center;gap:6px">
-        <input class="input" style="min-width:280px" placeholder="🔍 Поиск по всем полям стадии…"
+        <input class="input" style="min-width:280px" placeholder="Поиск по всем полям стадии…"
                @bind="_search" @bind:event="oninput" />
         @if (!string.IsNullOrEmpty(_search))
         {
-            <button class="btn btn--small" title="Очистить поиск" @onclick="ClearSearch">✕</button>
+            <button class="btn btn--small" title="Очистить поиск" @onclick="ClearSearch"><Icon Name="close" /></button>
         }
     </div>
     <div class="toolbar-spacer"></div>
@@ -110,7 +110,7 @@ else
                 {
                     <a href="@r.EisLink" target="_blank" rel="noopener noreferrer" title="@r.EisLink"
                        style="display:inline-flex;align-items:center;gap:4px;margin-bottom:8px;font-size:14px;text-decoration:none">
-                        <span style="font-size:18px;line-height:1">🔗</span> ЕИС
+                        <Icon Name="link" Class="wf-link-icon" /> ЕИС
                     </a>
                 }
                 @if (!string.IsNullOrWhiteSpace(r.PurchaseNumber))
@@ -148,10 +148,10 @@ else
 
                 @* ===== Кто и когда вёл этап — для учёта работы сотрудников ===== *@
                 <div class="muted" style="display:flex;flex-wrap:wrap;gap:4px 18px;margin:0 0 10px;font-size:12.5px">
-                    <span title="Кто и когда начал текущий этап">👤 Этап начал: <strong>@StageOwner(r.StageStartedBy, r.StageStartedAtUtc)</strong></span>
-                    <span title="Кто и когда завершил предыдущий этап">✅ Предыдущий этап завершил: <strong>@StageOwner(r.StageCompletedBy, r.StageCompletedAtUtc)</strong></span>
+                    <span title="Кто и когда начал текущий этап"><Icon Name="users" Class="wf-meta-icon" /> Этап начал: <strong>@StageOwner(r.StageStartedBy, r.StageStartedAtUtc)</strong></span>
+                    <span title="Кто и когда завершил предыдущий этап"><Icon Name="check" Class="wf-meta-icon wf-meta-icon--ok" /> Предыдущий этап завершил: <strong>@StageOwner(r.StageCompletedBy, r.StageCompletedAtUtc)</strong></span>
                     @* Выпадающий список со всеми этапами закупки, а не только с последним. *@
-                    <StageHistoryTrigger RegeditId="r.Id" Label="📋 Все этапы" />
+                    <StageHistoryTrigger RegeditId="r.Id" Label="Все этапы" />
                 </div>
 
                 @* ===== Этап 3: дедлайн подачи заявки — самое важное поле, поэтому вверху
@@ -160,7 +160,7 @@ else
                 @if (_stage == 3)
                 {
                     <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;padding:10px 14px;margin:0 0 12px;border-radius:8px;font-size:16px;font-weight:700;@DeadlineStyle(r.ApplicationEndDate)">
-                        <span style="font-size:20px;line-height:1">⏰</span>
+                        <Icon Name="calendar" Class="wf-date-icon" />
                         <span>Окончание приема заявок: @(r.ApplicationEndDate is null ? "не указана" : Fmt(r.ApplicationEndDate))</span>
                         <span style="font-size:13.5px;font-weight:600;opacity:.85">@DeadlineLeft(r.ApplicationEndDate)</span>
                     </div>
@@ -243,7 +243,7 @@ else
                                 <label class="wf-label">Звони</label>
                                 <label style="display:flex;align-items:center;gap:8px;font-size:15px;font-weight:600">
                                     <input type="checkbox" style="width:20px;height:20px" checked="@_edits[r.Id].IsCall" @onchange="ev => OnToggleCall(r.Id, ev)" />
-                                    <span>📞 Звони</span>
+                                    <span><Icon Name="phone" /> Звони</span>
                                 </label>
                             </div>
                         }
@@ -253,7 +253,7 @@ else
                                 <label class="wf-label">По заявкам</label>
                                 <label style="display:flex;align-items:center;gap:8px;font-size:15px;font-weight:600">
                                     <input type="checkbox" style="width:20px;height:20px" checked="@_edits[r.Id].IsByRequest" @onchange="ev => OnToggleByRequest(r.Id, ev)" />
-                                    <span>📋 По заявкам</span>
+                                    <span><Icon Name="inbox" /> По заявкам</span>
                                 </label>
                             </div>
                         }
@@ -298,13 +298,13 @@ else
                                        @bind="_edits[r.Id].MinPrice" @bind:after="() => SaveAsync(r.Id)" />
                                 <label style="display:flex;align-items:center;gap:8px;margin-top:4px;font-size:15px;font-weight:600">
                                     <input type="checkbox" style="width:20px;height:20px" checked="@_edits[r.Id].IsCall" @onchange="ev => OnToggleCall(r.Id, ev)" />
-                                    <span>📞 Звони</span>
+                                    <span><Icon Name="phone" /> Звони</span>
                                 </label>
                             }
                             else if (r.IsCall)
                             {
                                 <div class="wf-readonly" style="border:2px solid #d97706;background:#fff7ed;color:#92400e;font-weight:800;font-size:17px">@r.MinPrice.ToString("N2")</div>
-                                <span style="display:inline-flex;align-items:center;gap:6px;margin-top:4px;font-size:15px;font-weight:800;color:#b45309">📞 Звони</span>
+                                <span style="display:inline-flex;align-items:center;gap:6px;margin-top:4px;font-size:15px;font-weight:800;color:#b45309"><Icon Name="phone" /> Звони</span>
                             }
                             else
                             {
@@ -416,14 +416,14 @@ else
                         @if (r.ContractStatusId is 4 or 5)
                         {
                             <div class="alert alert--warn" style="grid-column:1/-1;margin:0">
-                                ⚠ @ContractStatuses.Name(r.ContractStatusId) — закройте вопрос, прежде чем переводить закупку дальше.
+                                <Icon Name="warn" Class="alert__icon" /> @ContractStatuses.Name(r.ContractStatusId) — закройте вопрос, прежде чем переводить закупку дальше.
                             </div>
                         }
                         <div class="wf-field" style='@FieldStyle(r.Id, "IsContractChecked")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "IsContractChecked", ev)' @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true">
                             <label class="wf-label">Проверен</label>
                             <label style="display:flex;align-items:center;gap:8px;font-size:15px;font-weight:600">
                                 <input type="checkbox" style="width:20px;height:20px" checked="@_edits[r.Id].IsContractChecked" @onchange="ev => OnToggleContractChecked(r.Id, ev)" />
-                                <span>✅ Проверен</span>
+                                <span><Icon Name="check" /> Проверен</span>
                             </label>
                         </div>
                         <div class="wf-field" style='@FieldStyle(r.Id, "Note")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "Note", ev)' @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true">
@@ -455,7 +455,7 @@ else
                                 <input type="date" class="wf-input" @bind="_edits[r.Id].ExpectedDeliveryDate" @bind:format="yyyy-MM-dd" @bind:after="() => SaveAsync(r.Id)" />
                                 <label style="display:flex;align-items:center;gap:8px;font-size:15px;font-weight:600">
                                     <input type="checkbox" style="width:20px;height:20px" checked="@_edits[r.Id].IsEisFilled" @onchange="ev => OnToggleEisFilled(r.Id, ev)" />
-                                    <span>🧾 Заполнить в ЕИС</span>
+                                    <span><Icon Name="file" /> Заполнить в ЕИС</span>
                                 </label>
                             </div>
                         </div>
@@ -487,7 +487,7 @@ else
                     </div>
                     <div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center">
                         <button class="btn btn-primary" disabled="@(_edits[r.Id].BranchId is null)" @onclick="() => NotifyBranch(r.Id)">
-                            📨 Оповестить филиал и перейти далее
+                            <Icon Name="send" /> Оповестить филиал и перейти далее
                         </button>
                         <button class="btn" @onclick="() => Advance(r.Id, 9)">→ Ожидание доставки (без оповещения)</button>
                         @if (_edits[r.Id].BranchId is null)
@@ -523,7 +523,7 @@ else
                                    @bind="_edits[r.Id].ExpectedDeliveryDate" @bind:format="yyyy-MM-dd" @bind:after="() => SaveAsync(r.Id)" />
                             @if (r.IsEisFilled)
                             {
-                                <span style="display:inline-flex;align-items:center;gap:6px;margin-top:4px;font-size:15px;font-weight:800;color:#b45309">🧾 Заполнить в ЕИС</span>
+                                <span style="display:inline-flex;align-items:center;gap:6px;margin-top:4px;font-size:15px;font-weight:800;color:#b45309"><Icon Name="file" /> Заполнить в ЕИС</span>
                             }
                         </div>
                         <div class="wf-field" style='@FieldStyle(r.Id, "Note")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "Note", ev)' @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true">
@@ -557,14 +557,14 @@ else
                         <label style="@OverdueStyle(r.PaymentOverdue)">
                             <input type="checkbox" style="width:20px;height:20px" checked="@_edits[r.Id].PaymentOverdue"
                                    @onchange="ev => OnTogglePaymentOverdue(r.Id, ev)" />
-                            <span>⏰ Оплата просрочена</span>
+                            <span><Icon Name="warn" /> Оплата просрочена</span>
                         </label>
                     }
                 }
 
                 @if (_stage == 13 && !string.IsNullOrWhiteSpace(r.ReturnReason))
                 {
-                    <div class="alert alert-error" style="margin-top:10px">⚠ Проблема с приемкой: @r.ReturnReason</div>
+                    <div class="alert alert-error" style="margin-top:10px"><Icon Name="warn" Class="alert__icon" /> Проблема с приемкой: @r.ReturnReason</div>
                 }
 
                 <div class="toolbar" style="margin-top:10px;flex-wrap:wrap;gap:6px;align-items:center">
@@ -595,13 +595,13 @@ else
                         @if (!Stage4Ready(_edits[r.Id]))
                         {
                             <span style="display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:#b45309">
-                                ⛔ Укажите «Место на торгах» и «Итог цена» — без них итог торгов не фиксируется
+                                <Icon Name="warn" Class="alert__icon" /> Укажите «Место на торгах» и «Итог цена» — без них итог торгов не фиксируется
                             </span>
                         }
                     }
                     else if (_stage == 5)
                     {
-                        <button class="btn btn--primary" disabled="@_busy" @onclick="() => CompleteMovement(r.Id)">✔ Завершить этап 5</button>
+                        <button class="btn btn--primary" disabled="@_busy" @onclick="() => CompleteMovement(r.Id)"><Icon Name="check" /> Завершить этап 5</button>
                         @if (r.ContractClosedAtUtc is null)
                         {
                             <span class="muted" style="font-size:12px">Закупка уйдёт из этой вкладки, а на этап 7 попадёт после закрытия этапа «6. Контракт»</span>
@@ -621,12 +621,12 @@ else
                         {
                             <button class="btn btn--primary" disabled="@_busy" @onclick="() => CloseContract(r.Id)"
                                     title="Зафиксировать закрытие контракта. Если этап 5 уже завершён, закупка сразу уйдёт на этап 7">
-                                ✅ Закрыть этап «Контракт»
+                                <Icon Name="check" /> Закрыть этап «Контракт»
                             </button>
                             @if (r.Stage5ClosedAtUtc is not null)
                             {
                                 <span style="display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:#b45309">
-                                    ⏳ Этап 5 завершён (@Fmt(r.Stage5ClosedAtUtc)@ClosedBy(r.Stage5ClosedBy)) — после закрытия контракта закупка уйдёт на этап 7
+                                    <Icon Name="clock" Class="wf-meta-icon" /> Этап 5 завершён (@Fmt(r.Stage5ClosedAtUtc)@ClosedBy(r.Stage5ClosedBy)) — после закрытия контракта закупка уйдёт на этап 7
                                 </span>
                             }
                             else
@@ -643,7 +643,7 @@ else
                     else if (_stage == 9)
                     {
                         <button class="btn" @onclick="() => Advance(r.Id, 11)">→ Оплата</button>
-                        <button class="btn btn--danger" @onclick="() => OpenReturn(r.Id)">⚠ Проблема с приемкой</button>
+                        <button class="btn btn--danger" @onclick="() => OpenReturn(r.Id)"><Icon Name="warn" /> Проблема с приемкой</button>
                     }
                     else if (_stage == 10)
                     {
@@ -697,12 +697,12 @@ else
 {
     <div class="ctx-menu" style="left:min(@(_menu.X)px, calc(100vw - 256px));top:min(@(_menu.Y)px, calc(100vh - 236px))">
         <div class="ctx-menu__head">
-            <span class="ctx-menu__icon" aria-hidden="true">🎨</span>
+            <Icon Name="edit" Class="ctx-menu__icon-svg" />
             <div class="ctx-menu__heading">
                 <div class="ctx-menu__caption">Рамка поля</div>
                 <div class="ctx-menu__field" title="@FieldLabel(_menu.Field)">@FieldLabel(_menu.Field)</div>
             </div>
-            <button type="button" class="ctx-menu__close" title="Закрыть" @onclick="CloseFieldMenu">✕</button>
+            <button type="button" class="ctx-menu__close" title="Закрыть" @onclick="CloseFieldMenu"><Icon Name="close" Class="ctx-menu__close-icon" /></button>
         </div>
 
         <div class="ctx-menu__row">
@@ -713,7 +713,7 @@ else
                         @onclick="() => PickFieldColor(c.Hex)">
                     @if (IsActiveColor(c.Hex))
                     {
-                        <span class="ctx-menu__tick">✓</span>
+                        <span class="ctx-menu__tick"><Icon Name="check" Class="ctx-menu__tick-icon" /></span>
                     }
                 </button>
             }
@@ -721,7 +721,7 @@ else
 
         <div class="ctx-menu__foot">
             <span class="ctx-menu__hint">@CurrentColorName()</span>
-            <button type="button" class="ctx-menu__clear" @onclick="ClearFieldColor">✕ Убрать цвет</button>
+            <button type="button" class="ctx-menu__clear" @onclick="ClearFieldColor"><Icon Name="close" /> Убрать цвет</button>
         </div>
     </div>
 }

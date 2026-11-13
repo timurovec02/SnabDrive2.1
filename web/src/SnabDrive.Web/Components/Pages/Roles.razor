@@ -6,7 +6,7 @@
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = AppRoles.Admin)]
 
 <PageTitle>Настройка ролей</PageTitle>
-<PageHeader Icon="🛡"
+<PageHeader IconName="roles"
             Title="Настройка ролей"
             Subtitle="Права задаются для роли: доступ к вкладкам, к колонкам реестра и к стадиям воркфлоу. Все пользователи роли получают эти права." />
 
@@ -89,8 +89,8 @@
     </div>
 
     <div class="toolbar" style="gap:8px;margin-top:2px">
-        <button class="btn btn--primary" @onclick="SaveAsync">💾 Сохранить</button>
-        <button class="btn" @onclick="ResetAsync">↺ Сбросить к значениям по умолчанию</button>
+        <button class="btn btn--primary" @onclick="SaveAsync"><Icon Name="save" /> Сохранить</button>
+        <button class="btn" @onclick="ResetAsync"><Icon Name="undo" /> Сбросить к значениям по умолчанию</button>
     </div>
 }
 

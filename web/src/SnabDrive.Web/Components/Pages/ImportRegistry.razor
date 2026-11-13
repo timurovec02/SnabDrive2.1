@@ -9,12 +9,12 @@
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = AppRoles.Admin)]
 
 <PageTitle>Импорт реестра</PageTitle>
-<PageHeader Icon="📥"
+<PageHeader IconName="import"
             Title="Импорт реестра"
             Subtitle="Перенос старой выгрузки закупок (CSV из Excel) в реестр сайта. Берутся колонки A..Q." />
 
 <div class="alert alert--warn">
-    <span>⚠ Перед импортом на сервере должен быть выполнен <strong>web/sql/updates_2026.sql</strong> — без него в базе нет колонки «Сроки доставки».</span>
+    <span><Icon Name="warn" Class="alert__icon" /> Перед импортом на сервере должен быть выполнен <strong>web/sql/updates_2026.sql</strong> — без него в базе нет колонки «Сроки доставки».</span>
 </div>
 
 <div class="section-card">
@@ -41,15 +41,15 @@
     {
         <div class="alert alert--warn">
             <span>@_error</span>
-            <button type="button" class="alert__close" @onclick="() => _error = null" title="Скрыть">✕</button>
+            <button type="button" class="alert__close" @onclick="() => _error = null" title="Скрыть"><Icon Name="close" Class="alert__close-icon" /></button>
         </div>
     }
 
     @if (_done is not null)
     {
         <div class="alert alert-ok">
-            <span>✔ @_done</span>
-            <button type="button" class="alert__close" @onclick="() => _done = null" title="Скрыть">✕</button>
+            <span><Icon Name="check" Class="alert__icon" /> @_done</span>
+            <button type="button" class="alert__close" @onclick="() => _done = null" title="Скрыть"><Icon Name="close" Class="alert__close-icon" /></button>
         </div>
     }
 </div>

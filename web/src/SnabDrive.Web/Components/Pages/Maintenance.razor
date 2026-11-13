@@ -9,19 +9,19 @@
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = AppRoles.Admin)]
 
 <PageTitle>Очистка данных</PageTitle>
-<PageHeader Icon="🗑"
+<PageHeader IconName="maintenance"
             Title="Очистка данных"
             Subtitle="Полное удаление выбранного набора записей из базы данных. Используется для подготовки стенда и тестовых прогонов." />
 
 <div class="alert alert--warn">
-    <span>⚠ <strong>Действие необратимо.</strong> Записи удаляются из базы без возможности восстановления. Пользователи, роли и их права не затрагиваются.</span>
+    <span><Icon Name="warn" Class="alert__icon" /> <strong>Действие необратимо.</strong> Записи удаляются из базы без возможности восстановления. Пользователи, роли и их права не затрагиваются.</span>
 </div>
 
 @if (_message is not null)
 {
     <div class="alert alert-ok">
-        <span>✔ @_message</span>
-        <button type="button" class="alert__close" @onclick="() => _message = null" title="Скрыть">✕</button>
+        <span><Icon Name="check" Class="alert__icon" /> @_message</span>
+        <button type="button" class="alert__close" @onclick="() => _message = null" title="Скрыть"><Icon Name="close" Class="alert__close-icon" /></button>
     </div>
 }
 
@@ -43,7 +43,7 @@
         {
             <div class="clean-item">
                 <div class="clean-item__text">
-                    <div class="clean-item__title"><span class="clean-item__icon">@item.Icon</span>@item.Title</div>
+                    <div class="clean-item__title"><Icon Name="@item.Icon" Class="clean-item__icon-svg" />@item.Title</div>
                     <div class="clean-item__hint">@item.Hint</div>
                 </div>
                 <button class="btn btn--danger btn--small" disabled="@_busy"
@@ -63,14 +63,14 @@
     /// <summary>Что можно очистить: ключ для сервиса, название и пояснение для интерфейса.</summary>
     private static readonly (string Key, string Title, string Hint, string Icon)[] Datasets =
     {
-        ("registry", "Реестр", "Все закупки, цвета ячеек и журнал передач по ним", "▤"),
-        ("archive", "Архив", "Архивированные закупки", "🗄"),
-        ("kontur", "Контур — избранное", "Выгрузки избранного, ожидающие разбора", "★"),
-        ("templates", "Контур — шаблоны", "Сохранённые выгрузки шаблонов", "🎯"),
-        ("attachments", "Вложения", "Файлы, прикреплённые к закупкам", "📎"),
-        ("notifications", "Уведомления о торгах", "Отправленные напоминания о предстоящих торгах", "🔔"),
-        ("dictionaries", "Справочники", "Типы закупок, статусы B2B и статусы исполнения", "☰"),
-        ("audit", "Журнал", "История изменений и статистика активности", "🕓"),
+        ("registry", "Реестр", "Все закупки, цвета ячеек и журнал передач по ним", "registry"),
+        ("archive", "Архив", "Архивированные закупки", "archive"),
+        ("kontur", "Контур — избранное", "Выгрузки избранного, ожидающие разбора", "favorites"),
+        ("templates", "Контур — шаблоны", "Сохранённые выгрузки шаблонов", "templates"),
+        ("attachments", "Вложения", "Файлы, прикреплённые к закупкам", "attach"),
+        ("notifications", "Уведомления о торгах", "Отправленные напоминания о предстоящих торгах", "bell"),
+        ("dictionaries", "Справочники", "Типы закупок, статусы B2B и статусы исполнения", "dictionaries"),
+        ("audit", "Журнал", "История изменений и статистика активности", "audit"),
     };
 
     private async Task Clear(string dataset, string label)

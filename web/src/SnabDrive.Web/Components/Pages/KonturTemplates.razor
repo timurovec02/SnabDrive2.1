@@ -32,8 +32,8 @@
     }
 
     <div class="toolbar">
-        <button class="btn btn-primary" disabled="@(_busy || _denied || SchedulerState.IsRunning)" @onclick="ExportNow">Выгрузить шаблоны сейчас</button>
-        <button class="btn" disabled="@_busy" @onclick="LoadAsync">Обновить</button>
+        <button class="btn btn-primary" disabled="@(_busy || _denied || SchedulerState.IsRunning)" @onclick="ExportNow"><Icon Name="download" /> Выгрузить шаблоны сейчас</button>
+        <button class="btn" disabled="@_busy" @onclick="LoadAsync"><Icon Name="refresh" /> Обновить</button>
         <label class="chk">
             показать
             <select @bind="_pageSize" @bind:after="LoadAsync">

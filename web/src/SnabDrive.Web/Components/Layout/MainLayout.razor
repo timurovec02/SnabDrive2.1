@@ -12,14 +12,14 @@
     {
         <div class="export-lock" style="position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:3000;display:flex;align-items:center;justify-content:center">
             <div style="background:#fff;padding:28px 36px;border-radius:10px;text-align:center;max-width:440px;box-shadow:0 10px 40px rgba(0,0,0,.3)">
-                <div style="font-size:34px">⏳</div>
+                <div class="boot-spin"><Icon Name="refresh" Class="boot-spin__icon" /></div>
                 <h3 style="margin:.4rem 0">Идёт выгрузка Контура…</h3>
                 <p class="muted" style="margin:0">Действия на сайте временно заблокированы до завершения выгрузки.</p>
             </div>
         </div>
     }
     <header class="app-header">
-        <button class="btn btn--ghost nav-toggle" @onclick="ToggleNav" title="@(_navCollapsed ? "Развернуть меню" : "Свернуть меню")">@(_navCollapsed ? "»" : "«")</button>
+        <button class="btn btn--ghost nav-toggle" @onclick="ToggleNav" title="@(_navCollapsed ? "Развернуть меню" : "Свернуть меню")"><Icon Name="@(_navCollapsed ? "chevronRight" : "chevronLeft")" /></button>
         <div class="app-header__brand">
             <span class="app-logo">SD</span>
             <div>

@@ -10,7 +10,7 @@
         @onclick="ToggleAsync" @onclick:stopPropagation="true"
         @ondblclick="AbsorbClick" @ondblclick:stopPropagation="true">
     <span class="stage-history__label">@(string.IsNullOrWhiteSpace(Label) ? "—" : Label)</span>
-    <span class="stage-history__caret">@(_open ? "▴" : "▾")</span>
+    <Icon Name="chevron" Class="@(_open ? "stage-history__caret-svg stage-history__caret-svg--open" : "stage-history__caret-svg")" />
 </button>
 
 @if (_open)
@@ -22,7 +22,7 @@
          @onclick="AbsorbClick" @onclick:stopPropagation="true">
         <div class="stage-history__head">
             <strong>История этапов</strong>
-            <button type="button" class="stage-history__close" title="Закрыть" @onclick="Close">✕</button>
+            <button type="button" class="stage-history__close" title="Закрыть" @onclick="Close"><Icon Name="close" Class="alert__close-icon" /></button>
         </div>
 
         @if (_data is null)

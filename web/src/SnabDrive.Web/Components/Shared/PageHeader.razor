@@ -3,7 +3,11 @@
 
 <div class="page-hero">
     <div class="page-hero__main">
-        @if (!string.IsNullOrWhiteSpace(Icon))
+        @if (!string.IsNullOrWhiteSpace(IconName))
+        {
+            <span class="page-hero__icon" aria-hidden="true"><Icon Name="@IconName" Class="page-hero__svg" /></span>
+        }
+        else if (!string.IsNullOrWhiteSpace(Icon))
         {
             <span class="page-hero__icon" aria-hidden="true">@Icon</span>
         }
@@ -28,6 +32,9 @@
     [Parameter] public string? Subtitle { get; set; }
 
     [Parameter] public string? Icon { get; set; }
+
+    /// <summary>Векторная иконка (имя из Components/Shared/Icon.razor) — имеет приоритет над <see cref="Icon"/>.</summary>
+    [Parameter] public string? IconName { get; set; }
 
     /// <summary>Кнопки и фильтры, которые стоят справа от заголовка.</summary>
     [Parameter] public RenderFragment? Actions { get; set; }

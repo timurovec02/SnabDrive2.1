@@ -59,16 +59,16 @@
                 }
             </div>
 
-            <button type="button" class="btn btn--primary" @onclick="CreateAsync" disabled="@_busy">＋ Добавить</button>
-            <button type="button" class="btn btn--danger" @onclick="AskDelete" disabled="@(_busy || _selectedIds.Count == 0)">🗑 Удалить@(_selectedIds.Count > 1 ? $" ({_selectedIds.Count})" : "")</button>
+            <button type="button" class="btn btn--primary" @onclick="CreateAsync" disabled="@_busy"><Icon Name="plus" /> Добавить</button>
+            <button type="button" class="btn btn--danger" @onclick="AskDelete" disabled="@(_busy || _selectedIds.Count == 0)"><Icon Name="trash" /> Удалить@(_selectedIds.Count > 1 ? $" ({_selectedIds.Count})" : "")</button>
 
             @if (_isAdmin)
             {
-                <button type="button" class="btn" @onclick="AskArchive" disabled="@(_busy || _selected is null)">🗄 В архив</button>
+                <button type="button" class="btn" @onclick="AskArchive" disabled="@(_busy || _selected is null)"><Icon Name="archive" /> В архив</button>
             }
 
-            <button type="button" class="btn btn--ghost" @onclick="ReloadAsync" title="Обновить данные">⟳</button>
-            <a class="btn btn--ghost" href="@ExportUrl" title="Выгрузить в CSV">⭳ CSV</a>
+            <button type="button" class="btn btn--ghost" @onclick="ReloadAsync" title="Обновить данные"><Icon Name="refresh" /></button>
+            <a class="btn btn--ghost" href="@ExportUrl" title="Выгрузить в CSV"><Icon Name="download" /> CSV</a>
         </div>
     </div>
 

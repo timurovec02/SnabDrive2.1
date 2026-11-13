@@ -11,15 +11,15 @@
 <PageTitle>Архив — Снабдрайв</PageTitle>
 
 <div class="page">
-    <PageHeader Icon="🗄" Title="Архив" Subtitle="@ArchiveHint()">
+    <PageHeader IconName="archive" Title="Архив" Subtitle="@ArchiveHint()">
         <Actions>
             <div class="search">
                 <input type="search" class="input" placeholder="Поиск по архиву…"
                        value="@_query.Search" @oninput="OnSearchInput" />
             </div>
 
-            <button type="button" class="btn" @onclick="RestoreSelectedAsync" disabled="@(_busy || _selected is null)">↩ Вернуть в реестр</button>
-            <button type="button" class="btn btn--danger" @onclick="AskDelete" disabled="@(_busy || _selected is null)">🗑 Удалить</button>
+            <button type="button" class="btn" @onclick="RestoreSelectedAsync" disabled="@(_busy || _selected is null)"><Icon Name="undo" /> Вернуть в реестр</button>
+            <button type="button" class="btn btn--danger" @onclick="AskDelete" disabled="@(_busy || _selected is null)"><Icon Name="trash" /> Удалить</button>
             <button type="button" class="btn btn--ghost" @onclick="ReloadAsync" title="Обновить">⟳</button>
         </Actions>
     </PageHeader>

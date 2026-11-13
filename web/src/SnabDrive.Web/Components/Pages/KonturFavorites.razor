@@ -21,8 +21,8 @@
     else
     {
         <div class="toolbar">
-            <button class="btn btn--primary" disabled="@(_busy || SchedulerState.IsRunning)" @onclick="ExportNowAsync">Выгрузить сейчас</button>
-            <button class="btn" @onclick="LoadAsync">Обновить</button>
+            <button class="btn btn--primary" disabled="@(_busy || SchedulerState.IsRunning)" @onclick="ExportNowAsync"><Icon Name="download" /> Выгрузить сейчас</button>
+            <button class="btn" @onclick="LoadAsync"><Icon Name="refresh" /> Обновить</button>
             <label class="chk">
                 <input type="checkbox" @bind="_onlyNew" @bind:after="LoadAsync" /> только новые
             </label>
@@ -37,9 +37,9 @@
             </label>
             <div class="toolbar__spacer"></div>
             <button class="btn btn--primary" disabled="@(_selected.Count == 0 || _busy)" @onclick="ImportSelectedAsync">
-                Перенести в реестр (@_selected.Count)
+                <Icon Name="import" /> Перенести в реестр (@_selected.Count)
             </button>
-            <button class="btn" disabled="@(_selected.Count == 0 || _busy)" @onclick="RejectSelectedAsync">Отклонить</button>
+            <button class="btn" disabled="@(_selected.Count == 0 || _busy)" @onclick="RejectSelectedAsync"><Icon Name="close" /> Отклонить</button>
             <button class="btn btn--danger" disabled="@(_selected.Count == 0 || _busy)" @onclick="DeleteSelectedAsync">Удалить (@_selected.Count)</button>
         </div>
 

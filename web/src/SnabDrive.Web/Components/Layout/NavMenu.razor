@@ -5,45 +5,45 @@
     @if (Feat(AppFeatures.Registry))
     {
         <NavLink class="nav__item" href="" Match="NavLinkMatch.All" title="Реестр">
-            <span class="nav__icon">▤</span><span class="nav__label">Реестр</span>
+            <Icon Name="registry" Class="nav__icon" /><span class="nav__label">Реестр</span>
         </NavLink>
     }
 
     @if (Feat(AppFeatures.Workflow))
     {
         <NavLink class="nav__item" href="workflow" title="Задачи">
-            <span class="nav__icon">➤</span><span class="nav__label">Задачи</span>
+            <Icon Name="workflow" Class="nav__icon" /><span class="nav__label">Задачи</span>
         </NavLink>
     }
 
     @if (Feat(AppFeatures.Archive))
     {
         <NavLink class="nav__item" href="archive" title="Архив">
-            <span class="nav__icon">🗄</span><span class="nav__label">Архив</span>
+            <Icon Name="archive" Class="nav__icon" /><span class="nav__label">Архив</span>
         </NavLink>
     }
 
     @if (Feat(AppFeatures.Kontur))
     {
         <NavLink class="nav__item" href="kontur" title="Контур избранное">
-            <span class="nav__icon">★</span><span class="nav__label">Контур избранное</span>
+            <Icon Name="favorites" Class="nav__icon" /><span class="nav__label">Контур избранное</span>
         </NavLink>
         <NavLink class="nav__item" href="kontur-templates" title="Контур шаблоны">
-            <span class="nav__icon">🎯</span><span class="nav__label">Контур шаблоны</span>
+            <Icon Name="templates" Class="nav__icon" /><span class="nav__label">Контур шаблоны</span>
         </NavLink>
     }
 
     @if (Feat(AppFeatures.Scheduler))
     {
         <NavLink class="nav__item" href="kontur-scheduler" title="Планировщик Контур">
-            <span class="nav__icon">⏰</span><span class="nav__label">Планировщик</span>
+            <Icon Name="scheduler" Class="nav__icon" /><span class="nav__label">Планировщик</span>
         </NavLink>
     }
 
     @if (Feat(AppFeatures.Director))
     {
         <NavLink class="nav__item" href="director" title="Обзор директора">
-            <span class="nav__icon">📊</span><span class="nav__label">Обзор директора</span>
+            <Icon Name="director" Class="nav__icon" /><span class="nav__label">Обзор директора</span>
         </NavLink>
     }
 
@@ -56,31 +56,31 @@
     @if (Feat(AppFeatures.Dictionaries))
     {
         <NavLink class="nav__item" href="dictionaries" title="Справочники">
-            <span class="nav__icon">☰</span><span class="nav__label">Справочники</span>
+            <Icon Name="dictionaries" Class="nav__icon" /><span class="nav__label">Справочники</span>
         </NavLink>
     }
     @if (Feat(AppFeatures.Users))
     {
         <NavLink class="nav__item" href="users" title="Пользователи">
-            <span class="nav__icon">👤</span><span class="nav__label">Пользователи</span>
+            <Icon Name="users" Class="nav__icon" /><span class="nav__label">Пользователи</span>
         </NavLink>
         <NavLink class="nav__item" href="roles" title="Настройка ролей">
-            <span class="nav__icon">🛡</span><span class="nav__label">Роли</span>
+            <Icon Name="roles" Class="nav__icon" /><span class="nav__label">Роли</span>
         </NavLink>
         <NavLink class="nav__item" href="maintenance" title="Очистка данных">
-            <span class="nav__icon">🗑</span><span class="nav__label">Очистка данных</span>
+            <Icon Name="maintenance" Class="nav__icon" /><span class="nav__label">Очистка данных</span>
         </NavLink>
         <NavLink class="nav__item" href="import-registry" title="Импорт реестра">
-            <span class="nav__icon">📥</span><span class="nav__label">Импорт реестра</span>
+            <Icon Name="import" Class="nav__icon" /><span class="nav__label">Импорт реестра</span>
         </NavLink>
     }
     @if (Feat(AppFeatures.Audit))
     {
         <NavLink class="nav__item" href="audit" title="Журнал">
-            <span class="nav__icon">🕓</span><span class="nav__label">Журнал</span>
+            <Icon Name="audit" Class="nav__icon" /><span class="nav__label">Журнал</span>
         </NavLink>
         <NavLink class="nav__item" href="stats" title="Статистика активности">
-            <span class="nav__icon">📈</span><span class="nav__label">Статистика</span>
+            <Icon Name="stats" Class="nav__icon" /><span class="nav__label">Статистика</span>
         </NavLink>
     }
 </nav>
