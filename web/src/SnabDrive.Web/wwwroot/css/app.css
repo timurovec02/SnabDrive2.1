@@ -404,8 +404,25 @@ a:hover {
     user-select: none;
 }
 
-.registry-grid__filters th {
+/* Шапка таблицы — первый «липкий» ряд; её высота (35px) — это отступ,
+   на котором прилипает строка фильтров ниже. */
+.registry-grid thead tr.registry-grid__head th {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    height: 35px;
+    box-sizing: border-box;   /* 35px вместе с внутренней границей */
+}
+
+/* Строка фильтров — второй «липкий» ряд, ровно под шапкой.
+   Селектор намеренно «сильнее» базового .registry-grid thead th:
+   раньше top: 35px проигрывало по специфичности (0,1,1 против 0,1,2),
+   обе строки прилипали к top: 0, и строка фильтров, идущая позже в DOM,
+   закрывала собой заголовки — при прокрутке оставались «только фильтры». */
+.registry-grid thead tr.registry-grid__filters th {
+    position: sticky;
     top: 35px;
+    z-index: 4;
     cursor: default;
     padding: 4px;
     background: #f8fafc;
@@ -3598,10 +3615,17 @@ textarea {
     overflow: auto;
 }
 
-/* Строка фильтров прилипает ровно под шапкой: высота шапки задана явно,
-   поэтому между двумя «липкими» строками не остаётся щели, в которую
-   проглядывали бы строки таблицы при прокрутке. */
-.registry-grid__head th {
-    height: 35px;
-    box-sizing: border-box;   /* 35px вместе с внутренней границей */
+/* Табы стадий на «Задачах»: полоса табов всегда видна сверху, пока
+   страница карточек прокручивается. Обёртка с фоном страницы закрывает
+   карточки, которые проезжают под табами (у .pill-tabs зазор снизу). */
+.pill-tabs-sticky {
+    position: sticky;
+    top: 0;
+    z-index: 12;
+    background: var(--bg);
+    padding-bottom: 16px;   /* прежний зазор: margin-bottom у .pill-tabs */
+}
+
+.pill-tabs-sticky > .pill-tabs {
+    margin: 0;
 }
