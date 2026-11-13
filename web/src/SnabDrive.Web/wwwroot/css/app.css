@@ -1926,6 +1926,18 @@ body {
     border-bottom: 0;
 }
 
+/* Зебра: чётные строки таблиц чуть другого оттенка, чтобы разделение
+   строк читалось и без границ. Фон задан строке (tr), а не ячейкам:
+   подсветки ячеек (справочники, цвет ПКМ, inline-стили) и выделение
+   строк (:hover, is-selected) рисуются поверх. */
+tbody tr:nth-child(odd) {
+    background: var(--surface);     /* белые */
+}
+
+tbody tr:nth-child(even) {
+    background: var(--surface-2);   /* чуть серее — разделение видно */
+}
+
 .data-table tbody tr:hover {
     background: var(--row-hover);
 }
