@@ -49,33 +49,34 @@
     </div>
 }
 
-@* Этапы — табы-пилюли со счётчиком закупок на каждом.
-   Обёртка pill-tabs-sticky держит полосу табов на экране при прокрутке. *@
-<div class="pill-tabs-sticky">
+@* Этапы — табы-пилюли со счётчиком закупок на каждом, и панель поиска с
+   кнопками под ними: весь блок (sticky-head) остаётся сверху при прокрутке
+   страницы карточек. *@
+<div class="sticky-head">
     <div class="pill-tabs">
         @foreach (var st in WorkflowStages.All.Where(s => _allowedStages.Contains(s.Id)))
         {
             <button class="@TabClass(st.Id)" @onclick="() => SetStage(st.Id)">@st.Name<span class="tab__count">@Count(st.Id)</span></button>
         }
     </div>
-</div>
 
-<div class="toolbar" style="flex-wrap:wrap;gap:8px;margin:0 0 16px">
-    <div style="display:flex;align-items:center;gap:6px">
-        <input class="input" style="min-width:280px" placeholder="Поиск по всем полям стадии…"
-               @bind="_search" @bind:event="oninput" />
-        @if (!string.IsNullOrEmpty(_search))
+    <div class="toolbar" style="flex-wrap:wrap;gap:8px">
+        <div style="display:flex;align-items:center;gap:6px">
+            <input class="input" style="min-width:280px" placeholder="Поиск по всем полям стадии…"
+                   @bind="_search" @bind:event="oninput" />
+            @if (!string.IsNullOrEmpty(_search))
+            {
+                <button class="btn btn--small" title="Очистить поиск" @onclick="ClearSearch"><Icon Name="close" /></button>
+            }
+        </div>
+        <div class="toolbar-spacer"></div>
+        @if (_stage == 1)
         {
-            <button class="btn btn--small" title="Очистить поиск" @onclick="ClearSearch"><Icon Name="close" /></button>
+            <button class="btn btn--primary" disabled="@_busy" @onclick="AddNewAsync"
+                    title="Добавить пустую закупку на первую стадию">＋ Добавить</button>
         }
+        <button class="btn" disabled="@_busy" @onclick="LoadAsync">⟳ Обновить</button>
     </div>
-    <div class="toolbar-spacer"></div>
-    @if (_stage == 1)
-    {
-        <button class="btn btn--primary" disabled="@_busy" @onclick="AddNewAsync"
-                title="Добавить пустую закупку на первую стадию">＋ Добавить</button>
-    }
-    <button class="btn" disabled="@_busy" @onclick="LoadAsync">⟳ Обновить</button>
 </div>
 
 
