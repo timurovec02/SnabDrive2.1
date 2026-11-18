@@ -182,13 +182,13 @@
                                     <td class="registry-grid__cell">@f.PurchaseNumber</td>
                                     <td class="registry-grid__cell">@f.NameLink</td>
                                     <td class="registry-grid__cell">@f.Customer</td>
-                                    <td class="registry-grid__cell"><span class="money-cell">@MoneyFormat.Money(f.NMCK)</span></td>
+                                    <td class="registry-grid__cell td-money"><span class="money-cell">@MoneyFormat.Money(f.NMCK)</span></td>
                                     <td class="registry-grid__cell">@(f.BiddingDate?.ToString("dd.MM.yyyy HH:mm") ?? "—")</td>
                                     <td class="registry-grid__cell">@(f.ApplicationEndDate?.ToString("dd.MM.yyyy HH:mm") ?? "—")</td>
                                     <td class="registry-grid__cell">@(f.DateOfPlacement?.ToString("dd.MM.yyyy") ?? "—")</td>
                                     <td class="registry-grid__cell">@(f.PlaceOfDelivery ?? "")</td>
                                     <td class="registry-grid__cell">@(f.Winner ?? "")</td>
-                                    <td class="registry-grid__cell"><span class="money-cell">@MoneyFormat.Money(f.ResultPrice)</span></td>
+                                    <td class="registry-grid__cell td-money"><span class="money-cell">@MoneyFormat.Money(f.ResultPrice)</span></td>
                                     <td class="registry-grid__cell">@(f.Label ?? "")</td>
                                     <td class="registry-grid__cell"><span class="chip">@SourceTitle(f.SourceSystem)</span></td>
                                     <td class="registry-grid__cell">
@@ -309,13 +309,13 @@
                 "PurchaseNumber" => q.Where(f => Contains(f.PurchaseNumber, v)),
                 "NameLink" => q.Where(f => Contains(f.NameLink, v)),
                 "Customer" => q.Where(f => Contains(f.Customer, v)),
-                "NMCK" => q.Where(f => f.NMCK.ToString(CultureInfo.InvariantCulture).Contains(v)),
+                "NMCK" => q.Where(f => MoneyFormat.MoneyPlain(f.NMCK).Contains(v) || f.NMCK.ToString(CultureInfo.InvariantCulture).Contains(v)),
                 "BiddingDate" => q.Where(f => (f.BiddingDate?.ToString("dd.MM.yyyy HH:mm") ?? "").Contains(v)),
                 "ApplicationEndDate" => q.Where(f => (f.ApplicationEndDate?.ToString("dd.MM.yyyy HH:mm") ?? "").Contains(v)),
                 "DateOfPlacement" => q.Where(f => (f.DateOfPlacement?.ToString("dd.MM.yyyy") ?? "").Contains(v)),
                 "PlaceOfDelivery" => q.Where(f => Contains(f.PlaceOfDelivery, v)),
                 "Winner" => q.Where(f => Contains(f.Winner, v)),
-                "ResultPrice" => q.Where(f => f.ResultPrice.ToString(CultureInfo.InvariantCulture).Contains(v)),
+                "ResultPrice" => q.Where(f => MoneyFormat.MoneyPlain(f.ResultPrice).Contains(v) || f.ResultPrice.ToString(CultureInfo.InvariantCulture).Contains(v)),
                 "Label" => q.Where(f => Contains(f.Label, v)),
                 "EisLink" => q.Where(f => Contains(f.EisLink, v)),
                 // Фильтр ищет по тому, что видно в таблице: «контур» или «tender».

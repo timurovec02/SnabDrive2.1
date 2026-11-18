@@ -3989,3 +3989,22 @@ textarea {
         display: none;
     }
 }
+
+
+/* ---- Цены: НМЦК, наша минимальная и итоговая сумма — авто-зелёный фон. ---- */
+
+.money-cell,
+.td-money {
+    background: #e6f5ea;
+}
+
+.wf-field--money {
+    background: #e9f6ed;
+    border-radius: 10px;
+}
+
+.wf-field--money .wf-input,
+.wf-field--money .wf-readonly {
+    background: #f4fbf6;
+    border-color: #c3e6cf;
+}

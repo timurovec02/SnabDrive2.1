@@ -175,8 +175,8 @@
                                 }
                             </td>
                             <td>@(row.PurchaseNumber.Length > 0 ? row.PurchaseNumber : "—")</td>
-                            <td class="nowrap">@Money(row.NMCK)</td>
-                            <td class="nowrap">@Money(row.ResultPrice)</td>
+                            <td class="nowrap td-money">@Money(row.NMCK)</td>
+                            <td class="nowrap td-money">@Money(row.ResultPrice)</td>
                             <td class="nowrap">@(WorkflowStages.Name(row.Stage))@(row.IsDuplicate ? " (дубль)" : string.Empty)</td>
                             <td>
                                 @if (row.Problems.Count > 0)

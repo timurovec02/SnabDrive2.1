@@ -1,0 +1,51 @@
+@using SnabDrive.Web.Domain
+
+<input type="text" inputmode="decimal" class="@CssClass" style="@Style" value="@_text"
+       placeholder="@Placeholder"
+       @onchange="OnChangeAsync" @onfocus="OnFocus" @onblur="OnBlur" />
+
+@code {
+    /// <summary>Сумма: в поле показывается как 000 000 000.00, хранится числом.</summary>
+    [Parameter] public decimal Value { get; set; }
+
+    [Parameter] public EventCallback<decimal> ValueChanged { get; set; }
+
+    /// <summary>Вызывается после успешного разбора введённого значения.</summary>
+    [Parameter] public EventCallback OnSaved { get; set; }
+
+    [Parameter] public string CssClass { get; set; } = "wf-input";
+
+    [Parameter] public string? Style { get; set; }
+
+    [Parameter] public string? Placeholder { get; set; }
+
+    private string _text = string.Empty;
+    private bool _focused;
+
+    protected override void OnParametersSet()
+    {
+        if (!_focused)
+        {
+            _text = MoneyFormat.MoneyPlain(Value);
+        }
+    }
+
+    private void OnFocus() => _focused = true;
+
+    private void OnBlur() => _focused = false;
+
+    private async Task OnChangeAsync(ChangeEventArgs e)
+    {
+        var raw = (e.Value as string ?? string.Empty).Trim();
+        if (raw.Length == 0 || !MoneyFormat.TryParse(raw, out var parsed))
+        {
+            // Пустое или нечисловое значение — оставляем прежним.
+            _text = MoneyFormat.MoneyPlain(Value);
+            return;
+        }
+
+        _text = MoneyFormat.MoneyPlain(parsed);
+        await ValueChanged.InvokeAsync(parsed);
+        await OnSaved.InvokeAsync();
+    }
+}

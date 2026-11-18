@@ -579,6 +579,12 @@
             return $"background-color:{NormalizeColor(color)};";
         }
 
+        // НМЦК, наша минимальная и итоговая сумма — автоматический зелёный фон.
+        if (columnKey is "NMCK" or "MinPrice" or "ResultPrice")
+        {
+            return "background-color:#e6f5ea;";
+        }
+
         if (columnKey == "TypeOfPurchaseId" && !string.IsNullOrWhiteSpace(row.TypeOfPurchaseColor))
         {
             return $"background-color:{NormalizeColor(row.TypeOfPurchaseColor)}33;";

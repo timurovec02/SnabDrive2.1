@@ -710,7 +710,7 @@ public sealed class RegistryService : IRegistryService
             return true;
         }
 
-        var normalized = raw.Replace(" ", "").Replace(",", ".");
+        var normalized = raw.Replace("\u00A0", "").Replace("\u202F", "").Replace(" ", "").Replace(",", ".");
         return decimal.TryParse(normalized, NumberStyles.Any, CultureInfo.InvariantCulture, out value)
                && Math.Abs(value) <= MaxMoney;
     }
@@ -723,7 +723,7 @@ public sealed class RegistryService : IRegistryService
     private static int? ParseInt(string raw) =>
         string.IsNullOrWhiteSpace(raw) ? null : int.TryParse(raw, out var v) ? v : null;
 
-    private static string FmtMoney(decimal value) => value.ToString("0.##", CultureInfo.InvariantCulture);
+    private static string FmtMoney(decimal value) => MoneyFormat.MoneyPlain(value);
 
     private static string FmtDate(DateTime? value) => value?.ToString("dd.MM.yyyy HH:mm") ?? string.Empty;
 
@@ -1281,7 +1281,7 @@ public sealed class RegistryService : IRegistryService
         }
 
         static string? Fmt(DateTime? value) => value?.ToString("dd.MM.yyyy");
-        static string Money(decimal value) => value.ToString("0.##", CultureInfo.InvariantCulture);
+        static string Money(decimal value) => MoneyFormat.MoneyPlain(value);
     }
 
     // ------------------------------------------------------------------ поиск
