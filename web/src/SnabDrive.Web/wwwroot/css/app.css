@@ -1002,7 +1002,8 @@ a:hover {
     font-size: 18px;
     font-weight: 800;
     letter-spacing: .2px;
-    color: var(--text);
+    color: #f8fafc;
+    text-shadow: 0 1px 10px rgba(2, 6, 23, .5);
 }
 
 /* Карточка из двух половин: тёмная с шиной и светлая с формой. */
@@ -1034,8 +1035,8 @@ a:hover {
     position: absolute;
     top: 50%;
     left: 50%;
-    width: 380px;
-    height: 380px;
+    width: min(380px, 62%);
+    aspect-ratio: 1;
     transform: translate(-50%, -58%);
 }
 
@@ -1208,8 +1209,8 @@ a:hover {
     }
 
     .login-hero__mark {
-        width: 240px;
-        height: 240px;
+        width: min(240px, 42vw);
+        aspect-ratio: 1;
         top: -46px;
         left: auto;
         right: -60px;
@@ -2377,7 +2378,7 @@ tbody tr:nth-child(even) {
 .login-page {
     background:
         linear-gradient(180deg, rgba(10, 18, 36, .32) 0%, rgba(10, 18, 36, .12) 45%, rgba(10, 18, 36, .48) 100%),
-        url('login-bg.jpg?v=1') center / cover no-repeat,
+        url('../login-bg.jpg?v=2') center / cover no-repeat,
         #0f172a;
 }
 
