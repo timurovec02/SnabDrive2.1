@@ -6,49 +6,94 @@
 <PageTitle>Вход — Снабдрайв</PageTitle>
 
 <div class="login-page">
-    <form class="login-card" method="post" action="/account/login">
-        <AntiforgeryToken />
-        <input type="hidden" name="returnUrl" value="@_returnUrl" />
+    <div class="login-page__brand">
+        <img src="favicon.svg?v=2" alt="" width="36" height="36" />
+        <span class="login-page__brand-name">Снабдрайв</span>
+    </div>
 
-        <div class="login-card__brand">
-            <img class="login-card__logo" src="favicon.svg" alt="Снабдрайв" width="48" height="48" />
-            <div>
-                <div class="login-card__title">Снабдрайв</div>
-                <div class="login-card__subtitle">Реестр закупок</div>
+    <div class="login-shell">
+        <aside class="login-hero">
+            <div class="login-hero__mark">
+    <svg viewBox="0 0 200 200" role="img" aria-hidden="true">
+      <circle cx="100" cy="100" r="92" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="1"/>
+      <circle cx="100" cy="100" r="78" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="1"/>
+      <circle cx="100" cy="100" r="64" fill="#1c2c4c"/>
+      <circle cx="100" cy="100" r="59.5" fill="none" stroke="rgba(148,163,184,.35)" stroke-width="7"
+              stroke-linecap="round" stroke-dasharray="4.25 4.25"/>
+      <circle cx="100" cy="100" r="64" fill="none" stroke="rgba(148,163,184,.22)" stroke-width="1.2"/>
+      <circle cx="100" cy="100" r="38" fill="#22314d" stroke="rgba(96,165,250,.5)" stroke-width="1.5"/>
+      <circle cx="100" cy="100" r="30" fill="none" stroke="rgba(148,163,184,.22)" stroke-width="1"/>
+          <line x1="96.91" y1="90.49" x2="91.35" y2="73.37" stroke="rgba(219,234,254,.5)" stroke-width="3.4" stroke-linecap="round" opacity="1.0"/>
+      <line x1="108.09" y1="94.12" x2="122.65" y2="83.54" stroke="rgba(219,234,254,.5)" stroke-width="3.4" stroke-linecap="round" opacity="1.0"/>
+      <line x1="108.09" y1="105.88" x2="122.65" y2="116.46" stroke="rgba(219,234,254,.5)" stroke-width="3.4" stroke-linecap="round" opacity="1.0"/>
+      <line x1="96.91" y1="109.51" x2="91.35" y2="126.63" stroke="rgba(219,234,254,.5)" stroke-width="3.4" stroke-linecap="round" opacity="1.0"/>
+      <line x1="90.00" y1="100.00" x2="72.00" y2="100.00" stroke="rgba(219,234,254,.5)" stroke-width="3.4" stroke-linecap="round" opacity="1.0"/>
+      <circle cx="100" cy="100" r="9" fill="#2563eb"/>
+      <circle cx="100" cy="100" r="3.4" fill="#dbeafe"/>
+      <path d="M 55 58 A 64 64 0 0 1 118 37" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="2" stroke-linecap="round"/>
+    </svg>
             </div>
-        </div>
+            <div class="login-hero__copy">
+                <p class="login-hero__eyebrow">СНАБДРАЙВ · РЕЕСТР ЗАКУПОК</p>
+                <h1 class="login-hero__title">Ваше снабжение.<br />В одном месте.</h1>
+                <p class="login-hero__note"><span class="login-hero__dot"></span> Безопасное рабочее пространство</p>
+            </div>
+        </aside>
 
-        @if (!string.IsNullOrEmpty(_errorText))
-        {
-            <div class="form-error">@_errorText</div>
-        }
+        <main class="login-form-side">
+            <form class="login-card" method="post" action="/account/login">
+                <AntiforgeryToken />
+                <input type="hidden" name="returnUrl" value="@_returnUrl" />
 
-        @if (!string.IsNullOrEmpty(_noticeText))
-        {
-            <div class="form-notice">@_noticeText</div>
-        }
+                <p class="login-card__kicker">С ВОЗВРАЩЕНИЕМ</p>
+                <h2 class="login-card__title">Войти в систему</h2>
+                <p class="login-card__subtitle">Введите данные учётной записи, чтобы продолжить работу с реестром закупок.</p>
 
-        <label class="login-card__label">
-            Логин
-            <input class="input" name="login" autocomplete="username" autofocus required />
-        </label>
+                @if (!string.IsNullOrEmpty(_errorText))
+                {
+                    <div class="form-error">@_errorText</div>
+                }
 
-        <label class="login-card__label">
-            Пароль
-            <input class="input" name="password" type="password" autocomplete="current-password" required />
-        </label>
+                @if (!string.IsNullOrEmpty(_noticeText))
+                {
+                    <div class="form-notice">@_noticeText</div>
+                }
 
-        <label class="checkbox-label">
-            <input type="checkbox" name="rememberMe" value="true" />
-            Запомнить меня
-        </label>
+                <label class="login-card__label">
+                    Логин
+                    <div class="login-field">
+                        <Icon Name="users" Class="login-field__icon" />
+                        <input class="input" name="login" autocomplete="username" autofocus required />
+                    </div>
+                </label>
 
-        <button type="submit" class="btn btn--primary btn--block">Войти</button>
+                <label class="login-card__label">
+                    Пароль
+                    <div class="login-field">
+                        <Icon Name="lock" Class="login-field__icon" />
+                        <input class="input" name="password" type="password" autocomplete="current-password" required />
+                    </div>
+                </label>
 
-        <p class="login-card__hint">
-            После 5 неудачных попыток вход блокируется на 10 минут.
-        </p>
-    </form>
+                <label class="checkbox-label">
+                    <input type="checkbox" name="rememberMe" value="true" />
+                    Запомнить меня
+                </label>
+
+                <button type="submit" class="btn btn--primary btn--block login-card__submit">
+                    <span>Войти в систему</span>
+                    <Icon Name="chevronRight" />
+                </button>
+
+                <p class="login-card__hint">
+                    <Icon Name="lock" Class="login-card__hint-icon" />
+                    Соединение защищено. Никому не сообщайте свой пароль. После 5 неудачных попыток вход блокируется на 10 минут.
+                </p>
+            </form>
+        </main>
+    </div>
+
+    <footer class="login-footer">Снабдрайв · защищённое рабочее пространство</footer>
 </div>
 
 @code {
