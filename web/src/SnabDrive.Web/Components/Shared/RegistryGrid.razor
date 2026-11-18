@@ -127,7 +127,10 @@
                                 title="@CellTitle(cellLock)"
                                 @onclick="() => OnCellSelected.InvokeAsync(new CellClickArgs(row.ColorOwnerId, column.Key, row))"
                                 @ondblclick="() => BeginEdit(row, column)"
-                                @ondblclick:stopPropagation="true">
+                                @ondblclick:stopPropagation="true"
+                                @oncontextmenu="ev => OnCellContextMenu.InvokeAsync(new CellMenuArgs(new CellClickArgs(row.ColorOwnerId, column.Key, row), (int)ev.ClientX + 10, (int)ev.ClientY + 8))"
+                                @oncontextmenu:preventDefault="true"
+                                @oncontextmenu:stopPropagation="true">
                                 @if (editing)
                                 {
                                     <div class="cell-editor" @onclick:stopPropagation="true" @ondblclick:stopPropagation="true">
@@ -288,6 +291,9 @@
     [Parameter] public IReadOnlyDictionary<string, string> CellColors { get; set; } = new Dictionary<string, string>();
     [Parameter] public EventCallback<RowClickArgs> OnRowSelected { get; set; }
     [Parameter] public EventCallback<CellClickArgs> OnCellSelected { get; set; }
+
+    /// <summary>ПКМ по ячейке — контекстное меню подсветки (как в «Задачах»).</summary>
+    [Parameter] public EventCallback<CellMenuArgs> OnCellContextMenu { get; set; }
     [Parameter] public IReadOnlyCollection<int> SelectedIds { get; set; } = Array.Empty<int>();
     [Parameter] public string? SelectedCellKey { get; set; }
     [Parameter] public bool IsLoading { get; set; }

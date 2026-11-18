@@ -12,9 +12,9 @@
 
 <PageTitle>Реестр — Снабдрайв</PageTitle>
 
-<div class="page page--fill">
-    <div class="page__header">
-        <div>
+<div class="page page--fill" @onclick="CloseCellMenu" @oncontextmenu="CloseCellMenu">
+    <div class="page__header page__header--slim">
+        <div class="page__heading">
             <h1>Реестр закупок</h1>
             <p class="page__hint">
                 Найдено @_data.TotalCount записей · страница @_data.Page из @Math.Max(_data.TotalPages, 1)
@@ -25,7 +25,7 @@
             </p>
         </div>
 
-        <div class="toolbar">
+        <div class="toolbar toolbar--compact">
             <div class="search">
                 <input type="search" class="input" placeholder="Поиск по всем полям…"
                        value="@_query.Search" @oninput="OnSearchInput" />
@@ -91,6 +91,7 @@
                       IsLoading="@_loading"
                       OnRowSelected="SelectRow"
                       OnCellSelected="SelectCell"
+                      OnCellContextMenu="OpenCellMenu"
                       Locks="@_locks"
                       CurrentUserId="@_actor.UserId"
                       EditingCell="@_editCell"
@@ -108,24 +109,38 @@
         <button type="button" class="btn btn--small" @onclick="() => GoToPageAsync(_data.TotalPages)" disabled="@(!_data.HasNext)">»</button>
     </div>
 
-    <div class="color-bar">
-        <span class="color-bar__label">Подсветка ячейки:</span>
-        @if (_selectedCellKey is null)
-        {
-            <span class="color-bar__hint">выберите ячейку в таблице</span>
-        }
-        else
-        {
-            <span class="color-bar__hint">@_selectedCellTitle</span>
-            @foreach (var color in Palette)
-            {
-                <button type="button" class="color-swatch" style="@($"background:{color}")"
-                        title="Покрасить в @color"
-                        @onclick="() => ApplyColorAsync(color)"></button>
-            }
-            <button type="button" class="btn btn--small" @onclick="() => ApplyColorAsync(null)">Сбросить</button>
-        }
-    </div>
+    @if (_cellMenu is not null)
+    {
+        <div class="ctx-menu" style="left:min(@(_cellMenu.X)px, calc(100vw - 256px));top:min(@(_cellMenu.Y)px, calc(100vh - 236px))">
+            <div class="ctx-menu__head">
+                <Icon Name="edit" Class="ctx-menu__icon-svg" />
+                <div class="ctx-menu__heading">
+                    <div class="ctx-menu__caption">Подсветка ячейки</div>
+                    <div class="ctx-menu__field" title="@CellMenuTitle">@CellMenuTitle</div>
+                </div>
+                <button type="button" class="ctx-menu__close" title="Закрыть" @onclick="CloseCellMenu"><Icon Name="close" Class="ctx-menu__close-icon" /></button>
+            </div>
+
+            <div class="ctx-menu__row">
+                @foreach (var color in Palette)
+                {
+                    <button type="button" class="ctx-menu__swatch @(_cellMenuColor == color ? "is-active" : "")"
+                            style="background:@color" title="Покрасить в @color"
+                            @onclick="() => ApplyMenuColorAsync(color)">
+                        @if (_cellMenuColor == color)
+                        {
+                            <span class="ctx-menu__tick"><Icon Name="check" Class="ctx-menu__tick-icon" /></span>
+                        }
+                    </button>
+                }
+            </div>
+
+            <div class="ctx-menu__foot">
+                <span class="ctx-menu__hint">Правый клик по ячейке — цвет</span>
+                <button type="button" class="ctx-menu__clear" @onclick="() => ApplyMenuColorAsync(null)"><Icon Name="close" /> Убрать цвет</button>
+            </div>
+        </div>
+    }
 </div>
 
 @if (_showEditor && _editModel is not null)
@@ -174,7 +189,6 @@
     private readonly HashSet<int> _selectedIds = new();
     private int _anchorId;
     private string? _selectedCellKey;
-    private string _selectedCellTitle = string.Empty;
 
     private bool _loading;
     private bool _busy;
@@ -426,26 +440,57 @@
     {
         _selected = args.Row;
         _selectedCellKey = $"{args.RecordId}|{args.ColumnKey}";
-        _selectedCellTitle = $"{args.Row.Id} · {RegistryColumns.Find(args.ColumnKey)?.Title ?? args.ColumnKey}";
     }
 
-    private async Task ApplyColorAsync(string? color)
+    private CellMenuArgs? _cellMenu;
+    private string? _cellMenuColor;
+
+    private string CellMenuTitle => _cellMenu is null
+        ? string.Empty
+        : $"{_cellMenu.Cell.Row.Id} · {RegistryColumns.Find(_cellMenu.Cell.ColumnKey)?.Title ?? _cellMenu.Cell.ColumnKey}";
+
+    private void OpenCellMenu(CellMenuArgs args)
     {
-        if (_selected is null || _selectedCellKey is null)
+        _cellMenu = args;
+        _selected = args.Cell.Row;
+        _selectedCellKey = $"{args.Cell.RecordId}|{args.Cell.ColumnKey}";
+        _cellMenuColor = _colors.TryGetValue(_selectedCellKey, out var current) ? current : null;
+    }
+
+    private void CloseCellMenu() => _cellMenu = null;
+
+    private async Task ApplyMenuColorAsync(string? color)
+    {
+        if (_cellMenu is null)
         {
             return;
         }
 
-        var columnKey = _selectedCellKey.Split('|')[1];
+        var recordId = _cellMenu.Cell.RecordId;
+        var columnKey = _cellMenu.Cell.ColumnKey;
         _busy = true;
 
         try
         {
-            var result = await RegistryService.SetCellColorAsync(_selected.ColorOwnerId, columnKey, color, _actor);
+            var result = await RegistryService.SetCellColorAsync(recordId, columnKey, color, _actor);
             if (!result.Success)
             {
                 Toasts.Show(result.Error ?? "Не удалось изменить подсветку", ToastKind.Error);
+                return;
             }
+
+            _cellMenuColor = color;
+            var key = $"{recordId}|{columnKey}";
+            var updated = new Dictionary<string, string>(_colors, StringComparer.OrdinalIgnoreCase);
+            if (color is null)
+            {
+                updated.Remove(key);
+            }
+            else
+            {
+                updated[key] = color;
+            }
+            _colors = updated;
         }
         catch (Exception ex)
         {
