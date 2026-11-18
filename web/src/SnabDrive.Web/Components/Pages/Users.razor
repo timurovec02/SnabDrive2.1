@@ -10,6 +10,7 @@
 @inject IRegistryEventBus EventBus
 @inject IColumnAccessService ColumnAccess
 @inject BitrixNotifier Bitrix
+@inject SnabDrive.Web.Services.IPasswordPolicyService Policy
 @implements IDisposable
 
 <PageTitle>Пользователи — Снабдрайв</PageTitle>
@@ -20,6 +21,7 @@
                 Subtitle="Учётные записи, роли и личные права: доступ к вкладкам, колонкам реестра, выгрузке из Контур и переводу закупок между стадиями.">
         <Actions>
             <button type="button" class="btn btn--primary" @onclick="StartCreate">＋ Добавить пользователя</button>
+            <button type="button" class="btn" @onclick="OpenPolicyAsync" title="Требования к паролям">Политика паролей</button>
             <button type="button" class="btn btn--ghost" @onclick="LoadAsync" title="Обновить">⟳</button>
         </Actions>
     </PageHeader>
@@ -106,9 +108,17 @@
                     <div class="form-field">
                         <label>@(_editingId is null ? "Пароль *" : "Новый пароль (пусто — не менять)")</label>
                         <input class="input" type="password" @bind="_model.Password" autocomplete="new-password"
-                               title="Минимум 10 символов: заглавная и строчная буквы, цифра и спецсимвол" />
+                               title="Требования задаёт администратор: «Политика паролей»" />
+                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px">
+                            <button type="button" class="btn btn--small" @onclick="GeneratePassword"
+                                    title="Подобрать пароль, подходящий под политику">Сгенерировать</button>
+                            <label class="checkbox-label"
+                                   title="Администратор выдаёт временный пароль: пользователь сменит его при первом входе">
+                                <input type="checkbox" @bind="_model.MustChangePassword" /> Смена при первом входе
+                            </label>
+                        </div>
                         <div style="font-size:11.5px;color:#667085;margin-top:4px">
-                            минимум 10 символов: заглавная и строчная буквы, цифра, спецсимвол
+                            @_policyHint
                         </div>
                     </div>
                     <div class="form-field form-field--checkbox">
@@ -218,9 +228,50 @@
                    OnCancel="@(() => _confirm = null)" />
 }
 
+@if (_showPolicy)
+{
+    <div class="modal-backdrop">
+        <div class="modal" @onclick:stopPropagation="true">
+            <div class="modal__header">
+                <h2>Политика паролей</h2>
+                <button type="button" class="modal__close" @onclick="() => _showPolicy = false">×</button>
+            </div>
+            <div class="modal__body">
+                <div class="form-grid">
+                    <div class="form-field">
+                        <label>Минимальная длина</label>
+                        <input class="input" type="number" min="6" max="64" @bind="_policyModel.MinLength" />
+                    </div>
+                    <div class="form-field">
+                        <label>Минимум различных символов</label>
+                        <input class="input" type="number" min="1" max="10" @bind="_policyModel.MinUniqueChars" />
+                    </div>
+                    <div class="form-field form-field--checkbox">
+                        <label class="checkbox-label"><input type="checkbox" @bind="_policyModel.RequireUppercase" /> Заглавная буква</label>
+                        <label class="checkbox-label"><input type="checkbox" @bind="_policyModel.RequireLowercase" /> Строчная буква</label>
+                        <label class="checkbox-label"><input type="checkbox" @bind="_policyModel.RequireDigit" /> Цифра</label>
+                        <label class="checkbox-label"><input type="checkbox" @bind="_policyModel.RequireSpecial" /> Спецсимвол</label>
+                    </div>
+                </div>
+                <div style="font-size:11.5px;color:#667085;margin-top:8px">
+                    Требования действуют при создании пользователя, смене и сбросе пароля.
+                </div>
+                @if (!string.IsNullOrEmpty(_policyError))
+                {
+                    <div class="form-error">@_policyError</div>
+                }
+            </div>
+            <div class="modal__footer">
+                <button type="button" class="btn btn--primary" @onclick="SavePolicyAsync" disabled="@_busy">Сохранить</button>
+                <button type="button" class="btn" @onclick="() => _showPolicy = false">Отмена</button>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private sealed record UserRow(string Id, string UserName, string? DisplayName, string? Email,
-                                  bool IsAdmin, bool IsBlocked, bool IsOnline, DateTime? LastLoginUtc, bool KonturEnabled, bool SchedulerEnabled, bool StageChangeEnabled, string Role, string? BitrixUserId);
+                                  bool IsAdmin, bool IsBlocked, bool IsOnline, DateTime? LastLoginUtc, bool KonturEnabled, bool SchedulerEnabled, bool StageChangeEnabled, string Role, string? BitrixUserId, bool MustChangePassword);
 
     private sealed class UserModel
     {
@@ -235,6 +286,7 @@
         public bool SchedulerEnabled { get; set; }
         public bool StageChangeEnabled { get; set; }
         public string? BitrixUserId { get; set; }
+        public bool MustChangePassword { get; set; } = true;
     }
 
     private List<UserRow> _users = new();
@@ -245,6 +297,10 @@
     private bool _busy;
     private string _currentUserId = string.Empty;
     private ConfirmRequest? _confirm;
+    private bool _showPolicy;
+    private string? _policyError;
+    private SnabDrive.Web.Data.Entities.PasswordPolicy _policyModel = new();
+    private string _policyHint = "требования: не менее 10 символов, заглавная и строчная буквы, цифра, спецсимвол";
 
     protected override async Task OnInitializedAsync()
     {
@@ -256,6 +312,7 @@
             var state = await AuthStateProvider.GetAuthenticationStateAsync();
             _currentUserId = state.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
             await LoadAsync();
+            await LoadPolicyAsync();
         }
         catch
         {
@@ -294,11 +351,106 @@
                 user.SchedulerEnabled,
                 user.StageChangeEnabled,
                 role,
-                user.BitrixUserId));
+                user.BitrixUserId,
+                user.MustChangePassword));
         }
 
         _users = rows;
     }
+
+    private async Task LoadPolicyAsync()
+    {
+        try
+        {
+            _policyModel = await Policy.GetAsync();
+            _policyHint = "требования: " + Policy.Describe(_policyModel);
+        }
+        catch
+        {
+            // БД недоступна — остаются значения по умолчанию.
+        }
+    }
+
+    private async Task OpenPolicyAsync()
+    {
+        _policyError = null;
+        await LoadPolicyAsync();
+        _showPolicy = true;
+    }
+
+    private async Task SavePolicyAsync()
+    {
+        _busy = true;
+        _policyError = null;
+
+        try
+        {
+            var actor = _currentUserId.Length > 0 ? _currentUserId : "admin";
+            await Policy.SaveAsync(_policyModel, actor);
+            await Audit.WriteAsync(AuditAction.Updated, "PasswordPolicy", 1,
+                new ChangeActor(_currentUserId, actor), summary: "Изменена политика паролей");
+            _showPolicy = false;
+            await LoadPolicyAsync();
+            Toasts.Show("Политика паролей сохранена", ToastKind.Success);
+        }
+        catch (Exception ex)
+        {
+            _policyError = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    /// <summary>Подбирает пароль, подходящий под текущую политику.</summary>
+    private void GeneratePassword()
+    {
+        const string Uppers = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+        const string Lowers = "abcdefghijkmnpqrstuvwxyz";
+        const string Digits = "23456789";
+        const string Specials = "!@#$%&*?+-=";
+
+        var chars = new List<char>();
+        if (_policyModel.RequireUppercase)
+        {
+            chars.Add(Pick(Uppers));
+        }
+
+        if (_policyModel.RequireLowercase)
+        {
+            chars.Add(Pick(Lowers));
+        }
+
+        if (_policyModel.RequireDigit)
+        {
+            chars.Add(Pick(Digits));
+        }
+
+        if (_policyModel.RequireSpecial)
+        {
+            chars.Add(Pick(Specials));
+        }
+
+        var all = Uppers + Lowers + Digits + Specials;
+        var length = Math.Max(_policyModel.MinLength, chars.Count);
+        while (chars.Count < length)
+        {
+            chars.Add(Pick(all));
+        }
+
+        // Перемешиваем: обязательные символы не должны идти подряд.
+        for (var i = chars.Count - 1; i > 0; i--)
+        {
+            var j = System.Security.Cryptography.RandomNumberGenerator.GetInt32(i + 1);
+            (chars[i], chars[j]) = (chars[j], chars[i]);
+        }
+
+        _model.Password = new string(chars.ToArray());
+    }
+
+    private static char Pick(string source) =>
+        source[System.Security.Cryptography.RandomNumberGenerator.GetInt32(source.Length)];
 
     private async Task<string> GetRole(SnabDrive.Web.Data.ApplicationUser user)
     {
@@ -335,7 +487,8 @@
             KonturEnabled = user.KonturEnabled,
             SchedulerEnabled = user.SchedulerEnabled,
             StageChangeEnabled = user.StageChangeEnabled,
-            BitrixUserId = user.BitrixUserId
+            BitrixUserId = user.BitrixUserId,
+            MustChangePassword = user.MustChangePassword
         };
         _formError = null;
         _showForm = true;
@@ -399,7 +552,8 @@
             KonturEnabled = _model.KonturEnabled,
             SchedulerEnabled = _model.SchedulerEnabled,
             StageChangeEnabled = _model.StageChangeEnabled,
-            BitrixUserId = string.IsNullOrWhiteSpace(_model.BitrixUserId) ? null : _model.BitrixUserId.Trim()
+            BitrixUserId = string.IsNullOrWhiteSpace(_model.BitrixUserId) ? null : _model.BitrixUserId.Trim(),
+            MustChangePassword = _model.MustChangePassword
         };
 
         var created = await UserManager.CreateAsync(user, _model.Password);
@@ -432,6 +586,7 @@
         user.SchedulerEnabled = _model.SchedulerEnabled;
         user.StageChangeEnabled = _model.StageChangeEnabled;
         user.BitrixUserId = string.IsNullOrWhiteSpace(_model.BitrixUserId) ? null : _model.BitrixUserId.Trim();
+        user.MustChangePassword = _model.MustChangePassword;
 
         if (!string.IsNullOrWhiteSpace(_model.Email))
         {

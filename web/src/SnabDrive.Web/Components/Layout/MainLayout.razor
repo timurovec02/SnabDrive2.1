@@ -6,6 +6,8 @@
 @inject UserSessionState Session
 @inject IToastService Toasts
 @inject SnabDrive.Web.Services.KonturSchedulerState SchedulerState
+@inject NavigationManager Navigation
+@inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
 
 <div class="app-shell @(_navCollapsed ? "nav-collapsed" : "")">
     @if (_exportRunning)
@@ -30,6 +32,8 @@
 
         <div class="app-header__spacer"></div>
 
+        <TableTextSizer />
+
         <PresenceWidget />
 
         <div class="app-header__user">
@@ -38,6 +42,7 @@
             {
                 <span class="badge badge--admin">Админ</span>
             }
+            <a class="btn btn--ghost" href="change-password" title="Сменить пароль">Сменить пароль</a>
         </div>
 
         <form method="post" action="/account/logout" class="logout-form">
@@ -70,6 +75,25 @@
     private bool _schedulerHooked;
 
     private void ToggleNav() => _navCollapsed = !_navCollapsed;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Первый вход: администратор создал учётку с временным паролем — пока пароль
+        // не сменён, пользователь находится только на странице /change-password.
+        // Во время пререндера (HttpContext есть) не перенаправляем: срабатывает
+        // интерактивная фаза, когда циркул подключится.
+        if (HttpContextAccessor.HttpContext is not null)
+        {
+            return;
+        }
+
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        if (SnabDrive.Web.Data.MustChangePasswordClaim.IsSet(state.User) &&
+            !Navigation.Uri.Contains("/change-password", StringComparison.OrdinalIgnoreCase))
+        {
+            Navigation.NavigateTo("/change-password?first=1");
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {

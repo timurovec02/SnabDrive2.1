@@ -112,14 +112,15 @@ builder.Services
         options.User.RequireUniqueEmail = false;
         options.SignIn.RequireConfirmedAccount = false;
 
-        // Пароль проверяется на сервере (PasswordValidator) и при создании пользователя,
-        // и при смене пароля, поэтому обойти правило из браузера нельзя.
-        options.Password.RequiredLength = 10;
-        options.Password.RequireDigit = true;
-        options.Password.RequireLowercase = true;
-        options.Password.RequireUppercase = true;
-        options.Password.RequireNonAlphanumeric = true;
-        options.Password.RequiredUniqueChars = 3;
+        // Требования к паролю задаёт администратор («Пользователи» → «Политика паролей»),
+        // здесь — только пол платформы. Реальную проверку делает PolicyPasswordValidator
+        // по настройкам из dbo.PasswordPolicies; обойти её из браузера нельзя.
+        options.Password.RequiredLength = 6;
+        options.Password.RequireDigit = false;
+        options.Password.RequireLowercase = false;
+        options.Password.RequireUppercase = false;
+        options.Password.RequireNonAlphanumeric = false;
+        options.Password.RequiredUniqueChars = 1;
 
         // Защита от подбора пароля (в WPF-версии было 3 попытки и блокировка на минуту).
         options.Lockout.MaxFailedAccessAttempts = 5;
@@ -130,7 +131,8 @@ builder.Services
     .AddEntityFrameworkStores<AppIdentityDbContext>()
     .AddSignInManager()
     .AddClaimsPrincipalFactory<AppClaimsPrincipalFactory>()
-    .AddDefaultTokenProviders();
+    .AddDefaultTokenProviders()
+    .AddPasswordValidator<PolicyPasswordValidator>();
 
 builder.Services.ConfigureApplicationCookie(options =>
 {
@@ -301,6 +303,7 @@ builder.Services.AddScoped<IMaintenanceService, MaintenanceService>();
 builder.Services.AddSingleton<ICellEditLockService, CellEditLockService>();
 builder.Services.AddScoped<UserSessionState>();
 builder.Services.AddScoped<IToastService, ToastService>();
+    builder.Services.AddScoped<IPasswordPolicyService, PasswordPolicyService>();
 
 // Размер тела запроса: 20 МБ под вложения (совпадает с AttachmentLimits).
 // Больше — сразу 413, без чтения тела в память.

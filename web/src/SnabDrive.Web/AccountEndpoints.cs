@@ -29,6 +29,13 @@ public static class AccountEndpoints
             .RequireAuthorization()
             .AddEndpointFilter(new AntiforgeryEndpointFilter("/login?error=token"));
 
+        // Смена пароля — тоже form-POST: в интерактивном Blazor нет HttpContext,
+        // а cookie (клейм MustChangePassword) можно перевыпустить только в HTTP-запросе.
+        app.MapPost("/account/change-password", HandleChangePasswordAsync)
+            .RequireAuthorization()
+            .RequireRateLimiting("login")
+            .AddEndpointFilter(new AntiforgeryEndpointFilter("/change-password?error=token"));
+
         return app;
     }
 
@@ -112,6 +119,14 @@ public static class AccountEndpoints
                 summary: $"Вход в систему: {login}");
 
             logger.LogInformation("Успешный вход: {Login}", login);
+
+            // Первый вход: администратор создал учётку с временным паролем —
+            // дальше страницы смены пароля пользователь не попадёт.
+            if (user.MustChangePassword)
+            {
+                return Results.Redirect("/change-password?first=1");
+            }
+
             return Results.Redirect(ToSafeLocalUrl(returnUrl));
         }
 
@@ -133,6 +148,73 @@ public static class AccountEndpoints
             summary: $"Неверный логин или пароль: {login}");
 
         return Results.Redirect("/login?error=invalid");
+    }
+
+    private static async Task<IResult> HandleChangePasswordAsync(
+        HttpRequest request,
+        System.Security.Claims.ClaimsPrincipal principal,
+        SignInManager<ApplicationUser> signInManager,
+        UserManager<ApplicationUser> userManager,
+        IAuditService audit,
+        ILoggerFactory loggerFactory)
+    {
+        var logger = loggerFactory.CreateLogger("SnabDrive.Web.ChangePassword");
+        var form = await request.ReadFormAsync();
+
+        var current = form["currentPassword"].ToString();
+        var newPassword = form["newPassword"].ToString();
+        var confirm = form["confirmPassword"].ToString();
+        var first = form["first"].ToString() == "1";
+
+        var user = await userManager.GetUserAsync(principal);
+        if (user is null)
+        {
+            return Results.Redirect("/login");
+        }
+
+        if (string.IsNullOrEmpty(current) || string.IsNullOrEmpty(newPassword))
+        {
+            return Results.Redirect("/change-password?error=empty" + (first ? "&first=1" : string.Empty));
+        }
+
+        if (!string.Equals(newPassword, confirm, StringComparison.Ordinal))
+        {
+            return Results.Redirect("/change-password?error=mismatch" + (first ? "&first=1" : string.Empty));
+        }
+
+        if (!await userManager.CheckPasswordAsync(user, current))
+        {
+            await audit.WriteAsync(AuditAction.PasswordChanged, "User", 0,
+                new ChangeActor(user.Id, user.UserName ?? string.Empty),
+                summary: "Смена пароля: неверный текущий пароль");
+            return Results.Redirect("/change-password?error=invalid" + (first ? "&first=1" : string.Empty));
+        }
+
+        // ChangePasswordAsync прогоняет пароль через валидаторы, включая PolicyPasswordValidator.
+        var result = await userManager.ChangePasswordAsync(user, current, newPassword);
+        if (!result.Succeeded)
+        {
+            var message = string.Join(" ", result.Errors.Select(e => e.Description));
+            logger.LogWarning("Смена пароля отклонена для {Login}: {Errors}", user.UserName, message);
+            return Results.Redirect("/change-password?error=policy&msg=" + Uri.EscapeDataString(message)
+                + (first ? "&first=1" : string.Empty));
+        }
+
+        if (user.MustChangePassword)
+        {
+            user.MustChangePassword = false;
+            await userManager.UpdateAsync(user);
+        }
+
+        // Перевыпускаем cookie — клейм MustChangePassword исчезает, сессия не прерывается.
+        await signInManager.RefreshSignInAsync(user);
+
+        await audit.WriteAsync(AuditAction.PasswordChanged, "User", 0,
+            new ChangeActor(user.Id, user.UserName ?? string.Empty),
+            summary: first ? "Первый вход: временный пароль заменён постоянным" : "Пароль изменён");
+
+        logger.LogInformation("Пароль изменён: {Login}", user.UserName);
+        return Results.Redirect(first ? "/" : "/change-password?changed=1");
     }
 
     /// <summary>Защита от open redirect: принимаем только локальные относительные адреса.</summary>

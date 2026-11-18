@@ -31,6 +31,7 @@ public class RegistryDbContext : DbContext
     public DbSet<AttachmentFile> Attachments => Set<AttachmentFile>();
     public DbSet<BiddingNotification> BiddingNotifications => Set<BiddingNotification>();
     public DbSet<Branch> Branches => Set<Branch>();
+    public DbSet<PasswordPolicy> PasswordPolicies => Set<PasswordPolicy>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -303,6 +304,20 @@ public class RegistryDbContext : DbContext
             entity.Property(x => x.Name).HasColumnName("Name").HasMaxLength(300).IsRequired();
             entity.Property(x => x.BitrixUserId).HasColumnName("BitrixUserId").HasMaxLength(100);
             entity.Property(x => x.IsActive).HasColumnName("IsActive");
+        });
+
+        modelBuilder.Entity<PasswordPolicy>(entity =>
+        {
+            entity.ToTable("PasswordPolicies");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.MinLength).HasColumnName("MinLength");
+            entity.Property(x => x.MinUniqueChars).HasColumnName("MinUniqueChars");
+            entity.Property(x => x.RequireUppercase).HasColumnName("RequireUppercase");
+            entity.Property(x => x.RequireLowercase).HasColumnName("RequireLowercase");
+            entity.Property(x => x.RequireDigit).HasColumnName("RequireDigit");
+            entity.Property(x => x.RequireSpecial).HasColumnName("RequireSpecial");
+            entity.Property(x => x.UpdatedAtUtc).HasColumnName("UpdatedAtUtc");
+            entity.Property(x => x.UpdatedBy).HasColumnName("UpdatedBy").HasMaxLength(256);
         });
     }
 }

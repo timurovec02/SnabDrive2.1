@@ -13,6 +13,7 @@ public static class AuditAction
     public const string UserChanged = "UserChanged";
     public const string Login = "Login";
     public const string LoginFailed = "LoginFailed";
+    public const string PasswordChanged = "PasswordChanged";
 }
 
 /// <summary>

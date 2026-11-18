@@ -19,6 +19,12 @@ public class ApplicationUser : IdentityUser
     /// <summary>Учётная запись заблокирована администратором (без удаления).</summary>
     public bool IsBlocked { get; set; }
 
+    /// <summary>
+    /// Администратор выдал временный пароль — при первом входе пользователь
+    /// обязан сменить его (страница /change-password, обойти нельзя).
+    /// </summary>
+    public bool MustChangePassword { get; set; }
+
     /// <summary>Все колонки либо только разрешённые в UserColumnPermission.</summary>
     public ColumnAccessMode ColumnAccessMode { get; set; } = ColumnAccessMode.AllColumns;
 

@@ -1,0 +1,50 @@
+@inject IJSRuntime JS
+
+<div class="table-text-sizer" title="Размер текста в таблицах — только таблицы, интерфейс не меняется">
+    <button type="button" class="table-text-sizer__btn" @onclick="DecreaseAsync" title="Уменьшить текст в таблицах">A−</button>
+    <span class="table-text-sizer__value">@_percent%</span>
+    <button type="button" class="table-text-sizer__btn" @onclick="IncreaseAsync" title="Увеличить текст в таблицах">A+</button>
+</div>
+
+@code {
+    private double _scale = 1;
+    private int _percent = 100;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        try
+        {
+            _scale = await JS.InvokeAsync<double>("SnabDriveTableText.get");
+            _percent = (int)Math.Round(_scale * 100);
+            StateHasChanged();
+        }
+        catch
+        {
+            // JS ещё не загружен — остаёмся на 100%.
+        }
+    }
+
+    private Task IncreaseAsync() => SetAsync(_scale + 0.1);
+
+    private Task DecreaseAsync() => SetAsync(_scale - 0.1);
+
+    private async Task SetAsync(double scale)
+    {
+        _scale = Math.Clamp(Math.Round(scale, 1), 0.8, 1.8);
+        _percent = (int)Math.Round(_scale * 100);
+
+        try
+        {
+            await JS.InvokeVoidAsync("SnabDriveTableText.set", _scale);
+        }
+        catch
+        {
+            // Интерактивный циркул ещё поднимается — значение применится следующим нажатием.
+        }
+    }
+}

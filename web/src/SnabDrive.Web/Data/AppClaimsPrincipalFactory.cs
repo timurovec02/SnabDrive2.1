@@ -34,8 +34,21 @@ public class AppClaimsPrincipalFactory : UserClaimsPrincipalFactory<ApplicationU
             identity.AddClaim(new Claim(StageChangeClaim.Type, "1"));
         }
 
+        if (user.MustChangePassword)
+        {
+            identity.AddClaim(new Claim(MustChangePasswordClaim.Type, "1"));
+        }
+
         return identity;
     }
+}
+
+/// <summary>Клейм «нужно сменить временный пароль при первом входе».</summary>
+public static class MustChangePasswordClaim
+{
+    public const string Type = "snabdrive.mustChangePassword";
+
+    public static bool IsSet(ClaimsPrincipal? user) => user is not null && user.HasClaim(Type, "1");
 }
 
 public static class KonturClaim

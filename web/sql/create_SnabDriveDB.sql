@@ -403,3 +403,33 @@ GO
 
 PRINT N'База snabdrive_db готова.';
 GO
+/* ==================== Политика паролей и первый вход ==================== */
+
+/* Администратор задаёт сложность паролей (вкладка «Пользователи» → «Политика паролей»).
+   Учётка с временным паролем: MustChangePassword = 1 — пользователь обязан
+   сменить пароль при первом входе (админ создаёт учётку с временным паролем). */
+IF COL_LENGTH('dbo.AspNetUsers', 'MustChangePassword') IS NULL
+    ALTER TABLE dbo.AspNetUsers ADD MustChangePassword BIT NOT NULL
+        CONSTRAINT DF_AspNetUsers_MustChangePassword DEFAULT (0);
+GO
+
+IF OBJECT_ID('dbo.PasswordPolicies', N'U') IS NULL
+    CREATE TABLE dbo.PasswordPolicies
+    (
+        Id               INT           NOT NULL CONSTRAINT PK_PasswordPolicies PRIMARY KEY,
+        MinLength        INT           NOT NULL,
+        MinUniqueChars   INT           NOT NULL,
+        RequireUppercase BIT           NOT NULL,
+        RequireLowercase BIT           NOT NULL,
+        RequireDigit     BIT           NOT NULL,
+        RequireSpecial   BIT           NOT NULL,
+        UpdatedAtUtc     DATETIME2(3)  NULL,
+        UpdatedBy        NVARCHAR(256) NULL,
+        CONSTRAINT CK_PasswordPolicies_SingleRow CHECK (Id = 1)
+    );
+GO
+
+IF NOT EXISTS (SELECT 1 FROM dbo.PasswordPolicies WHERE Id = 1)
+    INSERT INTO dbo.PasswordPolicies (Id, MinLength, MinUniqueChars, RequireUppercase, RequireLowercase, RequireDigit, RequireSpecial)
+    VALUES (1, 10, 3, 1, 1, 1, 1);
+GO
