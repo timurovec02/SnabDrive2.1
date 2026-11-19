@@ -110,29 +110,54 @@ else
     {
         <div class="card" style="margin-bottom:12px">
             <div class="card-body">
-                @if (!string.IsNullOrWhiteSpace(r.EisLink))
-                {
-                    <a href="@r.EisLink" target="_blank" rel="noopener noreferrer" title="@r.EisLink"
-                       style="display:inline-flex;align-items:center;gap:4px;margin-bottom:8px;font-size:14px;text-decoration:none">
-                        <Icon Name="link" Class="wf-link-icon" /> ЕИС
-                    </a>
-                }
-                @if (!string.IsNullOrWhiteSpace(r.PurchaseNumber))
-                {
+                <div class="wf-card-top">
+                    <span class="wf-rec-id" title="Id записи — ищется поиском по всем полям">ID @r.Id</span>
                     @if (!string.IsNullOrWhiteSpace(r.EisLink))
                     {
-                        <a href="@r.EisLink" target="_blank" rel="noopener noreferrer" title="Номер закупки: @r.PurchaseNumber"
-                           style="display:inline-flex;align-items:center;gap:4px;margin:0 0 8px 16px;font-size:14px;text-decoration:none">
-                            <span style="font-size:16px;line-height:1">№</span> @r.PurchaseNumber
+                        <a href="@r.EisLink" target="_blank" rel="noopener noreferrer" title="@r.EisLink"
+                           style="display:inline-flex;align-items:center;gap:4px;font-size:14px;text-decoration:none">
+                            <Icon Name="link" Class="wf-link-icon" /> ЕИС
                         </a>
                     }
-                    else
+                    @if (!string.IsNullOrWhiteSpace(r.PurchaseNumber))
                     {
-                        <span style="display:inline-flex;align-items:center;gap:4px;margin:0 0 8px 16px;font-size:14px;color:#374151">
-                            <span style="font-size:16px;line-height:1">№</span> @r.PurchaseNumber
-                        </span>
+                        @if (!string.IsNullOrWhiteSpace(r.EisLink))
+                        {
+                            <a href="@r.EisLink" target="_blank" rel="noopener noreferrer" title="Номер закупки: @r.PurchaseNumber"
+                               style="display:inline-flex;align-items:center;gap:4px;margin-left:14px;font-size:14px;text-decoration:none">
+                                <span style="font-size:16px;line-height:1">№</span> @r.PurchaseNumber
+                            </a>
+                        }
+                        else
+                        {
+                            <span style="display:inline-flex;align-items:center;gap:4px;margin-left:14px;font-size:14px;color:#374151">
+                                <span style="font-size:16px;line-height:1">№</span> @r.PurchaseNumber
+                            </span>
+                        }
                     }
-                }
+                    <div class="wf-card-checks">
+                        <label class="wf-check" title="Звонить по закупке">
+                            <input type="checkbox" checked="@_edits[r.Id].IsCall" @onchange="ev => OnToggleCall(r.Id, ev)" />
+                            <span><Icon Name="phone" /> Звони</span>
+                        </label>
+                        <label class="wf-check" title="Работа по заявкам">
+                            <input type="checkbox" checked="@_edits[r.Id].IsByRequest" @onchange="ev => OnToggleByRequest(r.Id, ev)" />
+                            <span><Icon Name="inbox" /> По заявкам</span>
+                        </label>
+                        <label class="wf-check" title="Контракт проверен">
+                            <input type="checkbox" checked="@_edits[r.Id].IsContractChecked" @onchange="ev => OnToggleContractChecked(r.Id, ev)" />
+                            <span><Icon Name="check" /> Проверен</span>
+                        </label>
+                        <label class="wf-check" title="Заполнено в ЕИС">
+                            <input type="checkbox" checked="@_edits[r.Id].IsEisFilled" @onchange="ev => OnToggleEisFilled(r.Id, ev)" />
+                            <span><Icon Name="file" /> В ЕИС</span>
+                        </label>
+                        <label class="wf-check" style="@OverdueStyle(r.PaymentOverdue)" title="Оплата просрочена">
+                            <input type="checkbox" checked="@_edits[r.Id].PaymentOverdue" @onchange="ev => OnTogglePaymentOverdue(r.Id, ev)" />
+                            <span><Icon Name="warn" /> Просрочка</span>
+                        </label>
+                    </div>
+                </div>
 
                 @* ===== Вложения и ссылки — вверху на всех этапах ===== *@
                 <div style="margin-bottom:10px">
@@ -241,26 +266,6 @@ else
                             <label class="wf-label">Примечание</label>
                             <textarea class="wf-area" @bind="_edits[r.Id].Note" @bind:after="() => SaveAsync(r.Id)"></textarea>
                         </div>
-                        @if (_stage == 12)
-                        {
-                            <div class="wf-field" style='@FieldStyle(r.Id, "IsCall")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "IsCall", ev)' @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true">
-                                <label class="wf-label">Звони</label>
-                                <label style="display:flex;align-items:center;gap:8px;font-size:15px;font-weight:600">
-                                    <input type="checkbox" style="width:20px;height:20px" checked="@_edits[r.Id].IsCall" @onchange="ev => OnToggleCall(r.Id, ev)" />
-                                    <span><Icon Name="phone" /> Звони</span>
-                                </label>
-                            </div>
-                        }
-                        @if (_stage == 1)
-                        {
-                            <div class="wf-field" style='@FieldStyle(r.Id, "IsByRequest")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "IsByRequest", ev)' @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true">
-                                <label class="wf-label">По заявкам</label>
-                                <label style="display:flex;align-items:center;gap:8px;font-size:15px;font-weight:600">
-                                    <input type="checkbox" style="width:20px;height:20px" checked="@_edits[r.Id].IsByRequest" @onchange="ev => OnToggleByRequest(r.Id, ev)" />
-                                    <span><Icon Name="inbox" /> По заявкам</span>
-                                </label>
-                            </div>
-                        }
                     </div>
                 }
                 @* ===== Этап 3 «Подача заявки на площадку»: те же поля, только чтение ===== *@
@@ -299,10 +304,6 @@ else
                             @if (_isDirector)
                             {
                                 <MoneyInput Style="@Highlight(r.IsCall)" @bind-Value="_edits[r.Id].MinPrice" OnSaved="@(() => SaveAsync(r.Id))" />
-                                <label style="display:flex;align-items:center;gap:8px;margin-top:4px;font-size:15px;font-weight:600">
-                                    <input type="checkbox" style="width:20px;height:20px" checked="@_edits[r.Id].IsCall" @onchange="ev => OnToggleCall(r.Id, ev)" />
-                                    <span><Icon Name="phone" /> Звони</span>
-                                </label>
                             }
                             else if (r.IsCall)
                             {
@@ -422,13 +423,6 @@ else
                                 <Icon Name="warn" Class="alert__icon" /> @ContractStatuses.Name(r.ContractStatusId) — закройте вопрос, прежде чем переводить закупку дальше.
                             </div>
                         }
-                        <div class="wf-field" style='@FieldStyle(r.Id, "IsContractChecked")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "IsContractChecked", ev)' @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true">
-                            <label class="wf-label">Проверен</label>
-                            <label style="display:flex;align-items:center;gap:8px;font-size:15px;font-weight:600">
-                                <input type="checkbox" style="width:20px;height:20px" checked="@_edits[r.Id].IsContractChecked" @onchange="ev => OnToggleContractChecked(r.Id, ev)" />
-                                <span><Icon Name="check" /> Проверен</span>
-                            </label>
-                        </div>
                         <div class="wf-field" style='@FieldStyle(r.Id, "Note")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "Note", ev)' @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true">
                             <label class="wf-label">Примечание</label>
                             <textarea class="wf-area" @bind="_edits[r.Id].Note" @bind:after="() => SaveAsync(r.Id)"></textarea>
@@ -456,10 +450,6 @@ else
                             <label class="wf-label">Ожидаемая дата доставки</label>
                             <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
                                 <input type="date" class="wf-input" @bind="_edits[r.Id].ExpectedDeliveryDate" @bind:format="yyyy-MM-dd" @bind:after="() => SaveAsync(r.Id)" />
-                                <label style="display:flex;align-items:center;gap:8px;font-size:15px;font-weight:600">
-                                    <input type="checkbox" style="width:20px;height:20px" checked="@_edits[r.Id].IsEisFilled" @onchange="ev => OnToggleEisFilled(r.Id, ev)" />
-                                    <span><Icon Name="file" /> Заполнить в ЕИС</span>
-                                </label>
                             </div>
                         </div>
                         <div class="wf-field" style='@FieldStyle(r.Id, "BranchId")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "BranchId", ev)' @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true">
@@ -554,15 +544,6 @@ else
                         </div>
                         <div class="wf-field" style='@FieldStyle(r.Id, "Note")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "Note", ev)' @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true"><label class="wf-label">Примечание</label><textarea class="wf-area" @bind="_edits[r.Id].Note" @bind:after="() => SaveAsync(r.Id)"></textarea></div>
                     </div>
-
-                    @if (_stage == 10)
-                    {
-                        <label style="@OverdueStyle(r.PaymentOverdue)">
-                            <input type="checkbox" style="width:20px;height:20px" checked="@_edits[r.Id].PaymentOverdue"
-                                   @onchange="ev => OnTogglePaymentOverdue(r.Id, ev)" />
-                            <span><Icon Name="warn" /> Оплата просрочена</span>
-                        </label>
-                    }
                 }
 
                 @if (_stage == 13 && !string.IsNullOrWhiteSpace(r.ReturnReason))
@@ -1021,7 +1002,7 @@ else
                Has(MoneyFormat.MoneyPlain(r.NMCK), term) ||
                Has(MoneyFormat.MoneyPlain(r.MinPrice), term) ||
                Has(MoneyFormat.MoneyPlain(r.ResultPrice), term) ||
-               r.Id.ToString(CultureInfo.InvariantCulture) == term;
+               r.Id.ToString(CultureInfo.InvariantCulture).Contains(term);
     }
 
     /// <summary>Яркая подсветка дедлайна: красный — срок вышел или меньше двух дней, жёлтый — в запасе.</summary>

@@ -107,11 +107,15 @@
                     </div>
                     <div class="form-field">
                         <label>@(_editingId is null ? "Пароль *" : "Новый пароль (пусто — не менять)")</label>
-                        <div class="pw-wrap">
-                            <input class="input" type="@(_showPw ? "text" : "password")" @bind="_model.Password" autocomplete="new-password"
+                        <div class="pw-wrap" style="position:relative">
+                            <input class="input" type="password" @bind="_model.Password" autocomplete="new-password"
                                    title="Требования задаёт администратор: «Политика паролей»" />
-                            <button type="button" class="pw-eye" tabindex="-1" title="@(_showPw ? "Скрыть пароль" : "Показать пароль")"
-                                    @onclick="() => _showPw = !_showPw"><Icon Name="@(_showPw ? "eyeOff" : "eye")" /></button>
+                            <button type="button" class="pw-eye" tabindex="-1" title="Показать пароль"
+                                style="position:absolute;right:8px;top:50%%;transform:translateY(-50%%);border:0;background:transparent;cursor:pointer;padding:6px;color:#64748b;display:inline-flex"
+                                onclick="var i=this.parentNode.querySelector('input');var s=i.type==='password';i.type=s?'text':'password';this.title=s?'Скрыть пароль':'Показать пароль';this.querySelector('.pw-eye__on').hidden=!s;this.querySelector('.pw-eye__off').hidden=s;">
+                            <span class="pw-eye__on"><Icon Name="eye" /></span>
+                            <span class="pw-eye__off" hidden><Icon Name="eyeOff" /></span>
+                        </button>
                         </div>
                         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px">
                             <button type="button" class="btn btn--small" @onclick="GeneratePassword"
@@ -321,7 +325,6 @@
 
     private List<UserRow> _users = new();
     private UserModel _model = new();
-    private bool _showPw;
 
     private string StageAccessValue(int id) => _model.StageAccess.TryGetValue(id, out var v) ? v : "role";
 

@@ -3,14 +3,6 @@
 
 <div class="page-hero">
     <div class="page-hero__main">
-        @if (!string.IsNullOrWhiteSpace(IconName))
-        {
-            <span class="page-hero__icon" aria-hidden="true"><Icon Name="@IconName" Class="page-hero__svg" /></span>
-        }
-        else if (!string.IsNullOrWhiteSpace(Icon))
-        {
-            <span class="page-hero__icon" aria-hidden="true">@Icon</span>
-        }
         <div>
             <h1 class="page-hero__title">@Title</h1>
             @if (!string.IsNullOrWhiteSpace(Subtitle))

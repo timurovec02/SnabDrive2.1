@@ -4193,3 +4193,66 @@ textarea {
 .card {
     padding: 14px;
 }
+
+
+/* ------------------------------------------------ пул задач-5: глаз/модалка/верх карточек (2026-09-25) */
+
+/* Модалки: тело прокручивается, шапка/подвал на месте */
+.modal__body {
+    max-height: calc(100vh - 210px);
+    overflow-y: auto;
+}
+
+.column-matrix {
+    width: 100%;
+}
+
+.column-matrix td:nth-child(2),
+.column-matrix td:nth-child(3) {
+    text-align: center;
+}
+
+/* Верх карточки «Задачи»: ID + ссылки + чекбоксы */
+.wf-card-top {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    margin-bottom: 10px;
+}
+
+.wf-rec-id {
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: #e8eefc;
+    color: #1d4ed8;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .3px;
+    white-space: nowrap;
+}
+
+.wf-card-checks {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px 14px;
+    margin-left: auto;
+}
+
+.wf-check {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #334155;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.wf-check input {
+    width: 17px;
+    height: 17px;
+    cursor: pointer;
+}

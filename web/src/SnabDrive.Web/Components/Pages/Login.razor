@@ -52,11 +52,15 @@
 
                 <label class="login-card__label">
                     Пароль
-                    <div class="login-field">
+                    <div class="login-field" style="position:relative">
                         <Icon Name="lock" Class="login-field__icon" />
-                        <input class="input" name="password" type="@(_showPw ? "text" : "password")" autocomplete="current-password" required />
-                        <button type="button" class="pw-eye" tabindex="-1" title="@(_showPw ? "Скрыть пароль" : "Показать пароль")"
-                                @onclick="() => _showPw = !_showPw"><Icon Name="@(_showPw ? "eyeOff" : "eye")" /></button>
+                        <input class="input" name="password" type="password" autocomplete="current-password" required />
+                        <button type="button" class="pw-eye" tabindex="-1" title="Показать пароль"
+                                style="position:absolute;right:8px;top:50%%;transform:translateY(-50%%);border:0;background:transparent;cursor:pointer;padding:6px;color:#64748b;display:inline-flex"
+                                onclick="var i=this.parentNode.querySelector('input');var s=i.type==='password';i.type=s?'text':'password';this.title=s?'Скрыть пароль':'Показать пароль';this.querySelector('.pw-eye__on').hidden=!s;this.querySelector('.pw-eye__off').hidden=s;">
+                            <span class="pw-eye__on"><Icon Name="eye" /></span>
+                            <span class="pw-eye__off" hidden><Icon Name="eyeOff" /></span>
+                        </button>
                     </div>
                 </label>
 
@@ -82,7 +86,6 @@
 </div>
 
 @code {
-    private bool _showPw;
 
     private string _returnUrl = "/";
     private string? _errorText;
