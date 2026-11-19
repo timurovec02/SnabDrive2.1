@@ -107,8 +107,12 @@
                     </div>
                     <div class="form-field">
                         <label>@(_editingId is null ? "Пароль *" : "Новый пароль (пусто — не менять)")</label>
-                        <input class="input" type="password" @bind="_model.Password" autocomplete="new-password"
-                               title="Требования задаёт администратор: «Политика паролей»" />
+                        <div class="pw-wrap">
+                            <input class="input" type="@(_showPw ? "text" : "password")" @bind="_model.Password" autocomplete="new-password"
+                                   title="Требования задаёт администратор: «Политика паролей»" />
+                            <button type="button" class="pw-eye" tabindex="-1" title="@(_showPw ? "Скрыть пароль" : "Показать пароль")"
+                                    @onclick="() => _showPw = !_showPw"><Icon Name="@(_showPw ? "eyeOff" : "eye")" /></button>
+                        </div>
                         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px">
                             <button type="button" class="btn btn--small" @onclick="GeneratePassword"
                                     title="Подобрать пароль, подходящий под политику">Сгенерировать</button>
@@ -143,6 +147,29 @@
                         <label class="checkbox-label">
                             <input type="checkbox" @bind="_model.StageChangeEnabled" /> Менять стадию закупок
                         </label>
+                    </div>
+                    <div class="form-field">
+                        <label>Стадии воркфлоу (личные права)</label>
+                        <p class="stage-access__hint">
+                            «По роли» — действуют права роли. Явный выбор заменяет права роли для этой стадии:
+                            «Только чтение» — видно, но изменять нельзя.
+                        </p>
+                        <div class="stage-access">
+                            @foreach (var st in WorkflowStages.All)
+                            {
+                                var sid = st.Id;
+                                <div class="stage-access__row">
+                                    <span class="stage-access__name">@st.Name</span>
+                                    <select class="input input--small" value="@StageAccessValue(sid)"
+                                            @onchange="@(e => SetStageAccess(sid, e.Value?.ToString()))">
+                                        <option value="role">По роли</option>
+                                        <option value="none">Скрыта</option>
+                                        <option value="read">Только чтение</option>
+                                        <option value="edit">Правка</option>
+                                    </select>
+                                </div>
+                            }
+                        </div>
                     </div>
                 </div>
 
@@ -271,7 +298,7 @@
 
 @code {
     private sealed record UserRow(string Id, string UserName, string? DisplayName, string? Email,
-                                  bool IsAdmin, bool IsBlocked, bool IsOnline, DateTime? LastLoginUtc, bool KonturEnabled, bool SchedulerEnabled, bool StageChangeEnabled, string Role, string? BitrixUserId, bool MustChangePassword);
+                                  bool IsAdmin, bool IsBlocked, bool IsOnline, DateTime? LastLoginUtc, bool KonturEnabled, bool SchedulerEnabled, bool StageChangeEnabled, string Role, string? BitrixUserId, bool MustChangePassword, string? StageAccessJson);
 
     private sealed class UserModel
     {
@@ -287,10 +314,57 @@
         public bool StageChangeEnabled { get; set; }
         public string? BitrixUserId { get; set; }
         public bool MustChangePassword { get; set; } = true;
+
+        /// <summary>Личные права стадий: Id → role/none/read/edit (пусто — всё по роли).</summary>
+        public Dictionary<int, string> StageAccess { get; set; } = new();
     }
 
     private List<UserRow> _users = new();
     private UserModel _model = new();
+    private bool _showPw;
+
+    private string StageAccessValue(int id) => _model.StageAccess.TryGetValue(id, out var v) ? v : "role";
+
+    private void SetStageAccess(int id, string? value)
+    {
+        if (string.IsNullOrEmpty(value) || value == "role") _model.StageAccess.Remove(id);
+        else _model.StageAccess[id] = value;
+    }
+
+    private static string? SerializeStageAccess(Dictionary<int, string> map)
+    {
+        if (map.Count == 0) return null;
+        var raw = new Dictionary<string, List<int>>
+        {
+            ["none"] = map.Where(kv => kv.Value == "none").Select(kv => kv.Key).OrderBy(x => x).ToList(),
+            ["read"] = map.Where(kv => kv.Value == "read").Select(kv => kv.Key).OrderBy(x => x).ToList(),
+            ["edit"] = map.Where(kv => kv.Value == "edit").Select(kv => kv.Key).OrderBy(x => x).ToList()
+        };
+        return System.Text.Json.JsonSerializer.Serialize(raw);
+    }
+
+    private static Dictionary<int, string> ParseStageAccess(string? json)
+    {
+        var result = new Dictionary<int, string>();
+        if (string.IsNullOrWhiteSpace(json)) return result;
+        try
+        {
+            var raw = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, List<int>>>(json);
+            if (raw is null) return result;
+            foreach (var (key, mode) in new[] { ("none", "none"), ("read", "read"), ("edit", "edit") })
+            {
+                if (raw.TryGetValue(key, out var list))
+                {
+                    foreach (var id in list) result[id] = mode;
+                }
+            }
+        }
+        catch
+        {
+            // повреждённый JSON — считаем, что личных прав нет
+        }
+        return result;
+    }
     private string? _editingId;
     private string? _formError;
     private bool _showForm;
@@ -352,7 +426,8 @@
                 user.StageChangeEnabled,
                 role,
                 user.BitrixUserId,
-                user.MustChangePassword));
+                user.MustChangePassword,
+                user.StageAccessJson));
         }
 
         _users = rows;
@@ -488,7 +563,8 @@
             SchedulerEnabled = user.SchedulerEnabled,
             StageChangeEnabled = user.StageChangeEnabled,
             BitrixUserId = user.BitrixUserId,
-            MustChangePassword = user.MustChangePassword
+            MustChangePassword = user.MustChangePassword,
+            StageAccess = ParseStageAccess(user.StageAccessJson)
         };
         _formError = null;
         _showForm = true;
@@ -553,7 +629,8 @@
             SchedulerEnabled = _model.SchedulerEnabled,
             StageChangeEnabled = _model.StageChangeEnabled,
             BitrixUserId = string.IsNullOrWhiteSpace(_model.BitrixUserId) ? null : _model.BitrixUserId.Trim(),
-            MustChangePassword = _model.MustChangePassword
+            MustChangePassword = _model.MustChangePassword,
+            StageAccessJson = SerializeStageAccess(_model.StageAccess)
         };
 
         var created = await UserManager.CreateAsync(user, _model.Password);
@@ -587,6 +664,7 @@
         user.StageChangeEnabled = _model.StageChangeEnabled;
         user.BitrixUserId = string.IsNullOrWhiteSpace(_model.BitrixUserId) ? null : _model.BitrixUserId.Trim();
         user.MustChangePassword = _model.MustChangePassword;
+        user.StageAccessJson = SerializeStageAccess(_model.StageAccess);
 
         if (!string.IsNullOrWhiteSpace(_model.Email))
         {

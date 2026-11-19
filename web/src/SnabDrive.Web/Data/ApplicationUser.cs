@@ -37,6 +37,12 @@ public class ApplicationUser : IdentityUser
     /// <summary>Право переводить закупку на любую стадию (вкладка «Задачи» и колонка «Стадия» в реестре).</summary>
     public bool StageChangeEnabled { get; set; }
 
+    /// <summary>
+    /// Личные права стадий воркфлоу: JSON {"none":[…],"read":[…],"edit":[…]} (Id из WorkflowStages.All).
+    /// Не задано (null) — действуют права роли; перечисленные стадии заменяют права роли поштучно.
+    /// </summary>
+    public string? StageAccessJson { get; set; }
+
     /// <summary>Числовой ID сотрудника в Битрикс24 (для личных уведомлений im.notify TO=...). </summary>
     public string? BitrixUserId { get; set; }
 

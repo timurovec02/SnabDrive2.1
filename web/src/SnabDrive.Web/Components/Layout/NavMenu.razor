@@ -33,13 +33,6 @@
         </NavLink>
     }
 
-    @if (Feat(AppFeatures.Scheduler))
-    {
-        <NavLink class="nav__item" href="kontur-scheduler" title="Планировщик Контур">
-            <Icon Name="scheduler" Class="nav__icon" /><span class="nav__label">Планировщик</span>
-        </NavLink>
-    }
-
     @if (Feat(AppFeatures.Director))
     {
         <NavLink class="nav__item" href="director" title="Обзор директора">
@@ -47,40 +40,11 @@
         </NavLink>
     }
 
-    @if (Feat(AppFeatures.Dictionaries) || Feat(AppFeatures.Users) || Feat(AppFeatures.Audit))
+    @if (Feat(AppFeatures.Dictionaries) || Feat(AppFeatures.Users) || Feat(AppFeatures.Audit) || Feat(AppFeatures.Scheduler))
     {
         <div class="nav__divider"></div>
-        <div class="nav__group-title" title="Раздел администратора">Администрирование</div>
-    }
-
-    @if (Feat(AppFeatures.Dictionaries))
-    {
-        <NavLink class="nav__item" href="dictionaries" title="Справочники">
-            <Icon Name="dictionaries" Class="nav__icon" /><span class="nav__label">Справочники</span>
-        </NavLink>
-    }
-    @if (Feat(AppFeatures.Users))
-    {
-        <NavLink class="nav__item" href="users" title="Пользователи">
-            <Icon Name="users" Class="nav__icon" /><span class="nav__label">Пользователи</span>
-        </NavLink>
-        <NavLink class="nav__item" href="roles" title="Настройка ролей">
-            <Icon Name="roles" Class="nav__icon" /><span class="nav__label">Роли</span>
-        </NavLink>
-        <NavLink class="nav__item" href="maintenance" title="Очистка данных">
-            <Icon Name="maintenance" Class="nav__icon" /><span class="nav__label">Очистка данных</span>
-        </NavLink>
-        <NavLink class="nav__item" href="import-registry" title="Импорт реестра">
-            <Icon Name="import" Class="nav__icon" /><span class="nav__label">Импорт реестра</span>
-        </NavLink>
-    }
-    @if (Feat(AppFeatures.Audit))
-    {
-        <NavLink class="nav__item" href="audit" title="Журнал">
-            <Icon Name="audit" Class="nav__icon" /><span class="nav__label">Журнал</span>
-        </NavLink>
-        <NavLink class="nav__item" href="stats" title="Статистика активности">
-            <Icon Name="stats" Class="nav__icon" /><span class="nav__label">Статистика</span>
+        <NavLink class="nav__item" href="admin" title="Администрирование">
+            <Icon Name="settings" Class="nav__icon" /><span class="nav__label">Администрирование</span>
         </NavLink>
     }
 </nav>

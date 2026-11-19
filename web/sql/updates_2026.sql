@@ -417,3 +417,12 @@ IF NOT EXISTS (SELECT 1 FROM dbo.PasswordPolicies WHERE Id = 1)
     INSERT INTO dbo.PasswordPolicies (Id, MinLength, MinUniqueChars, RequireUppercase, RequireLowercase, RequireDigit, RequireSpecial)
     VALUES (1, 10, 3, 1, 1, 1, 1);
 GO
+
+-- ===== Права стадий воркфлоу: «только чтение» для роли и личные права пользователя (2026-09) =====
+IF COL_LENGTH('dbo.RolePermissions', 'ReadOnlyStagesJson') IS NULL
+    ALTER TABLE [dbo].[RolePermissions] ADD [ReadOnlyStagesJson] NVARCHAR(MAX) NULL;
+GO
+
+IF COL_LENGTH('dbo.AspNetUsers', 'StageAccessJson') IS NULL
+    ALTER TABLE [dbo].[AspNetUsers] ADD [StageAccessJson] NVARCHAR(MAX) NULL;
+GO

@@ -4008,3 +4008,188 @@ textarea {
     background: #f4fbf6;
     border-color: #c3e6cf;
 }
+
+
+/* ---- Стадия «только чтение»: поля недоступны, кнопки действий скрыты. ---- */
+
+.wf-locked .wf-input,
+.wf-locked .wf-area,
+.wf-locked input,
+.wf-locked select,
+.wf-locked textarea {
+    pointer-events: none;
+    background: #eef2f7;
+    color: #64748b;
+    border-color: #dde3ea;
+}
+
+.wf-locked .btn {
+    display: none;
+}
+
+
+/* ---- Права стадий в ролях: видимость + «только чтение» одной строкой. ---- */
+
+.stage-perm {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 3px 2px;
+    border-bottom: 1px dashed #e4e9f0;
+}
+
+.stage-perm .form-check {
+    margin: 0;
+}
+
+.stage-perm .form-check--sub {
+    opacity: .85;
+    font-size: 12px;
+}
+
+
+/* ---- Личные права стадий пользователя и «глаз» пароля. ---- */
+
+.stage-access {
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 4px 8px;
+    background: #fbfcfe;
+}
+
+.stage-access__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 3px 2px;
+    border-bottom: 1px dashed #e4e9f0;
+}
+
+.stage-access__row:last-child {
+    border-bottom: 0;
+}
+
+.stage-access__name {
+    font-size: 12.5px;
+}
+
+.stage-access__hint {
+    font-size: 11.5px;
+    color: var(--text-muted);
+    margin: 2px 0 6px;
+}
+
+.pw-wrap {
+    position: relative;
+    display: block;
+}
+
+.pw-wrap input {
+    width: 100%;
+    padding-right: 36px;
+}
+
+.pw-eye {
+    position: absolute;
+    right: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    padding: 6px;
+    color: var(--text-muted);
+    border-radius: 6px;
+}
+
+.pw-eye:hover {
+    color: var(--text);
+    background: rgba(37, 99, 235, .08);
+}
+
+
+/* ---- Администрирование: одна страница с вкладками-разделами. ---- */
+
+.admin-page {
+    height: 100%;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.admin-page__tabs {
+    flex: 0 0 auto;
+    margin: 0;
+}
+
+.admin-page__body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+}
+
+
+/* ---- Глаз пароля на странице входа. ---- */
+
+.login-field {
+    position: relative;
+}
+
+.login-field .pw-eye {
+    right: 8px;
+}
+
+/* ---- Финальная уборка: один стиль шапок, меньше пустоты, больше информации. ---- */
+
+.page-hero {
+    padding: 10px 14px;
+    margin-bottom: 10px;
+    gap: 10px 16px;
+}
+
+.page-hero__title {
+    font-size: 18px;
+}
+
+.page-hero__subtitle {
+    margin: 2px 0 0;
+    font-size: 12px;
+}
+
+.page-hero__icon {
+    width: 36px;
+    height: 36px;
+    font-size: 17px;
+}
+
+.page__header {
+    padding: 10px 14px;
+    margin-bottom: 12px;
+}
+
+.page__header h1 {
+    font-size: 18px;
+}
+
+.page__hint {
+    margin: 2px 0 0;
+}
+
+.section-card {
+    padding: 12px 14px;
+}
+
+.section-card h2 {
+    font-size: 15px;
+    margin: 0 0 4px;
+}
+
+.card {
+    padding: 14px;
+}

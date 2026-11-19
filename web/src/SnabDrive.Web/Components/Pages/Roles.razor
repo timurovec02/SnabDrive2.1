@@ -73,17 +73,26 @@
         <h2>Стадии воркфлоу</h2>
         <p class="section-card__hint">
             Если ничего не отмечено — роль отвечает за все стадии. Отмеченные стадии показываются
-            на вкладке «Задачи» и используются для уведомлений.
+            на вкладке «Задачи» и используются для уведомлений. «Только чтение» — стадия видна,
+            но недоступна для правки: карточки можно просматривать, но не изменять.
         </p>
         <div class="check-grid">
             @foreach (var stage in WorkflowStages.All)
             {
                 var sid = stage.Id;
-                <label class="form-check">
-                    <input type="checkbox" class="form-check-input" checked="@_set.StageEnabled(sid)"
-                           @onchange="@(e => ToggleStage(sid, e.Value is bool b && b))" />
-                    <span class="form-check-label">@stage.Name</span>
-                </label>
+                <div class="stage-perm">
+                    <label class="form-check">
+                        <input type="checkbox" class="form-check-input" checked="@_set.StageEnabled(sid)"
+                               @onchange="@(e => ToggleStage(sid, e.Value is bool b && b))" />
+                        <span class="form-check-label">@stage.Name</span>
+                    </label>
+                    <label class="form-check form-check--sub" title="Стадия видна, но только для просмотра">
+                        <input type="checkbox" class="form-check-input" checked="@_set.ReadOnlyStages.Contains(sid)"
+                               disabled="@(!_set.StageEnabled(sid))"
+                               @onchange="@(e => ToggleStageReadOnly(sid, e.Value is bool b && b))" />
+                        <span class="form-check-label">только чтение</span>
+                    </label>
+                </div>
             }
         </div>
     </div>
@@ -154,6 +163,21 @@
         else
         {
             _set.Stages.Remove(id);
+            _set.ReadOnlyStages.Remove(id);
+        }
+    }
+
+    private void ToggleStageReadOnly(int id, bool on)
+    {
+        if (_set is null) return;
+
+        if (on)
+        {
+            if (!_set.ReadOnlyStages.Contains(id)) _set.ReadOnlyStages.Add(id);
+        }
+        else
+        {
+            _set.ReadOnlyStages.Remove(id);
         }
     }
 

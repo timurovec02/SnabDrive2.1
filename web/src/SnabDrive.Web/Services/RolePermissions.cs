@@ -32,6 +32,19 @@ public static class AppFeatures
     public static string Title(string key) => All.FirstOrDefault(f => f.Key == key).Title ?? key;
 }
 
+/// <summary>Уровень доступа к стадии воркфлоу.</summary>
+public enum StageAccess
+{
+    /// <summary>Стадия скрыта.</summary>
+    None = 0,
+
+    /// <summary>Стадия видна, но только для просмотра.</summary>
+    Read = 1,
+
+    /// <summary>Стадия видна и доступна для правки.</summary>
+    Edit = 2
+}
+
 /// <summary>Набор прав роли: доступ к вкладкам + права на колонки реестра.</summary>
 public sealed class RolePermissionSet
 {
@@ -44,16 +57,25 @@ public sealed class RolePermissionSet
     /// <summary>Стадии воркфлоу, за которые отвечает роль (Id из WorkflowStages.All). Пусто = все стадии.</summary>
     public List<int> Stages { get; set; } = new();
 
+    /// <summary>Стадии «только чтение» (подмножество видимых). Пусто = все видимые стадии доступны для правки.</summary>
+    public List<int> ReadOnlyStages { get; set; } = new();
+
     public bool FeatureEnabled(string key) => Features.TryGetValue(key, out var v) && v;
 
     /// <summary>Отвечает ли роль за стадию (пустой набор = все стадии).</summary>
     public bool StageEnabled(int stageId) => Stages.Count == 0 || Stages.Contains(stageId);
 
+    /// <summary>Уровень доступа роли к стадии.</summary>
+    public StageAccess StageMode(int stageId) => !StageEnabled(stageId)
+        ? StageAccess.None
+        : ReadOnlyStages.Contains(stageId) ? StageAccess.Read : StageAccess.Edit;
+
     public RolePermissionSet Clone() => new()
     {
         Features = Features.ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase),
         Columns = Columns.Select(c => c with { }).ToList(),
-        Stages = Stages.ToList()
+        Stages = Stages.ToList(),
+        ReadOnlyStages = ReadOnlyStages.ToList()
     };
 }
 

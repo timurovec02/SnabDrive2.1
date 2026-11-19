@@ -19,5 +19,8 @@ public class RolePermission
     /// <summary>JSON: List&lt;int&gt; — стадии воркфлоу, за которые отвечает роль. "[]" или null = все стадии.</summary>
     public string? StagesJson { get; set; }
 
+    /// <summary>JSON: List&lt;int&gt; — стадии «только чтение» (подмножество видимых). "[]" или null = все видимые доступны для правки.</summary>
+    public string? ReadOnlyStagesJson { get; set; }
+
     public DateTime UpdatedAtUtc { get; set; } = DateTime.UtcNow;
 }

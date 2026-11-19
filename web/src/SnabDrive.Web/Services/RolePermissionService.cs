@@ -26,6 +26,9 @@ public interface IRolePermissionService
 
     /// <summary>Эффективные стадии воркфлоу пользователя (объединение по ролям; Admin — все). Возвращает все Id, если ограничений нет.</summary>
     Task<IReadOnlyList<int>> GetEffectiveStagesAsync(string userId, CancellationToken cancellationToken = default);
+
+    /// <summary>Эффективный уровень доступа к каждой стадии (роли + личные права пользователя; Admin — всё в правке).</summary>
+    Task<Dictionary<int, StageAccess>> GetEffectiveStageAccessAsync(string userId, CancellationToken cancellationToken = default);
 }
 
 public sealed class RolePermissionService : IRolePermissionService
@@ -65,6 +68,7 @@ public sealed class RolePermissionService : IRolePermissionService
         row.FeaturesJson = JsonSerializer.Serialize(set.Features, Json);
         row.ColumnsJson = JsonSerializer.Serialize(set.Columns, Json);
         row.StagesJson = JsonSerializer.Serialize(set.Stages, Json);
+        row.ReadOnlyStagesJson = JsonSerializer.Serialize(set.ReadOnlyStages, Json);
         row.UpdatedAtUtc = DateTime.UtcNow;
         await ctx.SaveChangesAsync(cancellationToken);
     }
@@ -148,6 +152,74 @@ public sealed class RolePermissionService : IRolePermissionService
         return anyCustom ? merged.ToList() : all;
     }
 
+    public async Task<Dictionary<int, StageAccess>> GetEffectiveStageAccessAsync(string userId, CancellationToken cancellationToken = default)
+    {
+        var all = WorkflowStages.All.Select(s => s.Id).ToDictionary(id => id, _ => StageAccess.Edit);
+        if (string.IsNullOrWhiteSpace(userId)) return all;
+
+        var user = await _users.FindByIdAsync(userId);
+        if (user is null) return all;
+
+        var roles = await _users.GetRolesAsync(user);
+        if (roles.Contains(AppRoles.Admin)) return all;
+
+        var merged = await MergeRoleStagesAsync(roles, cancellationToken);
+
+        // Личные права пользователя заменяют права роли поштучно; не перечисленные стадии берутся из ролей.
+        var personal = ParseStageAccess(user.StageAccessJson);
+        if (personal is not null)
+        {
+            foreach (var id in merged.Keys.ToList())
+            {
+                if (personal.TryGetValue(id, out var mode)) merged[id] = mode;
+            }
+        }
+
+        return merged;
+    }
+
+    private async Task<Dictionary<int, StageAccess>> MergeRoleStagesAsync(IList<string> roles, CancellationToken cancellationToken)
+    {
+        var merged = WorkflowStages.All.Select(s => s.Id).ToDictionary(id => id, _ => StageAccess.None);
+        foreach (var role in roles)
+        {
+            var set = await GetAsync(role, cancellationToken);
+            foreach (var id in merged.Keys.ToList())
+            {
+                var mode = set.StageMode(id);
+                if (mode > merged[id]) merged[id] = mode;
+            }
+        }
+        return merged;
+    }
+
+    /// <summary>Разбирает личные права стадий: {"none":[…],"read":[…],"edit":[…]}. null/пусто — прав нет (всё по роли).</summary>
+    private static Dictionary<int, StageAccess>? ParseStageAccess(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return null;
+        try
+        {
+            var raw = JsonSerializer.Deserialize<Dictionary<string, List<int>>>(json, Json);
+            if (raw is null) return null;
+            var result = new Dictionary<int, StageAccess>();
+            foreach (var (key, mode) in new[]
+                     {
+                         ("none", StageAccess.None), ("read", StageAccess.Read), ("edit", StageAccess.Edit)
+                     })
+            {
+                if (raw.TryGetValue(key, out var list))
+                {
+                    foreach (var id in list) result[id] = mode;
+                }
+            }
+            return result.Count == 0 ? null : result;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     private static RolePermissionSet Deserialize(RolePermission row)
     {
         var set = new RolePermissionSet();
@@ -171,6 +243,12 @@ public sealed class RolePermissionService : IRolePermissionService
         {
             try { set.Stages = JsonSerializer.Deserialize<List<int>>(row.StagesJson, Json) ?? new List<int>(); }
             catch { set.Stages = new List<int>(); }
+        }
+
+        if (!string.IsNullOrWhiteSpace(row.ReadOnlyStagesJson))
+        {
+            try { set.ReadOnlyStages = JsonSerializer.Deserialize<List<int>>(row.ReadOnlyStagesJson, Json) ?? new List<int>(); }
+            catch { set.ReadOnlyStages = new List<int>(); }
         }
         return set;
     }

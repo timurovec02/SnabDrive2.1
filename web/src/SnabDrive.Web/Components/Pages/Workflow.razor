@@ -70,7 +70,7 @@
             }
         </div>
         <div class="toolbar-spacer"></div>
-        @if (_stage == 1)
+        @if (_stage == 1 && !_stageReadOnly)
         {
             <button class="btn btn--primary" disabled="@_busy" @onclick="AddNewAsync"
                     title="Добавить пустую закупку на первую стадию">＋ Добавить</button>
@@ -104,7 +104,7 @@ else if (!Rows().Any())
 }
 else
 {
-    <div class="wf-live" @onfocusin="OnFocusIn" @onfocusout="OnFocusOutAsync"
+    <div class="wf-live@(_stageReadOnly ? " wf-locked" : "")" @onfocusin="OnFocusIn" @onfocusout="OnFocusOutAsync"
          @onclick="CloseFieldMenu" @oncontextmenu="CloseFieldMenu">
     @foreach (var r in Rows())
     {
@@ -746,6 +746,8 @@ else
     private string? _notice;               // короткое сообщение об успехе (например, перенос стадии)
     private ChangeActor _actor = new("user", "Пользователь");
     private HashSet<int> _allowedStages = new();
+    private Dictionary<int, StageAccess> _stageAccess = new();
+    private bool _stageReadOnly;   // текущая стадия открыта «только чтение»
     private bool _isTenderHead;
     private bool _isDirector;              // Директор правит мин. сумму и «Звони» на этапе 4
     private bool _subscribed;              // подписка на шину событий реестра
@@ -768,8 +770,8 @@ else
 
             // Стадии, разрешённые пользователю по его ролям (настройка в /roles → «Стадии воркфлоу»).
             var uid = state.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
-            var stages = await RolePerms.GetEffectiveStagesAsync(uid);
-            _allowedStages = stages.ToHashSet();
+            _stageAccess = await RolePerms.GetEffectiveStageAccessAsync(uid);
+            _allowedStages = _stageAccess.Where(kv => kv.Value != StageAccess.None).Select(kv => kv.Key).ToHashSet();
 
             // Словари для выпадающих списков «Тип закупки» и «Статус резерва B2B».
             _types = await DictSvc.GetTypesOfPurchaseAsync();
@@ -788,7 +790,7 @@ else
             var firstAllowed = WorkflowStages.All.FirstOrDefault(s => _allowedStages.Contains(s.Id));
             if (_allowedStages.Contains(firstAllowed.Id))
             {
-                _stage = firstAllowed.Id;
+                SetStage(firstAllowed.Id);
             }
 
             await LoadAsync();
@@ -917,6 +919,7 @@ else
     /// </summary>
     private async Task AddNewAsync()
     {
+        if (_stageReadOnly) return;
         _busy = true;
         try
         {
@@ -942,7 +945,11 @@ else
         }
     }
 
-    private void SetStage(int stage) => _stage = stage;
+    private void SetStage(int stage)
+    {
+        _stage = stage;
+        _stageReadOnly = _stageAccess.TryGetValue(stage, out var mode) && mode == StageAccess.Read;
+    }
 
     private string TabClass(int stage) => _stage == stage ? "tab tab--active" : "tab";
 
@@ -1081,6 +1088,7 @@ else
     // Автосохранение строки (как в реестре): вызывается при уходе с поля, без полной перезагрузки.
     private async Task SaveAsync(int id)
     {
+        if (_stageReadOnly) return;   // стадия открыта только для чтения
         _error = null;
         var result = await WorkflowSvc.UpdateAsync(id, _edits[id], _actor);
         if (!result.Success) { _error = result.Error; }

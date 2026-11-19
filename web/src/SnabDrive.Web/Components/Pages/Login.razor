@@ -54,7 +54,9 @@
                     Пароль
                     <div class="login-field">
                         <Icon Name="lock" Class="login-field__icon" />
-                        <input class="input" name="password" type="password" autocomplete="current-password" required />
+                        <input class="input" name="password" type="@(_showPw ? "text" : "password")" autocomplete="current-password" required />
+                        <button type="button" class="pw-eye" tabindex="-1" title="@(_showPw ? "Скрыть пароль" : "Показать пароль")"
+                                @onclick="() => _showPw = !_showPw"><Icon Name="@(_showPw ? "eyeOff" : "eye")" /></button>
                     </div>
                 </label>
 
@@ -80,6 +82,8 @@
 </div>
 
 @code {
+    private bool _showPw;
+
     private string _returnUrl = "/";
     private string? _errorText;
     private string? _noticeText;

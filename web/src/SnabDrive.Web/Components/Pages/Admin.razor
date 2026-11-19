@@ -1,0 +1,83 @@
+@page "/admin"
+@attribute [Authorize]
+@using SnabDrive.Web.Services
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IRolePermissionService RolePerms
+
+<PageTitle>Администрирование — Снабдрайв</PageTitle>
+
+@if (!_ready)
+{
+    <p class="muted">Загрузка…</p>
+}
+else if (_sections.Count == 0)
+{
+    <div class="alert alert-info">Вашей роли не назначены административные разделы.</div>
+}
+else
+{
+    <div class="admin-page">
+        <div class="pill-tabs admin-page__tabs">
+            @foreach (var sec in _sections)
+            {
+                <button class="@(_tab == sec.Key ? "tab tab--active" : "tab")" @onclick="() => SetTab(sec.Key)">@sec.Label</button>
+            }
+        </div>
+
+        <div class="admin-page__body">
+            @if (_tab == "users") { <Users /> }
+            else if (_tab == "roles") { <Roles /> }
+            else if (_tab == "dictionaries") { <Dictionaries /> }
+            else if (_tab == "scheduler") { <KonturScheduler /> }
+            else if (_tab == "import") { <ImportRegistry /> }
+            else if (_tab == "maintenance") { <Maintenance /> }
+            else if (_tab == "audit") { <AuditPage /> }
+            else if (_tab == "stats") { <Stats /> }
+        </div>
+    </div>
+}
+
+@code {
+    private sealed record Section(string Key, string Label, string Feature);
+
+    /// <summary>Разделы страницы: ключ вкладки, заголовок и право, по которому вкладка видна.</summary>
+    private static readonly Section[] AllSections =
+    {
+        new("users", "Пользователи", AppFeatures.Users),
+        new("roles", "Роли", AppFeatures.Users),
+        new("dictionaries", "Справочники", AppFeatures.Dictionaries),
+        new("scheduler", "Планировщик", AppFeatures.Scheduler),
+        new("import", "Импорт реестра", AppFeatures.Users),
+        new("maintenance", "Очистка данных", AppFeatures.Users),
+        new("audit", "Журнал", AppFeatures.Audit),
+        new("stats", "Статистика", AppFeatures.Audit)
+    };
+
+    private List<Section> _sections = new();
+    private string _tab = "users";
+    private bool _ready;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var state = await AuthStateProvider.GetAuthenticationStateAsync();
+            var uid = state.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            var features = await RolePerms.GetEffectiveFeaturesAsync(uid ?? string.Empty);
+            _sections = AllSections.Where(sec => features.TryGetValue(sec.Feature, out var ok) && ok).ToList();
+            if (_sections.Count > 0 && _sections.All(x => x.Key != _tab))
+            {
+                _tab = _sections[0].Key;
+            }
+        }
+        catch
+        {
+            // при пререндере (F5) контекст авторизации/БД может быть недоступен —
+            // интерактивная цепь выполнит инициализацию повторно
+        }
+
+        _ready = true;
+    }
+
+    private void SetTab(string key) => _tab = key;
+}
