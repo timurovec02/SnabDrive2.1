@@ -1034,6 +1034,7 @@ public sealed class WorkflowService : IWorkflowService
         ".7z" => "application/x-7z-compressed",
         ".json" => "application/json",
         ".xml" => "application/xml",
+        ".html" or ".htm" => "text/html; charset=utf-8",
         _ => "application/octet-stream"
     };
 

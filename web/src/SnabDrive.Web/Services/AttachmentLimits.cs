@@ -24,15 +24,29 @@ public static class AttachmentLimits
     ///
     /// Намеренно НЕ разрешены: исполняемые файлы (.exe, .dll, .bat, .cmd, .scr, .msi, .ps1,
     /// .vbs, .js, .jar, .hta, .lnk, .reg), веб-сценарии (.asp, .aspx, .php, .jsp, .cgi)
-    /// и разметка (.html, .htm, .svg, .xml) — последние используются для хранения чужого
-    /// скрипта, который браузер выполнил бы при открытии файла с нашего домена.
+    /// и разметка (.svg, .xml) — они используются для хранения чужого скрипта.
+    ///
+    /// .html/.htm РАЗРЕШЕНЫ: страница открывается прямо в браузере, но строго в
+    /// «песочнице» (Content-Security-Policy: sandbox при отдаче) — HTML рендерится,
+    /// а скрипты не выполняются и доступа к сайту/куки у файла нет.
     /// </summary>
     public static readonly IReadOnlySet<string> AllowedExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {
         ".pdf", ".doc", ".docx", ".rtf", ".odt", ".xls", ".xlsx", ".ods", ".ppt", ".pptx", ".odp",
         ".csv", ".txt", ".json", ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tif", ".tiff", ".webp",
-        ".zip", ".rar", ".7z", ".msg", ".eml"
+        ".zip", ".rar", ".7z", ".msg", ".eml",
+        ".html", ".htm"
     };
+
+    /// <summary>
+    /// Разметка, которую браузер показывает как страницу. Отдаётся inline
+    /// и в песочнице (см. комментарий к AllowedExtensions).
+    /// </summary>
+    public static bool IsMarkupView(string fileName)
+    {
+        var extension = ExtensionOf(fileName);
+        return extension is ".html" or ".htm";
+    }
 
     /// <summary>Значение атрибута accept у InputFile — подсказка браузеру (проверка всё равно на сервере).</summary>
     public static string AcceptAttribute => string.Join(',', AllowedExtensions.OrderBy(x => x, StringComparer.Ordinal));

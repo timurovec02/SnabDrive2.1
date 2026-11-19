@@ -380,7 +380,7 @@ app.MapGet("/account/antiforgery-token", (IAntiforgery antiforgery, HttpContext 
 // Защищено глобальным FallbackPolicy (RequireAuthenticatedUser): cookie аутентификации приходит вместе с запросом.
 // Файл отдаётся потоково: раньше EF вычитывал всё содержимое в память (20 МБ на каждое
 // скачивание), из-за чего отдача больших вложений была заметно медленнее загрузки.
-app.MapGet("/attachments/{id:int}/{**name}", async (int id, CancellationToken ct, IDbContextFactory<RegistryDbContext> factory) =>
+app.MapGet("/attachments/{id:int}/{**name}", async (HttpContext ctx, int id, CancellationToken ct, IDbContextFactory<RegistryDbContext> factory) =>
 {
     // Контекс намеренно без using: при потоковой отдаче его закрывает DbBlobStream,
     // когда клиент докачает файл. На путях с ошибкой освобождаем явно.
@@ -419,8 +419,20 @@ app.MapGet("/attachments/{id:int}/{**name}", async (int id, CancellationToken ct
         }
 
         streamed = true;
+        var blob = new DbBlobStream(reader.GetStream(0), reader, command, db);
+
+        // .html/.htm: открываем прямо в браузере как страницу, но в «песочнице» —
+        // Content-Security-Policy: sandbox даёт рендеринг без скриптов и без доступа
+        // к сайту/куки, поэтому загруженная страница не может ничего украсть или сломать.
+        if (AttachmentLimits.IsMarkupView(meta.FileName))
+        {
+            ctx.Response.Headers["Content-Security-Policy"] = "sandbox";
+            ctx.Response.Headers["X-Content-Type-Options"] = "nosniff";
+            return Results.Stream(blob, "text/html; charset=utf-8", (string?)null);
+        }
+
         return Results.Stream(
-            new DbBlobStream(reader.GetStream(0), reader, command, db),
+            blob,
             string.IsNullOrWhiteSpace(meta.ContentType) ? "application/octet-stream" : meta.ContentType,
             meta.FileName);
     }

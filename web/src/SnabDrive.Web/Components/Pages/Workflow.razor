@@ -135,28 +135,48 @@ else
                             </span>
                         }
                     }
-                    <div class="wf-card-checks">
-                        <label class="wf-check" title="Звонить по закупке">
-                            <input type="checkbox" checked="@_edits[r.Id].IsCall" @onchange="ev => OnToggleCall(r.Id, ev)" />
-                            <span><Icon Name="phone" /> Звони</span>
-                        </label>
-                        <label class="wf-check" title="Работа по заявкам">
-                            <input type="checkbox" checked="@_edits[r.Id].IsByRequest" @onchange="ev => OnToggleByRequest(r.Id, ev)" />
-                            <span><Icon Name="inbox" /> По заявкам</span>
-                        </label>
-                        <label class="wf-check" title="Контракт проверен">
-                            <input type="checkbox" checked="@_edits[r.Id].IsContractChecked" @onchange="ev => OnToggleContractChecked(r.Id, ev)" />
-                            <span><Icon Name="check" /> Проверен</span>
-                        </label>
-                        <label class="wf-check" title="Заполнено в ЕИС">
-                            <input type="checkbox" checked="@_edits[r.Id].IsEisFilled" @onchange="ev => OnToggleEisFilled(r.Id, ev)" />
-                            <span><Icon Name="file" /> В ЕИС</span>
-                        </label>
-                        <label class="wf-check" style="@OverdueStyle(r.PaymentOverdue)" title="Оплата просрочена">
-                            <input type="checkbox" checked="@_edits[r.Id].PaymentOverdue" @onchange="ev => OnTogglePaymentOverdue(r.Id, ev)" />
-                            <span><Icon Name="warn" /> Просрочка</span>
-                        </label>
-                    </div>
+                    @* Чекбоксы — те же, что и раньше, только перенесены наверх к ссылке:
+                          каждый показывается строго на своём этапе. *@
+                    @if (_stage == 1 || _stage == 4 || _stage == 6 || _stage == 7 || _stage == 10 || _stage == 12)
+                    {
+                        <div class="wf-card-checks">
+                            @if (_stage == 12 || (_stage == 4 && _isDirector))
+                            {
+                                <label class="wf-check" style='@FieldStyle(r.Id, "IsCall")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "IsCall", ev)' @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true" title="Звонить по закупке">
+                                    <input type="checkbox" checked="@_edits[r.Id].IsCall" @onchange="ev => OnToggleCall(r.Id, ev)" />
+                                    <span><Icon Name="phone" /> Звони</span>
+                                </label>
+                            }
+                            @if (_stage == 1)
+                            {
+                                <label class="wf-check" style='@FieldStyle(r.Id, "IsByRequest")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "IsByRequest", ev)' @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true" title="Работа по заявкам">
+                                    <input type="checkbox" checked="@_edits[r.Id].IsByRequest" @onchange="ev => OnToggleByRequest(r.Id, ev)" />
+                                    <span><Icon Name="inbox" /> По заявкам</span>
+                                </label>
+                            }
+                            @if (_stage == 6)
+                            {
+                                <label class="wf-check" style='@FieldStyle(r.Id, "IsContractChecked")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "IsContractChecked", ev)' @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true" title="Контракт проверен">
+                                    <input type="checkbox" checked="@_edits[r.Id].IsContractChecked" @onchange="ev => OnToggleContractChecked(r.Id, ev)" />
+                                    <span><Icon Name="check" /> Проверен</span>
+                                </label>
+                            }
+                            @if (_stage == 7)
+                            {
+                                <label class="wf-check" style='@FieldStyle(r.Id, "IsEisFilled")' @oncontextmenu='ev => OpenFieldMenu(r.Id, "IsEisFilled", ev)' @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true" title="Заполнено в ЕИС">
+                                    <input type="checkbox" checked="@_edits[r.Id].IsEisFilled" @onchange="ev => OnToggleEisFilled(r.Id, ev)" />
+                                    <span><Icon Name="file" /> Заполнить в ЕИС</span>
+                                </label>
+                            }
+                            @if (_stage == 10)
+                            {
+                                <label class="wf-check" style="@OverdueStyle(r.PaymentOverdue)" title="Оплата просрочена">
+                                    <input type="checkbox" checked="@_edits[r.Id].PaymentOverdue" @onchange="ev => OnTogglePaymentOverdue(r.Id, ev)" />
+                                    <span><Icon Name="warn" /> Оплата просрочена</span>
+                                </label>
+                            }
+                        </div>
+                    }
                 </div>
 
                 @* ===== Вложения и ссылки — вверху на всех этапах ===== *@
