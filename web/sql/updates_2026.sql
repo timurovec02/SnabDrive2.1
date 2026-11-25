@@ -419,8 +419,27 @@ IF NOT EXISTS (SELECT 1 FROM dbo.PasswordPolicies WHERE Id = 1)
 GO
 
 -- ===== Права стадий воркфлоу: «только чтение» для роли и личные права пользователя (2026-09) =====
-IF COL_LENGTH('dbo.RolePermissions', 'ReadOnlyStagesJson') IS NULL
+-- Блок самодостаточен: таблицу создаём, если её ещё нет (role_permissions.sql могли
+-- не выполнить), затем добавляем колонку старым базам.
+IF OBJECT_ID(N'dbo.RolePermissions', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.RolePermissions
+    (
+        RoleName           NVARCHAR(64)  NOT NULL,
+        FeaturesJson       NVARCHAR(MAX) NOT NULL CONSTRAINT DF_RolePermissions_Features DEFAULT (N'{}'),
+        ColumnsJson        NVARCHAR(MAX) NULL,
+        StagesJson         NVARCHAR(MAX) NULL,
+        ReadOnlyStagesJson NVARCHAR(MAX) NULL,
+        UpdatedAtUtc       DATETIME2     NOT NULL CONSTRAINT DF_RolePermissions_Updated DEFAULT (SYSUTCDATETIME()),
+        CONSTRAINT PK_RolePermissions PRIMARY KEY (RoleName)
+    );
+    PRINT 'Таблица [RolePermissions] создана.';
+END
+ELSE IF COL_LENGTH('dbo.RolePermissions', 'ReadOnlyStagesJson') IS NULL
+BEGIN
     ALTER TABLE [dbo].[RolePermissions] ADD [ReadOnlyStagesJson] NVARCHAR(MAX) NULL;
+    PRINT '[RolePermissions].[ReadOnlyStagesJson] добавлен.';
+END
 GO
 
 IF COL_LENGTH('dbo.AspNetUsers', 'StageAccessJson') IS NULL

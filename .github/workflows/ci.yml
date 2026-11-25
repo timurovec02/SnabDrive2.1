@@ -72,6 +72,7 @@ jobs:
           mkdir -p diag
           cp /tmp/snab-app.log diag/app.log 2>/dev/null || true
           cp /tmp/snab-page.html diag/page.html 2>/dev/null || true
+          cp /tmp/sqlcmd.log diag/sqlcmd.log 2>/dev/null || true
           docker logs sql1 > diag/sql1.log 2>&1 || true
           docker logs sqltools > diag/sqltools.log 2>&1 || true
 

@@ -66,9 +66,23 @@ done
 [ -n "$sql_ok" ] || { docker logs sql1 2>&1 | tail -20 >&2 || true; fail "SQL Server не поднялся за 120 с"; }
 
 # ---------------------------------------------------------------- Схема
+# Полная установка: базовый скрипт + веб-таблицы (права ролей, Контур, воркфлоу)
+# + инкременты updates_2026.sql. Каждый скрипт идемпотентен.
 note "Схема базы"
-sqlq -b -i /work/web/sql/create_SnabDriveDB.sql || fail "create_SnabDriveDB.sql не применился"
-sqlq -b -i /work/web/sql/updates_2026.sql || fail "updates_2026.sql не применился"
+: > /tmp/sqlcmd.log
+apply_sql() {
+    local file=$1
+    echo "--- $file ---" | tee -a /tmp/sqlcmd.log
+    if ! sqlq -b -i "/work/web/sql/$file" >>/tmp/sqlcmd.log 2>&1; then
+        tail -25 /tmp/sqlcmd.log >&2 || true
+        fail "$file не применился"
+    fi
+}
+apply_sql create_SnabDriveDB.sql
+apply_sql role_permissions.sql
+apply_sql kontur.sql
+apply_sql workflow.sql
+apply_sql updates_2026.sql
 
 # ---------------------------------------------------------------- Пользователь без прав
 # Оператор — роль без административных вкладок: нужен для негативных проверок.

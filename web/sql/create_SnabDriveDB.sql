@@ -435,7 +435,10 @@ IF NOT EXISTS (SELECT 1 FROM dbo.PasswordPolicies WHERE Id = 1)
 GO
 
 -- ===== Права стадий воркфлоу: «только чтение» для роли и личные права пользователя (2026-09) =====
-IF COL_LENGTH('dbo.RolePermissions', 'ReadOnlyStagesJson') IS NULL
+-- Таблица RolePermissions создаётся скриптом role_permissions.sql: если его ещё не
+-- выполняли — блок аккуратно пропускает ALTER (иначе свежая установка падает на
+-- несуществующей таблице). Полная копия блока есть в updates_2026.sql.
+IF OBJECT_ID(N'dbo.RolePermissions', N'U') IS NOT NULL AND COL_LENGTH('dbo.RolePermissions', 'ReadOnlyStagesJson') IS NULL
     ALTER TABLE [dbo].[RolePermissions] ADD [ReadOnlyStagesJson] NVARCHAR(MAX) NULL;
 GO
 

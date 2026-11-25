@@ -18,6 +18,7 @@ BEGIN
         FeaturesJson nvarchar(max) NOT NULL CONSTRAINT DF_RolePermissions_Features DEFAULT (N'{}'),
         ColumnsJson  nvarchar(max) NULL,
         StagesJson   nvarchar(max) NULL,
+        ReadOnlyStagesJson nvarchar(max) NULL,
         UpdatedAtUtc datetime2(7)  NOT NULL CONSTRAINT DF_RolePermissions_Updated DEFAULT (SYSUTCDATETIME()),
         CONSTRAINT PK_RolePermissions PRIMARY KEY (RoleName)
     );
@@ -32,5 +33,12 @@ IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE Name='StagesJson' AND Object_ID=O
 BEGIN
     ALTER TABLE dbo.RolePermissions ADD StagesJson nvarchar(max) NULL;
     PRINT 'Колонка [StagesJson] добавлена в [RolePermissions].';
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE Name='ReadOnlyStagesJson' AND Object_ID=OBJECT_ID(N'dbo.RolePermissions'))
+BEGIN
+    ALTER TABLE dbo.RolePermissions ADD ReadOnlyStagesJson nvarchar(max) NULL;
+    PRINT 'Колонка [ReadOnlyStagesJson] добавлена в [RolePermissions].';
 END
 GO
