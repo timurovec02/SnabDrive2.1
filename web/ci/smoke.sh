@@ -143,8 +143,11 @@ using Microsoft.AspNetCore.Identity;
 var hasher = new PasswordHasher<object>();
 Console.WriteLine(hasher.HashPassword(new object(), args[0]));
 EOF
-HASH=$(dotnet run --project /tmp/hashgen -c Release -- "$PROBE_PASSWORD" 2>/dev/null | tail -1)
-[ -n "$HASH" ] || fail "не удалось сгенерировать хэш пароля"
+if ! HASH=$(dotnet run --project /tmp/hashgen -c Release -- "$PROBE_PASSWORD" 2>/tmp/hashgen/err.log | tail -1) || [ -z "$HASH" ]; then
+    tail -20 /tmp/hashgen/err.log >&2 || true
+    echo "::error::hashgen: $(tail -6 /tmp/hashgen/err.log | tr '\n' ' ' | tr '\r' ' ' | cut -c1-600)"
+    fail "не удалось сгенерировать хэш пароля"
+fi
 sqlq -b -Q "USE [snabdrive_db];
 DECLARE @rid NVARCHAR(450) = (SELECT TOP 1 Id FROM dbo.AspNetRoles WHERE NormalizedName = N'OPERATOR');
 IF @rid IS NULL RAISERROR('нет роли OPERATOR (bootstrap не создал роли)', 16, 1);
