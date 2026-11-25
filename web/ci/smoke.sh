@@ -132,6 +132,8 @@ cat > /tmp/hashgen/hashgen.csproj <<'EOF'
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Identity.Core" Version="9.0.22" />
@@ -141,11 +143,11 @@ EOF
 cat > /tmp/hashgen/Program.cs <<'EOF'
 using Microsoft.AspNetCore.Identity;
 var hasher = new PasswordHasher<object>();
-Console.WriteLine(hasher.HashPassword(new object(), args[0]));
+System.Console.WriteLine(hasher.HashPassword(new object(), args.Length > 0 ? args[0] : "x"));
 EOF
 if ! HASH=$(dotnet run --project /tmp/hashgen -c Release -- "$PROBE_PASSWORD" 2>/tmp/hashgen/err.log | tail -1) || [ -z "$HASH" ]; then
     tail -20 /tmp/hashgen/err.log >&2 || true
-    echo "::error::hashgen: $(tail -6 /tmp/hashgen/err.log | tr '\n' ' ' | tr '\r' ' ' | cut -c1-600)"
+    echo "::error::hashgen: $(grep -i 'error\|NU1' /tmp/hashgen/err.log | head -4 | tr '\n' ' ' | tr '\r' ' ' | cut -c1-600)"
     fail "не удалось сгенерировать хэш пароля"
 fi
 sqlq -b -Q "USE [snabdrive_db];
