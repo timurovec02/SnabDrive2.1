@@ -103,7 +103,9 @@ BEGIN
             REFERENCES dbo.ExecutionStatuses (ID)
     );
 
-    CREATE INDEX IX_Regedit_Customer    ON dbo.RegistryItems (Customer);
+    -- IX_Regedit_Customer НЕ создаётся: Customer — NVARCHAR(MAX), а индекс-ключом
+    -- MAX-колонка быть не может (Msg 1919). Поиск идёт по LIKE '%…%' — индекс
+    -- всё равно не помог бы. В боевой базе этого индекса нет.
     CREATE INDEX IX_Regedit_BiddingDate ON dbo.RegistryItems (BiddingDate);
 END
 GO
