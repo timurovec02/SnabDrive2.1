@@ -5,6 +5,8 @@
 #   3) вход администратором и проверка ВСЕХ страниц;
 #   4) негативные проверки: анонимус без входа и пользователь без прав.
 # Запускается из .github/workflows/ci.yml (job «smoke»).
+# Диагностика: сообщения уходят в annotations (::error::) и GITHUB_STEP_SUMMARY,
+# логи приложения/SQL выгружаются артефактом smoke-diagnostics.
 set -euo pipefail
 
 SA_PASSWORD="${SA_PASSWORD:?SA_PASSWORD is required}"
@@ -16,38 +18,41 @@ WORK="${GITHUB_WORKSPACE:-$(cd "$(dirname "$0")/../.." && pwd)}"
 JAR=/tmp/snab-cookies.txt
 PAGE=/tmp/snab-page.html
 
+note() { echo "=== $1 ==="; }
+
 fail() {
     echo "FAIL: $1" >&2
+    echo "::error::smoke: $1"
+    if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+        echo "### ❌ Дымовой прогон: $1" >> "$GITHUB_STEP_SUMMARY"
+    fi
     echo "--- последние строки лога приложения ---" >&2
     tail -30 /tmp/snab-app.log >&2 2>/dev/null || true
     exit 1
 }
 
+# Любая необработанная ошибка тоже попадёт в annotations.
+trap 'echo "::error::smoke: необработанная ошибка, строка $LINENO"; exit 1' ERR
+
 # ---------------------------------------------------------------- SQL Server
-echo "=== SQL Server ==="
-docker rm -f sql1 >/dev/null 2>&1 || true
-docker run -d --name sql1 \
+note "SQL Server"
+docker rm -f sql1 sqltools >/dev/null 2>&1 || true
+docker network create ci-net >/dev/null 2>&1 || true
+docker run -d --name sql1 --network ci-net \
     -e ACCEPT_EULA=Y -e MSSQL_SA_PASSWORD="$SA_PASSWORD" \
     -p 1433:1433 -v "$WORK:/work:ro" \
     mcr.microsoft.com/mssql/server:2022-latest >/dev/null
 
-SQLCMD_BIN=""
-for bin in /opt/mssql-tools18/bin/sqlcmd /opt/mssql-tools/bin/sqlcmd; do
-    if docker exec sql1 test -x "$bin" >/dev/null 2>&1; then
-        SQLCMD_BIN=$bin
-        break
-    fi
-done
-[ -n "$SQLCMD_BIN" ] || fail "sqlcmd не найден в образе mssql"
-TRUST=""
-case "$SQLCMD_BIN" in
-    *tools18*) TRUST="-C" ;;
-esac
-
-sqlq() {
-    # shellcheck disable=SC2086
-    docker exec sql1 "$SQLCMD_BIN" $TRUST -S localhost -U sa -P "$SA_PASSWORD" "$@"
-}
+# sqlcmd: сначала ищем внутри образа сервера, иначе — отдельный образ mssql-tools.
+if docker exec sql1 test -x /opt/mssql-tools18/bin/sqlcmd >/dev/null 2>&1; then
+    sqlq() { docker exec sql1 /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P "$SA_PASSWORD" "$@"; }
+elif docker exec sql1 test -x /opt/mssql-tools/bin/sqlcmd >/dev/null 2>&1; then
+    sqlq() { docker exec sql1 /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "$SA_PASSWORD" "$@"; }
+else
+    docker run -d --name sqltools --network ci-net -v "$WORK:/work:ro" \
+        --entrypoint sleep mcr.microsoft.com/mssql-tools infinity >/dev/null
+    sqlq() { docker exec sqltools /opt/mssql-tools/bin/sqlcmd -S sql1 -U sa -P "$SA_PASSWORD" "$@"; }
+fi
 
 echo "Ожидание готовности SQL (до 120 с)…"
 sql_ok=""
@@ -58,20 +63,17 @@ for _ in $(seq 1 60); do
     fi
     sleep 2
 done
-if [ -z "$sql_ok" ]; then
-    docker logs sql1 2>&1 | tail -20 >&2 || true
-    fail "SQL Server не поднялся за 120 с"
-fi
+[ -n "$sql_ok" ] || { docker logs sql1 2>&1 | tail -20 >&2 || true; fail "SQL Server не поднялся за 120 с"; }
 
 # ---------------------------------------------------------------- Схема
-echo "=== Схема базы ==="
-sqlq -b -i /work/web/sql/create_SnabDriveDB.sql || fail "create_SnabDriveDB.sql"
-sqlq -b -i /work/web/sql/updates_2026.sql || fail "updates_2026.sql"
+note "Схема базы"
+sqlq -b -i /work/web/sql/create_SnabDriveDB.sql || fail "create_SnabDriveDB.sql не применился"
+sqlq -b -i /work/web/sql/updates_2026.sql || fail "updates_2026.sql не применился"
 
 # ---------------------------------------------------------------- Пользователь без прав
 # Оператор — роль без административных вкладок: нужен для негативных проверок.
 # Пароль хэшируется в формате ASP.NET Identity V3 (PBKDF2-SHA256).
-echo "=== Тестовый пользователь без прав (ci_probe / Operator) ==="
+note "Тестовый пользователь без прав (ci_probe / Operator)"
 HASH=$(python3 - "$PROBE_PASSWORD" <<'PY'
 import base64, hashlib, os, struct, sys
 pwd = sys.argv[1].encode()
@@ -94,10 +96,10 @@ BEGIN
     VALUES (N'ci-probe-1', N'ci_probe', N'CI_PROBE', N'ci_probe@ci.local', N'CI_PROBE@CI.LOCAL',
         1, N'$HASH', CONVERT(NVARCHAR(36), NEWID()), CONVERT(NVARCHAR(36), NEWID()), 0, 0, 1, 0);
     INSERT INTO dbo.AspNetUserRoles (UserId, RoleId) VALUES (N'ci-probe-1', @rid);
-END" || fail "создание ci_probe"
+END" || fail "не удалось создать ci_probe"
 
 # ---------------------------------------------------------------- Запуск сайта
-echo "=== Запуск сайта ==="
+note "Запуск сайта"
 export ConnectionStrings__Registry="Server=localhost,1433;Database=snabdrive_db;User Id=sa;Password=$SA_PASSWORD;Encrypt=True;TrustServerCertificate=True;MultipleActiveResultSets=True"
 export Database__AutoMigrateIdentitySchema=false
 export Database__SeedRolesAndAdmin=true
@@ -110,6 +112,7 @@ export ASPNETCORE_URLS="http://0.0.0.0:$PORT"
 dotnet publish/SnabDrive.Web.dll >/tmp/snab-app.log 2>&1 &
 APP_PID=$!
 trap 'kill "$APP_PID" 2>/dev/null || true' EXIT
+trap 'echo "::error::smoke: необработанная ошибка, строка $LINENO"; exit 1' ERR
 
 app_up=""
 for _ in $(seq 1 60); do
@@ -123,9 +126,9 @@ done
 [ -n "$app_up" ] || fail "сайт не ответил на /login за 120 с"
 
 # ---------------------------------------------------------------- Анонимус
-echo "=== Анонимус: страницы закрыты ==="
+note "Анонимус: страницы закрыты"
 for p in /registry /users /admin /workflow; do
-    code=$(curl -s -o /dev/null -w "%{http_code}" "$APP_URL$p")
+    code=$(curl -s -o /dev/null -w "%{http_code}" "$APP_URL$p") || true
     case "$code" in
         302|401) echo "OK   $p → $code" ;;
         *) fail "аноним видит $p (HTTP $code)" ;;
@@ -152,8 +155,8 @@ login_as() {
 }
 
 # ---------------------------------------------------------------- Вход администратором
-echo "=== Вход администратором ==="
-resp=$(login_as admin "$SEED_PASSWORD")
+note "Вход администратором"
+resp=$(login_as admin "$SEED_PASSWORD") || fail "запрос входа админа не прошёл"
 code=${resp%% *}
 loc=${resp#* }
 case "$loc" in
@@ -181,7 +184,7 @@ esac
 check_page() {
     local path=$1
     local code
-    code=$(curl -s -b "$JAR" -c "$JAR" -o "$PAGE" -w "%{http_code}" "$APP_URL$path")
+    code=$(curl -s -b "$JAR" -c "$JAR" -o "$PAGE" -w "%{http_code}" "$APP_URL$path") || true
     [ "$code" = "200" ] || fail "$path → HTTP $code"
     if grep -q "Нет доступа к этой вкладке" "$PAGE"; then
         fail "$path → админ заблокирован"
@@ -189,7 +192,7 @@ check_page() {
     echo "OK   $path"
 }
 
-echo "=== Страницы (админ) ==="
+note "Страницы (админ)"
 for p in / /registry /archive /workflow /kontur /kontur-templates /kontur-scheduler \
          /director /dictionaries /audit /stats /users /roles /import-registry \
          /maintenance /admin; do
@@ -197,8 +200,8 @@ for p in / /registry /archive /workflow /kontur /kontur-templates /kontur-schedu
 done
 
 # ---------------------------------------------------------------- Негативные проверки
-echo "=== Пользователь без прав (ci_probe / Operator) ==="
-resp=$(login_as ci_probe "$PROBE_PASSWORD")
+note "Пользователь без прав (ci_probe / Operator)"
+resp=$(login_as ci_probe "$PROBE_PASSWORD") || fail "запрос входа ci_probe не прошёл"
 code=${resp%% *}
 loc=${resp#* }
 case "$loc" in
@@ -207,20 +210,24 @@ case "$loc" in
 esac
 
 # Дыра закрыта: скрытая в меню вкладка не открывается и прямой ссылкой.
-code=$(curl -s -b "$JAR" -c "$JAR" -o "$PAGE" -w "%{http_code}" "$APP_URL/kontur-scheduler")
+code=$(curl -s -b "$JAR" -c "$JAR" -o "$PAGE" -w "%{http_code}" "$APP_URL/kontur-scheduler") || true
 [ "$code" = "200" ] || fail "ci_probe /kontur-scheduler → HTTP $code"
 grep -q "Нет доступа к этой вкладке" "$PAGE" || fail "ДЫРА: ci_probe видит «Планировщик Контура»"
+echo "OK   /kontur-scheduler закрыт"
 
-code=$(curl -s -b "$JAR" -c "$JAR" -o "$PAGE" -w "%{http_code}" "$APP_URL/users")
+code=$(curl -s -b "$JAR" -c "$JAR" -o "$PAGE" -w "%{http_code}" "$APP_URL/users") || true
 if [ "$code" = "200" ] && grep -q "Политика паролей" "$PAGE"; then
     fail "ДЫРА: ci_probe видит страницу «Пользователи»"
 fi
 echo "OK   /users закрыт политикой"
 
 # А вот реестр — единственная вкладка оператора — должен открываться.
-code=$(curl -s -b "$JAR" -c "$JAR" -o "$PAGE" -w "%{http_code}" "$APP_URL/registry")
+code=$(curl -s -b "$JAR" -c "$JAR" -o "$PAGE" -w "%{http_code}" "$APP_URL/registry") || true
 [ "$code" = "200" ] || fail "ci_probe /registry → HTTP $code"
 grep -q "Нет доступа к этой вкладке" "$PAGE" && fail "реестр должен быть доступен оператору"
 echo "OK   /registry доступен"
 
-echo "=== ВСЕ ПРОВЕРКИ ПРОЙДЕНЫ ==="
+if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+    echo "### ✅ Дымовой прогон: все проверки пройдены" >> "$GITHUB_STEP_SUMMARY"
+fi
+note "ВСЕ ПРОВЕРКИ ПРОЙДЕНЫ"

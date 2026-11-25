@@ -65,3 +65,20 @@ jobs:
           SEED_PASSWORD: 'Ci#Seed-2026-Pw'
           PROBE_PASSWORD: 'Ci#Probe-2026-Pw'
           PORT: '5088'
+
+      - name: Сборка диагностики
+        if: always()
+        run: |
+          mkdir -p diag
+          cp /tmp/snab-app.log diag/app.log 2>/dev/null || true
+          cp /tmp/snab-page.html diag/page.html 2>/dev/null || true
+          docker logs sql1 > diag/sql1.log 2>&1 || true
+          docker logs sqltools > diag/sqltools.log 2>&1 || true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smoke-diagnostics
+          path: diag
+          if-no-files-found: ignore
+          retention-days: 7
