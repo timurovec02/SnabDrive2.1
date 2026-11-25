@@ -26,6 +26,11 @@ BEGIN
 END
 GO
 
+-- Отфильтрованные индексы (ниже) требуют SET QUOTED_IDENTIFIER ON; в SSMS он включён
+-- по умолчанию, а sqlcmd — нет, поэтому включаем явно.
+SET QUOTED_IDENTIFIER ON;
+GO
+
 USE [snabdrive_db];
 GO
 

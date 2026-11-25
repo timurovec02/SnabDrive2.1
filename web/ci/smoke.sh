@@ -45,13 +45,13 @@ docker run -d --name sql1 --network ci-net \
 
 # sqlcmd: сначала ищем внутри образа сервера, иначе — отдельный образ mssql-tools.
 if docker exec sql1 test -x /opt/mssql-tools18/bin/sqlcmd >/dev/null 2>&1; then
-    sqlq() { docker exec sql1 /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P "$SA_PASSWORD" "$@"; }
+    sqlq() { docker exec sql1 /opt/mssql-tools18/bin/sqlcmd -C -I -S localhost -U sa -P "$SA_PASSWORD" "$@"; }
 elif docker exec sql1 test -x /opt/mssql-tools/bin/sqlcmd >/dev/null 2>&1; then
-    sqlq() { docker exec sql1 /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "$SA_PASSWORD" "$@"; }
+    sqlq() { docker exec sql1 /opt/mssql-tools/bin/sqlcmd -I -S localhost -U sa -P "$SA_PASSWORD" "$@"; }
 else
     docker run -d --name sqltools --network ci-net -v "$WORK:/work:ro" \
         --entrypoint sleep mcr.microsoft.com/mssql-tools infinity >/dev/null
-    sqlq() { docker exec sqltools /opt/mssql-tools/bin/sqlcmd -S sql1 -U sa -P "$SA_PASSWORD" "$@"; }
+    sqlq() { docker exec sqltools /opt/mssql-tools/bin/sqlcmd -I -S sql1 -U sa -P "$SA_PASSWORD" "$@"; }
 fi
 
 echo "Ожидание готовности SQL (до 120 с)…"
