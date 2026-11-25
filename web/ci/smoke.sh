@@ -197,11 +197,11 @@ case "$loc" in
             --data-urlencode "__RequestVerificationToken=$token" \
             "$APP_URL/account/change-password")
         case "${resp2#* }" in
-            "$APP_URL"*) echo "OK   смена пароля" ;;
+            "$APP_URL/"|"") echo "OK   смена пароля" ;;
             *) fail "смена пароля: $resp2" ;;
         esac
         ;;
-    "$APP_URL"*) echo "OK   вход без смены пароля" ;;
+    "$APP_URL/"|"") [ "$code" = "302" ] || fail "логин админа: HTTP $code без redirect"; echo "OK   вход без смены пароля" ;;
     *) fail "логин админа: HTTP $code, redirect '$loc'" ;;
 esac
 
@@ -229,9 +229,14 @@ resp=$(login_as ci_probe "$PROBE_PASSWORD") || fail "запрос входа ci_
 code=${resp%% *}
 loc=${resp#* }
 case "$loc" in
-    "$APP_URL"*) echo "OK   вход ci_probe" ;;
-    *) fail "логин ci_probe: HTTP $code, redirect '$loc'" ;;
+    "$APP_URL/"|"") [ "$code" = "302" ] || fail "логин ci_probe: HTTP $code без redirect"; echo "OK   вход ci_probe" ;;
+    *) fail "логин ci_probe: HTTP $code, redirect '$loc' (вход не прошёл)" ;;
 esac
+
+# Контроль: сессия ci_probe действительно авторизована (иначе дальше тесты бессмысленны).
+code=$(curl -s -b "$JAR" -c "$JAR" -o "$PAGE" -w "%{http_code}" "$APP_URL/registry") || true
+[ "$code" = "200" ] || fail "ci_probe не авторизован: /registry → HTTP $code"
+echo "OK   сессия ci_probe авторизована"
 
 # Дыра закрыта: скрытая в меню вкладка не открывается и прямой ссылкой.
 code=$(curl -s -b "$JAR" -c "$JAR" -o "$PAGE" -w "%{http_code}" "$APP_URL/kontur-scheduler") || true
