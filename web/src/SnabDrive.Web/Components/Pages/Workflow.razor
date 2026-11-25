@@ -1181,10 +1181,10 @@ else
         if (!string.IsNullOrWhiteSpace(_fB2B) && !string.Equals(r.B2BStatusName, _fB2B.Trim(), StringComparison.OrdinalIgnoreCase)) return false;
         if (!string.IsNullOrWhiteSpace(_fContract) && int.TryParse(_fContract, out var cs) && r.ContractStatusId != cs) return false;
         if (!string.IsNullOrWhiteSpace(_fPrio) && int.TryParse(_fPrio, out var pr) && r.Priority != pr) return false;
-        if (DateTime.TryParse(_fBiddingFrom, out var bf) && (r.BiddingDate is null || r.BiddingDate.Value.Date < bf.Date)) return false;
-        if (DateTime.TryParse(_fBiddingTo, out var bt) && (r.BiddingDate is null || r.BiddingDate.Value.Date > bt.Date)) return false;
-        if (DateTime.TryParse(_fAppFrom, out var af) && (r.ApplicationEndDate is null || r.ApplicationEndDate.Value.Date < af.Date)) return false;
-        if (DateTime.TryParse(_fAppTo, out var at) && (r.ApplicationEndDate is null || r.ApplicationEndDate.Value.Date > at.Date)) return false;
+        if (_fBiddingFrom is DateTime bf && (r.BiddingDate is null || r.BiddingDate.Value.Date < bf.Date)) return false;
+        if (_fBiddingTo is DateTime bt && (r.BiddingDate is null || r.BiddingDate.Value.Date > bt.Date)) return false;
+        if (_fAppFrom is DateTime af && (r.ApplicationEndDate is null || r.ApplicationEndDate.Value.Date < af.Date)) return false;
+        if (_fAppTo is DateTime at && (r.ApplicationEndDate is null || r.ApplicationEndDate.Value.Date > at.Date)) return false;
         if (_fOnlyEis && string.IsNullOrWhiteSpace(r.EisLink)) return false;
         if (_fWithAtt && string.IsNullOrWhiteSpace(r.Attachments)) return false;
         if (_fCall && !r.IsCall) return false;
@@ -1201,10 +1201,15 @@ else
     private int ActiveFilterCount()
     {
         var n = 0;
-        foreach (var v in new[] { _fName, _fCustomer, _fNumber, _fBranch, _fType, _fB2B, _fContract, _fPrio, _fBiddingFrom, _fBiddingTo, _fAppFrom, _fAppTo })
+        foreach (var v in new[] { _fName, _fCustomer, _fNumber, _fBranch, _fType, _fB2B, _fContract, _fPrio })
         {
             if (!string.IsNullOrWhiteSpace(v)) n++;
         }
+
+        if (_fBiddingFrom is not null) n++;
+        if (_fBiddingTo is not null) n++;
+        if (_fAppFrom is not null) n++;
+        if (_fAppTo is not null) n++;
 
         if (_fOnlyEis) n++;
         if (_fWithAtt) n++;
@@ -1220,7 +1225,7 @@ else
     {
         _fName = _fCustomer = _fNumber = _fBranch = string.Empty;
         _fType = _fB2B = _fContract = _fPrio = string.Empty;
-        _fBiddingFrom = _fBiddingTo = _fAppFrom = _fAppTo = string.Empty;
+        _fBiddingFrom = _fBiddingTo = _fAppFrom = _fAppTo = null;
         _fOnlyEis = _fWithAtt = _fCall = _fByReq = _fChecked = _fEisFilled = _fOverdue = false;
         _sortBy = "priority";
         _sortDesc = true;
@@ -1629,10 +1634,10 @@ else
     private string _fB2B = "";
     private string _fContract = "";
     private string _fPrio = "";
-    private string _fBiddingFrom = "";
-    private string _fBiddingTo = "";
-    private string _fAppFrom = "";
-    private string _fAppTo = "";
+    private DateTime? _fBiddingFrom;
+    private DateTime? _fBiddingTo;
+    private DateTime? _fAppFrom;
+    private DateTime? _fAppTo;
     private bool _fOnlyEis;
     private bool _fWithAtt;
     private bool _fCall;
