@@ -70,7 +70,6 @@ done
 # + инкременты updates_2026.sql. Каждый скрипт идемпотентен.
 note "Схема базы"
 : > /tmp/sqlcmd.log
-echo "::notice::sqlcmd ветка недоступна — проверяю наличие файлов"
 if ! docker exec sql1 test -f /work/web/sql/create_SnabDriveDB.sql >/dev/null 2>&1 && \
    ! docker exec sqltools test -f /work/web/sql/create_SnabDriveDB.sql >/dev/null 2>&1; then
     fail "файл /work/web/sql/create_SnabDriveDB.sql не виден внутри контейнера (монтирование)"
