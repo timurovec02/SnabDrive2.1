@@ -70,11 +70,20 @@ done
 # + инкременты updates_2026.sql. Каждый скрипт идемпотентен.
 note "Схема базы"
 : > /tmp/sqlcmd.log
+echo "::notice::sqlcmd ветка недоступна — проверяю наличие файлов"
+if ! docker exec sql1 test -f /work/web/sql/create_SnabDriveDB.sql >/dev/null 2>&1 && \
+   ! docker exec sqltools test -f /work/web/sql/create_SnabDriveDB.sql >/dev/null 2>&1; then
+    fail "файл /work/web/sql/create_SnabDriveDB.sql не виден внутри контейнера (монтирование)"
+fi
 apply_sql() {
     local file=$1
     echo "--- $file ---" | tee -a /tmp/sqlcmd.log
     if ! sqlq -b -i "/work/web/sql/$file" >>/tmp/sqlcmd.log 2>&1; then
         tail -25 /tmp/sqlcmd.log >&2 || true
+        # Последние строки ошибки — прямо в аннотации (единственный канал диагностики).
+        local brief
+        brief=$(tail -8 /tmp/sqlcmd.log | tr '\n' ' ' | tr '\r' ' ' | cut -c1-700)
+        echo "::error::sqlcmd/$file: $brief"
         fail "$file не применился"
     fi
 }
