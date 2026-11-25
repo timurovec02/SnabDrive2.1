@@ -1,0 +1,67 @@
+# CI SnabDrive.Web: сборка + дымовой прогон с настоящим SQL Server.
+# Запускается на каждый push (main, arena/**) и вручную (workflow_dispatch).
+# Job «smoke» поднимает mssql в docker, накатывает схему из web/sql,
+# запускает сайт и проверяет вход/вкладки/права скриптом web/ci/smoke.sh.
+name: CI
+
+on:
+  push:
+    branches: [main, 'arena/**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Сборка
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Restore
+        run: dotnet restore web/SnabDrive.Web.sln
+
+      - name: Build
+        run: dotnet build web/SnabDrive.Web.sln -c Release --no-restore
+
+      - name: Publish
+        run: dotnet publish web/src/SnabDrive.Web/SnabDrive.Web.csproj -c Release -o "${{ github.workspace }}/publish" --no-build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-publish
+          path: publish
+          retention-days: 7
+
+  smoke:
+    name: Дымовой прогон (SQL Server + страницы)
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: web-publish
+          path: publish
+
+      - name: Запуск сайта и проверка страниц
+        run: bash web/ci/smoke.sh
+        env:
+          SA_PASSWORD: 'Ci$Smoke-2026!'
+          SEED_PASSWORD: 'Ci#Seed-2026-Pw'
+          PROBE_PASSWORD: 'Ci#Probe-2026-Pw'
+          PORT: '5088'

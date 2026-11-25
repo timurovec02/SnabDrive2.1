@@ -65,9 +65,11 @@ else
             var uid = state.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
             var features = await RolePerms.GetEffectiveFeaturesAsync(uid ?? string.Empty);
             _sections = AllSections.Where(sec => features.TryGetValue(sec.Feature, out var ok) && ok).ToList();
-            if (_sections.Count > 0 && _sections.All(x => x.Key != _tab))
+            // Вкладка подтверждается строго по разрешённым: иных путей выбрать
+            // раздел, которого у пользователя нет, у страницы нет.
+            if (_sections.All(x => x.Key != _tab))
             {
-                _tab = _sections[0].Key;
+                _tab = _sections.Count > 0 ? _sections[0].Key : string.Empty;
             }
         }
         catch

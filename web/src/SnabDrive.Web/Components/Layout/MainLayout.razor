@@ -55,7 +55,21 @@
         <NavMenu Collapsed="_navCollapsed" Features="_features" />
 
         <main class="app-main">
-            @Body
+            @* Центральная проверка доступа к вкладкам: скрытая в меню вкладка
+               не должна открываться и прямой ссылкой. *@
+            @if (_routeBlocked)
+            {
+                <div class="page" style="padding:32px 20px">
+                    <div class="card" style="max-width:560px">
+                        <h2 style="margin:0 0 8px;font-size:18px">Нет доступа к этой вкладке</h2>
+                        <p class="muted" style="margin:0">Раздел «@_blockedTitle» выключен для вашей учётной записи. Обратитесь к администратору, чтобы включить вкладку в правах доступа.</p>
+                    </div>
+                </div>
+            }
+            else
+            {
+                @Body
+            }
         </main>
     </div>
 </div>
@@ -73,6 +87,60 @@
     private Dictionary<string, bool> _features = new();
     private bool _exportRunning;
     private bool _schedulerHooked;
+    private bool _routeBlocked;
+    private string _blockedTitle = string.Empty;
+
+    /// <summary>Маршрут → вкладка (ключ AppFeatures) → заголовок. Проверка идёт центрально,
+    /// чтобы доступ к вкладке соблюдался и при прямом переходе по ссылке.</summary>
+    private static readonly (string Path, string Feature, string Title)[] FeatureRoutes =
+    {
+        ("/", SnabDrive.Web.Services.AppFeatures.Registry, "Реестр"),
+        ("/registry", SnabDrive.Web.Services.AppFeatures.Registry, "Реестр"),
+        ("/archive", SnabDrive.Web.Services.AppFeatures.Archive, "Архив"),
+        ("/workflow", SnabDrive.Web.Services.AppFeatures.Workflow, "Задачи"),
+        ("/kontur", SnabDrive.Web.Services.AppFeatures.Kontur, "Контур — избранное"),
+        ("/kontur-templates", SnabDrive.Web.Services.AppFeatures.Kontur, "Контур — шаблоны"),
+        ("/kontur-scheduler", SnabDrive.Web.Services.AppFeatures.Scheduler, "Планировщик Контура"),
+        ("/director", SnabDrive.Web.Services.AppFeatures.Director, "Ловушка / Директор"),
+        ("/dictionaries", SnabDrive.Web.Services.AppFeatures.Dictionaries, "Справочники"),
+        ("/audit", SnabDrive.Web.Services.AppFeatures.Audit, "Журнал аудита"),
+        ("/stats", SnabDrive.Web.Services.AppFeatures.Audit, "Статистика"),
+        ("/users", SnabDrive.Web.Services.AppFeatures.Users, "Пользователи"),
+        ("/roles", SnabDrive.Web.Services.AppFeatures.Users, "Роли"),
+        ("/import-registry", SnabDrive.Web.Services.AppFeatures.Users, "Импорт реестра"),
+        ("/maintenance", SnabDrive.Web.Services.AppFeatures.Users, "Очистка данных"),
+    };
+
+    /// <summary>Считает, заблокирован ли текущий маршрут для пользователя.</summary>
+    private void RefreshRouteGate()
+    {
+        var path = Navigation.ToBaseRelativePath(Navigation.Uri);
+        var cut = path.IndexOfAny(new[] { '?', '#' });
+        if (cut >= 0)
+        {
+            path = path[..cut];
+        }
+
+        path = "/" + path.Trim('/').ToLowerInvariant();
+
+        _routeBlocked = false;
+        _blockedTitle = string.Empty;
+        foreach (var (route, feature, title) in FeatureRoutes)
+        {
+            if (route == path && !(_features.TryGetValue(feature, out var ok) && ok))
+            {
+                _routeBlocked = true;
+                _blockedTitle = title;
+                return;
+            }
+        }
+    }
+
+    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        RefreshRouteGate();
+        _ = InvokeAsync(StateHasChanged);
+    }
 
     private void ToggleNav() => _navCollapsed = !_navCollapsed;
 
@@ -98,6 +166,7 @@
     protected override async Task OnInitializedAsync()
     {
         Toasts.Changed += OnToastsChanged;
+        Navigation.LocationChanged += OnLocationChanged;
 
         var state = await AuthStateProvider.GetAuthenticationStateAsync();
         var user = state.User;
@@ -112,6 +181,8 @@
             _schedulerEnabled = SnabDrive.Web.Data.SchedulerClaim.CanUse(user);
             _features = await RolePerms.GetEffectiveFeaturesAsync(user.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty);
         }
+
+        RefreshRouteGate();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -156,6 +227,7 @@
             _schedulerHooked = false;
         }
         Toasts.Changed -= OnToastsChanged;
+        Navigation.LocationChanged -= OnLocationChanged;
 
         if (Session.PresenceRegistered)
         {
