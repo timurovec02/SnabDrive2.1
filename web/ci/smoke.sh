@@ -124,17 +124,27 @@ done
 # Оператор — роль без административных вкладок: нужен для негативных проверок.
 # Пароль хэшируется в формате ASP.NET Identity V3 (PBKDF2-SHA256).
 note "Тестовый пользователь без прав (ci_probe / Operator)"
-HASH=$(python3 - "$PROBE_PASSWORD" <<'PY'
-import base64, hashlib, os, struct, sys
-pwd = sys.argv[1].encode()
-salt = os.urandom(16)
-iters = 100_000
-dk = hashlib.pbkdf2_hmac('sha256', pwd, salt, iters, dklen=32)
-blob = (b'\x01' + struct.pack('>I', iters) + struct.pack('>I', len(salt)) + salt
-        + struct.pack('>I', len(dk)) + dk)
-print(base64.b64encode(blob).decode())
-PY
-)
+# Хэш пароля — настоящим PasswordHasher'ом Microsoft.Extensions.Identity.Core
+# (тот же пакет, что и в приложении): формат Identity V3 слишком хрупок для ручной сборки.
+mkdir -p /tmp/hashgen
+cat > /tmp/hashgen/hashgen.csproj <<'EOF'
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Identity.Core" Version="9.0.22" />
+  </ItemGroup>
+</Project>
+EOF
+cat > /tmp/hashgen/Program.cs <<'EOF'
+using Microsoft.AspNetCore.Identity;
+var hasher = new PasswordHasher<object>();
+Console.WriteLine(hasher.HashPassword(new object(), args[0]));
+EOF
+HASH=$(dotnet run --project /tmp/hashgen -c Release -- "$PROBE_PASSWORD" 2>/dev/null | tail -1)
+[ -n "$HASH" ] || fail "не удалось сгенерировать хэш пароля"
 sqlq -b -Q "USE [snabdrive_db];
 DECLARE @rid NVARCHAR(450) = (SELECT TOP 1 Id FROM dbo.AspNetRoles WHERE NormalizedName = N'OPERATOR');
 IF @rid IS NULL RAISERROR('нет роли OPERATOR (bootstrap не создал роли)', 16, 1);
