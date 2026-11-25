@@ -93,34 +93,6 @@ apply_sql kontur.sql
 apply_sql workflow.sql
 apply_sql updates_2026.sql
 
-# ---------------------------------------------------------------- Пользователь без прав
-# Оператор — роль без административных вкладок: нужен для негативных проверок.
-# Пароль хэшируется в формате ASP.NET Identity V3 (PBKDF2-SHA256).
-note "Тестовый пользователь без прав (ci_probe / Operator)"
-HASH=$(python3 - "$PROBE_PASSWORD" <<'PY'
-import base64, hashlib, os, struct, sys
-pwd = sys.argv[1].encode()
-salt = os.urandom(16)
-iters = 100_000
-dk = hashlib.pbkdf2_hmac('sha256', pwd, salt, iters, dklen=32)
-blob = (b'\x01' + struct.pack('>I', iters) + struct.pack('>I', len(salt)) + salt
-        + struct.pack('>I', len(dk)) + dk)
-print(base64.b64encode(blob).decode())
-PY
-)
-sqlq -b -Q "USE [snabdrive_db];
-DECLARE @rid NVARCHAR(450) = (SELECT TOP 1 Id FROM dbo.AspNetRoles WHERE NormalizedName = N'OPERATOR');
-IF @rid IS NULL RAISERROR('нет роли OPERATOR', 16, 1);
-IF NOT EXISTS (SELECT 1 FROM dbo.AspNetUsers WHERE Id = N'ci-probe-1')
-BEGIN
-    INSERT INTO dbo.AspNetUsers (Id, UserName, NormalizedUserName, Email, NormalizedEmail,
-        EmailConfirmed, PasswordHash, SecurityStamp, ConcurrencyStamp,
-        PhoneNumberConfirmed, TwoFactorEnabled, LockoutEnabled, AccessFailedCount)
-    VALUES (N'ci-probe-1', N'ci_probe', N'CI_PROBE', N'ci_probe@ci.local', N'CI_PROBE@CI.LOCAL',
-        1, N'$HASH', CONVERT(NVARCHAR(36), NEWID()), CONVERT(NVARCHAR(36), NEWID()), 0, 0, 1, 0);
-    INSERT INTO dbo.AspNetUserRoles (UserId, RoleId) VALUES (N'ci-probe-1', @rid);
-END" || fail "не удалось создать ci_probe"
-
 # ---------------------------------------------------------------- Запуск сайта
 note "Запуск сайта"
 export ConnectionStrings__Registry="Server=localhost,1433;Database=snabdrive_db;User Id=sa;Password=$SA_PASSWORD;Encrypt=True;TrustServerCertificate=True;MultipleActiveResultSets=True"
@@ -147,6 +119,35 @@ for _ in $(seq 1 60); do
     sleep 2
 done
 [ -n "$app_up" ] || fail "сайт не ответил на /login за 120 с"
+
+# ---------------------------------------------------------------- Пользователь без прав
+# Оператор — роль без административных вкладок: нужен для негативных проверок.
+# Пароль хэшируется в формате ASP.NET Identity V3 (PBKDF2-SHA256).
+note "Тестовый пользователь без прав (ci_probe / Operator)"
+HASH=$(python3 - "$PROBE_PASSWORD" <<'PY'
+import base64, hashlib, os, struct, sys
+pwd = sys.argv[1].encode()
+salt = os.urandom(16)
+iters = 100_000
+dk = hashlib.pbkdf2_hmac('sha256', pwd, salt, iters, dklen=32)
+blob = (b'\x01' + struct.pack('>I', iters) + struct.pack('>I', len(salt)) + salt
+        + struct.pack('>I', len(dk)) + dk)
+print(base64.b64encode(blob).decode())
+PY
+)
+sqlq -b -Q "USE [snabdrive_db];
+DECLARE @rid NVARCHAR(450) = (SELECT TOP 1 Id FROM dbo.AspNetRoles WHERE NormalizedName = N'OPERATOR');
+IF @rid IS NULL RAISERROR('нет роли OPERATOR (bootstrap не создал роли)', 16, 1);
+IF NOT EXISTS (SELECT 1 FROM dbo.AspNetUsers WHERE Id = N'ci-probe-1')
+BEGIN
+    INSERT INTO dbo.AspNetUsers (Id, UserName, NormalizedUserName, Email, NormalizedEmail,
+        EmailConfirmed, PasswordHash, SecurityStamp, ConcurrencyStamp,
+        PhoneNumberConfirmed, TwoFactorEnabled, LockoutEnabled, AccessFailedCount)
+    VALUES (N'ci-probe-1', N'ci_probe', N'CI_PROBE', N'ci_probe@ci.local', N'CI_PROBE@CI.LOCAL',
+        1, N'$HASH', CONVERT(NVARCHAR(36), NEWID()), CONVERT(NVARCHAR(36), NEWID()), 0, 0, 1, 0);
+    INSERT INTO dbo.AspNetUserRoles (UserId, RoleId) VALUES (N'ci-probe-1', @rid);
+END" >/tmp/sqlcmd-probe.log 2>&1 || { tail -12 /tmp/sqlcmd-probe.log >&2; fail "не удалось создать ci_probe"; }
+
 
 # ---------------------------------------------------------------- Анонимус
 note "Анонимус: страницы закрыты"
