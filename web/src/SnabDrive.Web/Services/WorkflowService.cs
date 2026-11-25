@@ -91,7 +91,8 @@ public sealed record WorkflowRow(
     bool PaymentOverdue,
     DateTime? Stage5ClosedAtUtc,
     string? Stage5ClosedBy,
-    string? DeliveryTerms);
+    string? DeliveryTerms,
+    int Priority);
 
 /// <summary>Модель редактирования строки воркфлоу.</summary>
 public sealed class WorkflowEdit
@@ -192,6 +193,9 @@ public interface IWorkflowService
     /// </summary>
     Task<Result> SetStageAsync(int regeditId, int stage, ChangeActor actor, CancellationToken cancellationToken = default);
 
+    /// <summary>Сменить приоритет закупки (0 — нет, 1 — низкий, 2 — средний, 3 — высокий).</summary>
+    Task<Result> SetPriorityAsync(int regeditId, int priority, ChangeActor actor, CancellationToken cancellationToken = default);
+
     /// <summary>Сохранить файл во вложения закупки; возвращает обновлённый список имён.</summary>
     Task<Result<string>> SaveAttachmentAsync(int regeditId, string fileName, Stream content, CancellationToken cancellationToken = default);
 
@@ -281,9 +285,56 @@ public sealed class WorkflowService : IWorkflowService
                 r.StageStartedAtUtc, r.StageStartedBy, r.StageCompletedAtUtc, r.StageCompletedBy,
                 r.ApplicationEndDate,
                 r.ContractClosedAtUtc, r.ContractClosedBy, r.PaymentOverdue,
-                r.Stage5ClosedAtUtc, r.Stage5ClosedBy, r.DeliveryTerms))
+                r.Stage5ClosedAtUtc, r.Stage5ClosedBy, r.DeliveryTerms, r.Priority))
             .ToListAsync(cancellationToken);
     }
+
+    public async Task<Result> SetPriorityAsync(int regeditId, int priority, ChangeActor actor, CancellationToken cancellationToken = default)
+    {
+        if (priority is < 0 or > 3)
+        {
+            return Result.Fail("Приоритет должен быть от 0 до 3.");
+        }
+
+        await using var context = await _factory.CreateDbContextAsync(cancellationToken);
+        var item = await context.Regedit.FirstOrDefaultAsync(r => r.Id == regeditId, cancellationToken);
+        if (item is null)
+        {
+            return Result.Fail("Запись не найдена.");
+        }
+
+        item.Priority = priority;
+
+        context.RegistryWorkflowLogs.Add(new RegistryWorkflowLog
+        {
+            RegeditId = regeditId,
+            FromStage = item.Stage,
+            ToStage = item.Stage,
+            Action = JournalText.Action($"Приоритет: {PriorityText(priority)}"),
+            Comment = JournalText.Comment($"Приоритет закупки: {PriorityText(priority)}"),
+            ByUser = actor.UserName,
+            AtUtc = DateTime.UtcNow
+        });
+
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            return Result.Fail("Не удалось сохранить приоритет: " + ex.Message);
+        }
+
+        return Result.Ok();
+    }
+
+    private static string PriorityText(int priority) => priority switch
+    {
+        3 => "Высокий",
+        2 => "Средний",
+        1 => "Низкий",
+        _ => "Не задан"
+    };
 
     public async Task<Result> UpdateAsync(int regeditId, WorkflowEdit edit, ChangeActor? actor = null, CancellationToken cancellationToken = default)
     {

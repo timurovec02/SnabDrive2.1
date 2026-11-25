@@ -1,0 +1,108 @@
+@using Microsoft.Extensions.Options
+@using SnabDrive.Web.Services
+@inject BitrixNotifier Bitrix
+@inject IOptions<BitrixOptions> BitrixOpts
+@inject AuthenticationStateProvider AuthState
+@inject NavigationManager Nav
+@inject IToastService Toasts
+
+<button class="btn btn--ghost" @onclick="OpenAsync" title="Написать в техподдержку — обращение придёт в Битрикс24">
+    <Icon Name="send" /> Техподдержка
+</button>
+
+@if (_open)
+{
+    <div class="modal-backdrop" @onclick="Close">
+        <div class="modal modal--small" style="max-width:520px" @onclick:stopPropagation="true">
+            <div class="modal__header">
+                <h2>Техподдержка</h2>
+                <button type="button" class="modal__close" @onclick="Close">×</button>
+            </div>
+            <div class="modal__body">
+                <div class="form-field">
+                    <label class="wf-label">Тема</label>
+                    <select class="wf-input" @bind="_topic">
+                        <option>Ошибка в работе</option>
+                        <option>Вопрос по функционалу</option>
+                        <option>Настройка доступа</option>
+                        <option>Пожелание</option>
+                        <option>Другое</option>
+                    </select>
+                </div>
+                <div class="form-field" style="margin-top:10px">
+                    <label class="wf-label">Сообщение</label>
+                    <textarea class="wf-area" style="min-height:110px" @bind="_message"
+                              placeholder="Опишите проблему: что делали, что пошло не так, текст ошибки."></textarea>
+                </div>
+                <div class="form-field" style="margin-top:10px">
+                    <label class="wf-label">Контакт для ответа</label>
+                    <input class="wf-input" @bind="_contact" />
+                </div>
+                @if (_error is not null)
+                {
+                    <div class="form-error" style="margin-top:10px">@_error</div>
+                }
+            </div>
+            <div class="modal__footer">
+                <button class="btn" @onclick="Close">Отмена</button>
+                <button class="btn btn--primary" disabled="@_busy" @onclick="SendAsync"><Icon Name="send" /> Отправить</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool _open;
+    private bool _busy;
+    private string _topic = "Ошибка в работе";
+    private string _message = "";
+    private string _contact = "";
+    private string? _error;
+
+    private async Task OpenAsync()
+    {
+        _error = null;
+        if (string.IsNullOrWhiteSpace(_contact))
+        {
+            var state = await AuthState.GetAuthenticationStateAsync();
+            var user = state.User;
+            _contact = user.FindFirstValue("DisplayName") ?? user.Identity?.Name ?? "";
+            var email = user.FindFirstValue(ClaimTypes.Email);
+            if (!string.IsNullOrWhiteSpace(email))
+            {
+                _contact += $" ({email})";
+            }
+        }
+
+        _open = true;
+    }
+
+    private void Close()
+    {
+        _open = false;
+        _busy = false;
+    }
+
+    private async Task SendAsync()
+    {
+        _error = null;
+        if (string.IsNullOrWhiteSpace(_message))
+        {
+            _error = "Опишите проблему — сообщение не может быть пустым.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(BitrixOpts.Value.WebhookUrl))
+        {
+            _error = "Интеграция с Битрикс24 не настроена (Bitrix:WebhookUrl) — обращение не отправлено.";
+            return;
+        }
+
+        _busy = true;
+        var body = $"Тема: {_topic}\nОт: {_contact}\nСтраница: {Nav.Uri}\n\n{_message}";
+        await Bitrix.NotifyAsync($"Техподдержка Снабдрайв: {_topic}", body);
+        _open = false;
+        _busy = false;
+        Toasts.Show("Обращение отправлено в Битрикс24.", ToastKind.Success);
+    }
+}

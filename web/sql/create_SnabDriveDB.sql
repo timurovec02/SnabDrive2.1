@@ -95,6 +95,7 @@ BEGIN
         Description                   NVARCHAR(MAX)      NULL,
         Note                          NVARCHAR(MAX)      NULL,
         Customer                      NVARCHAR(MAX)      NULL,
+        Priority                      INT                NOT NULL CONSTRAINT DF_RegistryItems_Priority DEFAULT (0),
         TypeOfPurchaseId              INT                NULL,
         B2BStatusId                   INT                NULL,
         ExecutionStatusId             INT                NULL,

@@ -418,6 +418,14 @@ IF NOT EXISTS (SELECT 1 FROM dbo.PasswordPolicies WHERE Id = 1)
     VALUES (1, 10, 3, 1, 1, 1, 1);
 GO
 
+-- ===== Приоритет закупки (перенос 1 → 1.2 «Резерв»): 0 — нет, 1 — низкий, 2 — средний, 3 — высокий =====
+IF COL_LENGTH('dbo.RegistryItems', 'Priority') IS NULL
+BEGIN
+    ALTER TABLE dbo.RegistryItems ADD Priority INT NOT NULL CONSTRAINT DF_RegistryItems_Priority DEFAULT (0);
+    PRINT 'RegistryItems.Priority добавлен.';
+END
+GO
+
 -- ===== Права стадий воркфлоу: «только чтение» для роли и личные права пользователя (2026-09) =====
 -- Блок самодостаточен: таблицу создаём, если её ещё нет (role_permissions.sql могли
 -- не выполнить), затем добавляем колонку старым базам.

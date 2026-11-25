@@ -69,6 +69,13 @@
                 <button class="btn btn--small" title="Очистить поиск" @onclick="ClearSearch"><Icon Name="close" /></button>
             }
         </div>
+        <button class="btn" @onclick="() => _showFilters = true" title="Сортировка и фильтры списка закупок">
+            <Icon Name="filter" /> Фильтры и сортировка
+            @if (ActiveFilterCount() > 0)
+            {
+                <span class="wf-filter-badge">@ActiveFilterCount()</span>
+            }
+        </button>
         <div class="toolbar-spacer"></div>
         @if (_stage == 1 && !_stageReadOnly)
         {
@@ -112,6 +119,10 @@ else
             <div class="card-body">
                 <div class="wf-card-top">
                     <span class="wf-rec-id" title="Id записи — ищется поиском по всем полям">ID @r.Id</span>
+                    @if (r.Priority > 0)
+                    {
+                        <span class="wf-prio wf-prio--@r.Priority" title="Приоритет закупки">@PrioLabel(r.Priority)</span>
+                    }
                     @if (!string.IsNullOrWhiteSpace(r.EisLink))
                     {
                         <a href="@r.EisLink" target="_blank" rel="noopener noreferrer" title="@r.EisLink"
@@ -730,6 +741,147 @@ else
     </div>
 }
 
+@* ===== Диалог приоритета: перенос 1 → 1.2 «Резерв» ===== *@
+@if (_prioFor is not null)
+{
+    <div style="position:fixed;inset:0;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;z-index:1000" @onclick="CancelPriority">
+        <div style="background:#fff;border-radius:8px;max-width:470px;width:92%;box-shadow:0 10px 40px rgba(15,23,42,.3)" @onclick:stopPropagation="true">
+            <div style="padding:16px 20px;border-bottom:1px solid #eee;font-size:18px;font-weight:800">Приоритет в резерве «1.2»</div>
+            <div style="padding:16px 20px">
+                <p class="muted" style="margin:0 0 12px">Закупка #@_prioFor переходит «1. Контур и подготовка» → «1.2 Резерв: дозаполнение». Выберите приоритет: он виден цветом в карточке, и по нему список сортируется.</p>
+                <div style="display:flex;flex-direction:column;gap:8px">
+                    <label class="checkbox-label" style="display:flex;align-items:center;gap:10px;cursor:pointer">
+                        <input type="radio" name="wf-prio" checked="@(_prioValue == 3)" @onchange="() => _prioValue = 3" />
+                        <span class="wf-prio wf-prio--3">Высокий</span>
+                        <span class="muted">— в работу первым</span>
+                    </label>
+                    <label class="checkbox-label" style="display:flex;align-items:center;gap:10px;cursor:pointer">
+                        <input type="radio" name="wf-prio" checked="@(_prioValue == 2)" @onchange="() => _prioValue = 2" />
+                        <span class="wf-prio wf-prio--2">Средний</span>
+                        <span class="muted">— обычный порядок</span>
+                    </label>
+                    <label class="checkbox-label" style="display:flex;align-items:center;gap:10px;cursor:pointer">
+                        <input type="radio" name="wf-prio" checked="@(_prioValue == 1)" @onchange="() => _prioValue = 1" />
+                        <span class="wf-prio wf-prio--1">Низкий</span>
+                        <span class="muted">— когда будет время</span>
+                    </label>
+                    <label class="checkbox-label" style="display:flex;align-items:center;gap:10px;cursor:pointer">
+                        <input type="radio" name="wf-prio" checked="@(_prioValue == 0)" @onchange="() => _prioValue = 0" />
+                        <span class="muted">Без приоритета</span>
+                    </label>
+                </div>
+            </div>
+            <div style="padding:12px 20px;border-top:1px solid #eee;display:flex;justify-content:flex-end;gap:8px">
+                <button class="btn" @onclick="CancelPriority">Отмена</button>
+                <button class="btn btn--primary" @onclick="ConfirmPriorityAsync">Переместить</button>
+            </div>
+        </div>
+    </div>
+}
+
+@* ===== Окно сортировки и фильтрации «Задач» ===== *@
+@if (_showFilters)
+{
+    <div style="position:fixed;inset:0;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;z-index:1000" @onclick="() => _showFilters = false">
+        <div style="background:#fff;border-radius:8px;max-width:820px;width:94%;max-height:88vh;overflow:auto;box-shadow:0 10px 40px rgba(15,23,42,.3)" @onclick:stopPropagation="true">
+            <div style="padding:14px 20px;border-bottom:1px solid #eee;display:flex;align-items:center;justify-content:space-between">
+                <div style="font-size:18px;font-weight:800">Сортировка и фильтры</div>
+                <button class="modal__close" @onclick="() => _showFilters = false">×</button>
+            </div>
+            <div style="padding:16px 20px;display:flex;flex-direction:column;gap:14px">
+                @* --- сортировка --- *@
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                    <label class="wf-label" style="margin:0">Сортировка:</label>
+                    <select class="wf-input" style="width:auto;min-width:230px" @bind="_sortBy">
+                        <option value="priority">По приоритету</option>
+                        <option value="appEnd">По сроку приема заявок</option>
+                        <option value="bidding">По дате торгов</option>
+                        <option value="name">По названию</option>
+                        <option value="customer">По заказчику</option>
+                        <option value="nmck">По НМЦК</option>
+                        <option value="result">По итоговой цене</option>
+                        <option value="id">По Id записи</option>
+                    </select>
+                    <button class="btn" @onclick="() => _sortDesc = !_sortDesc" title="Направление сортировки">
+                        @(_sortDesc ? "По убыванию ↓" : "По возрастанию ↑")
+                    </button>
+                </div>
+
+                @* --- текстовые поля --- *@
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px">
+                    <div><label class="wf-label">Название</label><input class="wf-input" @bind="_fName" /></div>
+                    <div><label class="wf-label">Заказчик</label><input class="wf-input" @bind="_fCustomer" /></div>
+                    <div><label class="wf-label">№ закупки / № резерва</label><input class="wf-input" @bind="_fNumber" /></div>
+                    <div><label class="wf-label">Филиал (файл)</label><input class="wf-input" @bind="_fBranch" /></div>
+                    <div>
+                        <label class="wf-label">Тип закупки</label>
+                        <select class="wf-input" @bind="_fType">
+                            <option value="">все</option>
+                            @foreach (var t in _rows.Select(r => r.TypeOfPurchaseName).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct().OrderBy(x => x))
+                            {
+                                <option value="@t">@t</option>
+                            }
+                        </select>
+                    </div>
+                    <div>
+                        <label class="wf-label">Статус B2B</label>
+                        <select class="wf-input" @bind="_fB2B">
+                            <option value="">все</option>
+                            @foreach (var t in _rows.Select(r => r.B2BStatusName).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct().OrderBy(x => x))
+                            {
+                                <option value="@t">@t</option>
+                            }
+                        </select>
+                    </div>
+                    <div>
+                        <label class="wf-label">Контракт</label>
+                        <select class="wf-input" @bind="_fContract">
+                            <option value="">любой</option>
+                            @for (var i = 1; i <= 5; i++)
+                            {
+                                <option value="@i">@ContractStatuses.Name(i)</option>
+                            }
+                        </select>
+                    </div>
+                    <div>
+                        <label class="wf-label">Приоритет</label>
+                        <select class="wf-input" @bind="_fPrio">
+                            <option value="">любой</option>
+                            <option value="3">Высокий</option>
+                            <option value="2">Средний</option>
+                            <option value="1">Низкий</option>
+                            <option value="0">Не задан</option>
+                        </select>
+                    </div>
+                </div>
+
+                @* --- даты --- *@
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px">
+                    <div><label class="wf-label">Дата торгов — с</label><input type="date" class="wf-input" @bind="_fBiddingFrom" /></div>
+                    <div><label class="wf-label">Дата торгов — по</label><input type="date" class="wf-input" @bind="_fBiddingTo" /></div>
+                    <div><label class="wf-label">Прием заявок — с</label><input type="date" class="wf-input" @bind="_fAppFrom" /></div>
+                    <div><label class="wf-label">Прием заявок — по</label><input type="date" class="wf-input" @bind="_fAppTo" /></div>
+                </div>
+
+                @* --- флажки --- *@
+                <div style="display:flex;flex-wrap:wrap;gap:8px 18px">
+                    <label class="checkbox-label"><input type="checkbox" @bind="_fOnlyEis" /> Есть ссылка ЕИС</label>
+                    <label class="checkbox-label"><input type="checkbox" @bind="_fWithAtt" /> Есть вложения</label>
+                    <label class="checkbox-label"><input type="checkbox" @bind="_fCall" /> Звони</label>
+                    <label class="checkbox-label"><input type="checkbox" @bind="_fByReq" /> По заявкам</label>
+                    <label class="checkbox-label"><input type="checkbox" @bind="_fChecked" /> Проверен</label>
+                    <label class="checkbox-label"><input type="checkbox" @bind="_fEisFilled" /> Заполнить в ЕИС</label>
+                    <label class="checkbox-label"><input type="checkbox" @bind="_fOverdue" /> Просрочка</label>
+                </div>
+            </div>
+            <div style="padding:12px 20px;border-top:1px solid #eee;display:flex;justify-content:space-between;gap:8px">
+                <button class="btn" @onclick="ResetFilters">Сбросить всё</button>
+                <button class="btn btn--primary" @onclick="() => _showFilters = false">Готово</button>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private List<WorkflowRow> _rows = new();
     private readonly Dictionary<int, WorkflowEdit> _edits = new();
@@ -970,23 +1122,108 @@ else
         _ => r.Stage == stage
     };
 
-    private int Count(int stage) => _rows.Count(r => InStage(r, stage) && MatchesSearch(r));
+    private int Count(int stage) => _rows.Count(r => InStage(r, stage) && MatchesSearch(r) && MatchesFilters(r));
 
     private List<WorkflowRow> Rows()
     {
-        var rows = _rows.Where(r => InStage(r, _stage) && MatchesSearch(r)).ToList();
+        var rows = _rows.Where(r => InStage(r, _stage) && MatchesSearch(r) && MatchesFilters(r)).ToList();
+        return ApplySort(rows);
+    }
 
-        // Этап 3 «Подача заявки»: очередность определяет дедлайн — сначала те,
-        // у которых прием заявок заканчивается раньше. Без даты — в конец.
-        if (_stage == 3)
+    /// <summary>Сортировка списка: поле и направление выбираются в окне «Фильтры и сортировка».</summary>
+    private List<WorkflowRow> ApplySort(List<WorkflowRow> rows)
+    {
+        Comparison<WorkflowRow> cmp = _sortBy switch
         {
-            return rows
-                .OrderBy(r => r.ApplicationEndDate ?? DateTime.MaxValue)
-                .ThenByDescending(r => r.Id)
-                .ToList();
+            "appEnd" => (a, b) => (a.ApplicationEndDate ?? DateTime.MaxValue).CompareTo(b.ApplicationEndDate ?? DateTime.MaxValue),
+            "bidding" => (a, b) => (a.BiddingDate ?? DateTime.MaxValue).CompareTo(b.BiddingDate ?? DateTime.MaxValue),
+            "name" => (a, b) => string.Compare(a.NameLink, b.NameLink, StringComparison.CurrentCultureIgnoreCase),
+            "customer" => (a, b) => string.Compare(a.Customer, b.Customer, StringComparison.CurrentCultureIgnoreCase),
+            "nmck" => (a, b) => a.NMCK.CompareTo(b.NMCK),
+            "result" => (a, b) => a.ResultPrice.CompareTo(b.ResultPrice),
+            "id" => (a, b) => a.Id.CompareTo(b.Id),
+            _ => (a, b) => a.Priority.CompareTo(b.Priority),
+        };
+
+        var sign = _sortDesc ? -1 : 1;
+        var sorted = rows.ToList();
+        sorted.Sort((a, b) =>
+        {
+            var r = sign * cmp(a, b);
+            if (r != 0)
+            {
+                return r;
+            }
+
+            // На этапе 3 дедлайн — естественный второй уровень (сначала ранние).
+            if (_stage == 3)
+            {
+                var d = (a.ApplicationEndDate ?? DateTime.MaxValue).CompareTo(b.ApplicationEndDate ?? DateTime.MaxValue);
+                if (d != 0)
+                {
+                    return d;
+                }
+            }
+
+            return b.Id.CompareTo(a.Id);
+        });
+        return sorted;
+    }
+
+    /// <summary>Фильтры окна «Фильтры и сортировка» — применяются мгновенно.</summary>
+    private bool MatchesFilters(WorkflowRow r)
+    {
+        if (!string.IsNullOrWhiteSpace(_fName) && !Fc(r.NameLink, _fName)) return false;
+        if (!string.IsNullOrWhiteSpace(_fCustomer) && !Fc(r.Customer, _fCustomer)) return false;
+        if (!string.IsNullOrWhiteSpace(_fNumber) && !Fc(r.PurchaseNumber, _fNumber) && !Fc(r.ReserveNumber, _fNumber)) return false;
+        if (!string.IsNullOrWhiteSpace(_fBranch) && !Fc(r.BranchFilePath, _fBranch)) return false;
+        if (!string.IsNullOrWhiteSpace(_fType) && !string.Equals(r.TypeOfPurchaseName, _fType.Trim(), StringComparison.OrdinalIgnoreCase)) return false;
+        if (!string.IsNullOrWhiteSpace(_fB2B) && !string.Equals(r.B2BStatusName, _fB2B.Trim(), StringComparison.OrdinalIgnoreCase)) return false;
+        if (!string.IsNullOrWhiteSpace(_fContract) && int.TryParse(_fContract, out var cs) && r.ContractStatusId != cs) return false;
+        if (!string.IsNullOrWhiteSpace(_fPrio) && int.TryParse(_fPrio, out var pr) && r.Priority != pr) return false;
+        if (DateTime.TryParse(_fBiddingFrom, out var bf) && (r.BiddingDate is null || r.BiddingDate.Value.Date < bf.Date)) return false;
+        if (DateTime.TryParse(_fBiddingTo, out var bt) && (r.BiddingDate is null || r.BiddingDate.Value.Date > bt.Date)) return false;
+        if (DateTime.TryParse(_fAppFrom, out var af) && (r.ApplicationEndDate is null || r.ApplicationEndDate.Value.Date < af.Date)) return false;
+        if (DateTime.TryParse(_fAppTo, out var at) && (r.ApplicationEndDate is null || r.ApplicationEndDate.Value.Date > at.Date)) return false;
+        if (_fOnlyEis && string.IsNullOrWhiteSpace(r.EisLink)) return false;
+        if (_fWithAtt && string.IsNullOrWhiteSpace(r.Attachments)) return false;
+        if (_fCall && !r.IsCall) return false;
+        if (_fByReq && !r.IsByRequest) return false;
+        if (_fChecked && !r.IsContractChecked) return false;
+        if (_fEisFilled && !r.IsEisFilled) return false;
+        if (_fOverdue && !r.PaymentOverdue) return false;
+        return true;
+    }
+
+    private static bool Fc(string? value, string term) =>
+        !string.IsNullOrEmpty(value) && value.Contains(term.Trim(), StringComparison.OrdinalIgnoreCase);
+
+    private int ActiveFilterCount()
+    {
+        var n = 0;
+        foreach (var v in new[] { _fName, _fCustomer, _fNumber, _fBranch, _fType, _fB2B, _fContract, _fPrio, _fBiddingFrom, _fBiddingTo, _fAppFrom, _fAppTo })
+        {
+            if (!string.IsNullOrWhiteSpace(v)) n++;
         }
 
-        return rows;
+        if (_fOnlyEis) n++;
+        if (_fWithAtt) n++;
+        if (_fCall) n++;
+        if (_fByReq) n++;
+        if (_fChecked) n++;
+        if (_fEisFilled) n++;
+        if (_fOverdue) n++;
+        return n;
+    }
+
+    private void ResetFilters()
+    {
+        _fName = _fCustomer = _fNumber = _fBranch = string.Empty;
+        _fType = _fB2B = _fContract = _fPrio = string.Empty;
+        _fBiddingFrom = _fBiddingTo = _fAppFrom = _fAppTo = string.Empty;
+        _fOnlyEis = _fWithAtt = _fCall = _fByReq = _fChecked = _fEisFilled = _fOverdue = false;
+        _sortBy = "priority";
+        _sortDesc = true;
     }
 
     // Общий поиск по всем полям строки стадии: текст, суммы, даты, справочники, стадия.
@@ -1374,6 +1611,89 @@ else
         }
     }
 
+    // — Приоритет при переносе 1 → 1.2 «Резерв»: диалог выбора и отображение —
+    private int? _prioFor;
+    private int _prioValue = 2;
+    private bool _prioManual;
+    private int _prioTarget = 2;
+
+    // — Окно «Фильтры и сортировка» —
+    private bool _showFilters;
+    private string _sortBy = "priority";
+    private bool _sortDesc = true;
+    private string _fName = "";
+    private string _fCustomer = "";
+    private string _fNumber = "";
+    private string _fBranch = "";
+    private string _fType = "";
+    private string _fB2B = "";
+    private string _fContract = "";
+    private string _fPrio = "";
+    private string _fBiddingFrom = "";
+    private string _fBiddingTo = "";
+    private string _fAppFrom = "";
+    private string _fAppTo = "";
+    private bool _fOnlyEis;
+    private bool _fWithAtt;
+    private bool _fCall;
+    private bool _fByReq;
+    private bool _fChecked;
+    private bool _fEisFilled;
+    private bool _fOverdue;
+
+    private static string PrioLabel(int priority) => priority switch
+    {
+        3 => "Высокий",
+        2 => "Средний",
+        1 => "Низкий",
+        _ => "—"
+    };
+
+    private void OpenPriority(int id, int target, bool manual)
+    {
+        _prioFor = id;
+        _prioTarget = target;
+        _prioManual = manual;
+        _prioValue = 2;
+    }
+
+    private void CancelPriority() => _prioFor = null;
+
+    private async Task ConfirmPriorityAsync()
+    {
+        if (_prioFor is not int id)
+        {
+            return;
+        }
+
+        var target = _prioTarget;
+        var manual = _prioManual;
+        var prio = _prioValue;
+        _prioFor = null;
+        _error = null;
+        _notice = null;
+
+        var result = manual
+            ? await WorkflowSvc.SetStageAsync(id, target, _actor)
+            : await WorkflowSvc.AdvanceAsync(id, target, _actor);
+        if (!result.Success)
+        {
+            _error = result.Error;
+            return;
+        }
+
+        var saved = await WorkflowSvc.SetPriorityAsync(id, prio, _actor);
+        if (!saved.Success)
+        {
+            _error = saved.Error;
+            return;
+        }
+
+        _stageMoves.Remove(id);
+        _notice = $"Закупка #{id} → «{WorkflowStages.Name(target)}», приоритет: {PrioLabel(prio).ToLowerInvariant()}.";
+        await LoadAsync();
+    }
+
     // Ручной перенос закупки на любую стадию (право «Менять стадию закупок»).
     private async Task MoveToStage(int id)
     {
@@ -1396,6 +1716,13 @@ else
         if (stage == row.Stage)
         {
             _error = $"Закупка уже на стадии «{WorkflowStages.Name(stage)}» — выберите другую.";
+            return;
+        }
+
+        // Перенос 1 → 1.2 «Резерв»: сначала выбор приоритета.
+        if (row.Stage == 1 && stage == 2)
+        {
+            OpenPriority(id, 2, manual: true);
             return;
         }
 
@@ -1422,6 +1749,18 @@ else
     private async Task Advance(int id, int code)
     {
         _error = null;
+
+        // «→ 1.2 Резерв» со стадии 1 — с выбором приоритета.
+        if (code == 2)
+        {
+            var source = _rows.FirstOrDefault(x => x.Id == id);
+            if (source?.Stage == 1)
+            {
+                OpenPriority(id, 2, manual: false);
+                return;
+            }
+        }
+
         var result = await WorkflowSvc.AdvanceAsync(id, code, _actor);
         if (!result.Success) { _error = result.Error; return; }
         await LoadAsync();
