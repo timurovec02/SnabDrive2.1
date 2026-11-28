@@ -38,6 +38,14 @@
                     <label class="wf-label">Контакт для ответа</label>
                     <input class="wf-input" @bind="_contact" />
                 </div>
+                <div class="muted" style="margin-top:10px;font-size:12px">
+                    Обращение уходит в Битрикс24: в чат техподдержки
+                    @(string.IsNullOrWhiteSpace(BitrixOpts.Value.SupportChatId) ? "или уведомлением ответственному" : $"«{BitrixOpts.Value.SupportChatId}»") — можно проверить доставку перед отправкой.
+                    @if (PortalUrl is not null)
+                    {
+                        <a href="@PortalUrl" target="_blank" rel="noopener">Открыть Битрикс24</a>
+                    }
+                </div>
                 @if (_error is not null)
                 {
                     <div class="form-error" style="margin-top:10px">@_error</div>
@@ -45,6 +53,10 @@
             </div>
             <div class="modal__footer">
                 <button class="btn" @onclick="Close">Отмена</button>
+                <button class="btn btn--ghost" disabled="@_busy" @onclick="TestAsync"
+                        title="Отправить тестовое сообщение тем же маршрутом, что и обращения">
+                    Проверить доставку
+                </button>
                 <button class="btn btn--primary" disabled="@_busy" @onclick="SendAsync"><Icon Name="send" /> Отправить</button>
             </div>
         </div>
@@ -92,17 +104,45 @@
             return;
         }
 
-        if (string.IsNullOrWhiteSpace(BitrixOpts.Value.WebhookUrl))
+        _busy = true;
+        var body = $"Тема: {_topic}\nОт: {_contact}\nСтраница: {Nav.Uri}\n\n{_message}";
+        var result = await Bitrix.SendSupportMessageAsync($"Техподдержка Снабдрайв: {_topic}", body);
+        _busy = false;
+
+        if (!result.Success)
         {
-            _error = "Интеграция с Битрикс24 не настроена (Bitrix:WebhookUrl) — обращение не отправлено.";
+            _error = result.Error;
             return;
         }
 
-        _busy = true;
-        var body = $"Тема: {_topic}\nОт: {_contact}\nСтраница: {Nav.Uri}\n\n{_message}";
-        await Bitrix.NotifyAsync($"Техподдержка Снабдрайв: {_topic}", body);
         _open = false;
-        _busy = false;
         Toasts.Show("Обращение отправлено в Битрикс24.", ToastKind.Success);
+    }
+
+    private async Task TestAsync()
+    {
+        _error = null;
+        _busy = true;
+        var result = await Bitrix.SendTestSupportAsync();
+        _busy = false;
+
+        if (result.Success)
+        {
+            Toasts.Show("Проверка доставки: тестовое сообщение ушло в Битрикс24 — проверьте чат/уведомления.", ToastKind.Success);
+        }
+        else
+        {
+            _error = result.Error;
+        }
+    }
+
+    /// <summary>Адрес портала Битрикс24, выведенный из URL вебхука (для быстрой ссылки).</summary>
+    private string? PortalUrl
+    {
+        get
+        {
+            var raw = BitrixOpts.Value.WebhookUrl;
+            return Uri.TryCreate(raw, UriKind.Absolute, out var uri) ? $"{uri.Scheme}://{uri.Host}/" : null;
+        }
     }
 }
