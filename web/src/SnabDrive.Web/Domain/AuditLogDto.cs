@@ -24,6 +24,10 @@ public sealed record AuditQuery
 {
     public string? EntityName { get; init; }
     public string? Action { get; init; }
+
+    /// <summary>Белый список видов операций. Пусто — все операции.
+    /// Обычным пользователям журнал ограничен изменениями данных и переносами стадий.</summary>
+    public IReadOnlyCollection<string>? Actions { get; init; }
     public string? UserName { get; init; }
     public DateTime? FromUtc { get; init; }
     public DateTime? ToUtc { get; init; }

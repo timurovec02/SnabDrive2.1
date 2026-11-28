@@ -1,13 +1,16 @@
 @page "/audit"
 @attribute [Authorize]
 @inject IAuditService Audit
+@inject AuthenticationStateProvider AuthState
 
 <PageTitle>Журнал изменений — Снабдрайв</PageTitle>
 
 <div class="page page--fill">
     <PageHeader IconName="audit"
                 Title="Журнал изменений"
-                Subtitle="Кто, когда и что менял в реестре, справочниках и пользователях. Записи не удаляются и не редактируются.">
+                Subtitle="@(_isAdmin
+                    ? "Кто, когда и что менял в реестре, справочниках и пользователях. Записи не удаляются и не редактируются."
+                    : "Кто и когда менял данные и переносил закупки по стадиям. Записи не удаляются и не редактируются.")">
         <Actions>
             <button type="button" class="btn btn--ghost" @onclick="LoadAsync" title="Обновить"><Icon Name="refresh" /></button>
         </Actions>
@@ -28,13 +31,19 @@
             <select class="input input--small" value="@_action" @onchange="OnActionChanged">
                 <option value="">все операции</option>
                 <option value="Created">Создание</option>
-                <option value="Updated">Изменение</option>
+                <option value="Updated">Изменение / перенос стадии</option>
                 <option value="Deleted">Удаление</option>
                 <option value="Archived">Архивация</option>
                 <option value="Restored">Возврат из архива</option>
-                <option value="CellColorChanged">Подсветка</option>
-                <option value="Login">Вход</option>
-                <option value="LoginFailed">Неудачный вход</option>
+                @if (_isAdmin)
+                {
+                    <option value="CellColorChanged">Подсветка</option>
+                    <option value="DictionaryChanged">Справочник</option>
+                    <option value="UserChanged">Пользователи</option>
+                    <option value="PasswordChanged">Смена пароля</option>
+                    <option value="Login">Вход</option>
+                    <option value="LoginFailed">Неудачный вход</option>
+                }
             </select>
 
             <input class="input input--small" placeholder="пользователь" value="@_userName" @onchange="OnUserChanged" />
@@ -96,6 +105,14 @@
 </div>
 
 @code {
+    /// <summary>Обычным пользователям — только изменения данных и переносы по стадиям;
+    /// администратор видит журнал целиком.</summary>
+    private static readonly string[] UserActions =
+    {
+        AuditAction.Created, AuditAction.Updated, AuditAction.Deleted, AuditAction.Archived, AuditAction.Restored
+    };
+
+    private bool _isAdmin;
     private AuditQuery _query = new() { PageSize = 50 };
     private PagedResult<AuditLogDto> _data = PagedResult<AuditLogDto>.Empty(1, 50);
 
@@ -103,7 +120,19 @@
     private string _action = string.Empty;
     private string _userName = string.Empty;
 
-    protected override async Task OnInitializedAsync() => await LoadAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthState.GetAuthenticationStateAsync();
+        _isAdmin = state.User.IsInRole(AppRoles.Admin);
+
+        // Обычные пользователи видят только изменения данных и переносы по стадиям.
+        if (!_isAdmin)
+        {
+            _query = _query with { Actions = UserActions };
+        }
+
+        await LoadAsync();
+    }
 
     private async Task LoadAsync()
     {
@@ -120,6 +149,11 @@
     private async Task OnActionChanged(ChangeEventArgs args)
     {
         _action = args.Value?.ToString() ?? string.Empty;
+        if (!_isAdmin && !string.IsNullOrEmpty(_action) && !UserActions.Contains(_action))
+        {
+            _action = string.Empty;
+        }
+
         _query = _query with { Action = string.IsNullOrEmpty(_action) ? null : _action, Page = 1 };
         await LoadAsync();
     }

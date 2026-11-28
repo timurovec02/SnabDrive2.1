@@ -4295,3 +4295,310 @@ textarea {
     font-size: 11.5px;
     font-weight: 700;
 }
+
+
+/* ================================================================
+   Адаптивность и мобильная версия (2026-09-25).
+   Планшеты 1024/860, телефоны 640/420. Ничего не прячем: элементы
+   переносятся и прокручиваются, а не исчезают.
+   ================================================================ */
+
+/* --- планшеты: вход укладывается в колонку --- */
+@media (max-width: 860px) {
+    .login-page {
+        overflow: auto;
+        justify-content: flex-start;
+        padding: 78px 14px 28px;
+        gap: 14px;
+    }
+
+    .login-page__brand {
+        top: 18px;
+        left: 18px;
+    }
+
+    .login-shell {
+        grid-template-columns: 1fr;
+        min-height: 0;
+        border-radius: 16px;
+    }
+
+    .login-hero {
+        min-height: 190px;
+        padding: 22px;
+    }
+
+    .login-hero__mark {
+        max-width: 170px;
+    }
+
+    .login-hero__title {
+        font-size: 22px;
+    }
+
+    .login-hero__note {
+        font-size: 12.5px;
+    }
+
+    .login-form-side {
+        padding: 26px 22px 30px;
+    }
+
+    /* Поля карточек «Задач» гарантированно в одну колонку на узком экране. */
+    .wf-grid {
+        grid-template-columns: minmax(min(320px, 100%), 1fr);
+    }
+
+    .wf-card-top {
+        gap: 6px 10px;
+    }
+
+    .wf-card-checks {
+        margin-left: 0;
+    }
+
+    .modal {
+        border-radius: 8px;
+    }
+
+    .modal__body {
+        max-height: calc(100vh - 190px);
+    }
+
+    .page__header h1,
+    .page-hero h1 {
+        font-size: 18px;
+    }
+}
+
+/* --- телефоны --- */
+@media (max-width: 640px) {
+    /* iOS не увеличивает шрифт при фокусе — поля формы остаются 16px. */
+    input,
+    select,
+    textarea {
+        font-size: 16px;
+    }
+
+    .app-header {
+        height: auto;
+        min-height: 52px;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 8px 10px;
+    }
+
+    .app-header__brand {
+        min-width: 0;
+    }
+
+    .app-header__user {
+        min-width: 0;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .user-name {
+        max-width: 140px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    /* Кнопки удобнее нажимать пальцем. */
+    .btn {
+        min-height: 38px;
+    }
+
+    .btn--small {
+        min-height: 32px;
+    }
+
+    .app-main {
+        padding: 10px;
+    }
+
+    .card {
+        padding: 10px;
+    }
+
+    .wf-grid {
+        gap: 12px;
+    }
+
+    .wf-label {
+        font-size: 14px;
+    }
+
+    .wf-input,
+    .wf-area,
+    .wf-select {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .toolbar {
+        gap: 6px;
+    }
+
+    .toolbar .btn,
+    .toolbar .input {
+        flex: 1 1 auto;
+    }
+
+    .pill-tabs {
+        gap: 4px;
+        padding: 4px;
+    }
+
+    .pill-tabs > button {
+        font-size: 12px;
+        padding: 6px 8px;
+    }
+
+    .modal,
+    .modal--small {
+        width: calc(100vw - 12px);
+    }
+
+    .modal__header h2 {
+        font-size: 15px;
+    }
+
+    .login-card {
+        width: calc(100vw - 24px);
+        max-width: 100%;
+    }
+
+    .login-hero {
+        min-height: 150px;
+        padding: 18px;
+    }
+
+    .login-hero__mark {
+        max-width: 130px;
+    }
+
+    .login-hero__title {
+        font-size: 19px;
+    }
+
+    .login-form-side {
+        padding: 20px 16px 26px;
+    }
+
+    .ctx-menu {
+        width: min(240px, calc(100vw - 16px));
+    }
+
+    .data-table {
+        font-size: 12.5px;
+    }
+
+    .data-table th,
+    .data-table td {
+        padding: 6px 8px;
+    }
+
+    .stat-grid {
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 8px;
+    }
+
+    .wf-rec-id,
+    .wf-prio {
+        font-size: 11.5px;
+    }
+
+    .wf-check {
+        font-size: 12.5px;
+    }
+
+    .form-field {
+        min-width: 0;
+    }
+
+    .admin-page__tabs {
+        overflow-x: auto;
+        flex-wrap: nowrap;
+    }
+
+    .export-lock > div {
+        max-width: calc(100vw - 24px);
+    }
+}
+
+/* --- совсем узкий экран --- */
+@media (max-width: 420px) {
+    .app-main {
+        padding: 8px;
+    }
+
+    .card {
+        padding: 8px;
+    }
+
+    .wf-grid {
+        gap: 10px;
+    }
+
+    .app-title {
+        font-size: 15px;
+    }
+
+    .app-subtitle {
+        font-size: 11px;
+    }
+
+    .login-hero {
+        min-height: 120px;
+    }
+
+    .login-hero__mark {
+        max-width: 104px;
+    }
+
+    .login-hero__title {
+        font-size: 17px;
+    }
+
+    .login-hero__note {
+        display: none;   /* только декоративная подпись; заголовок и логотип остаются */
+    }
+
+    .user-name {
+        max-width: 100px;
+    }
+
+    .modal__footer {
+        flex-wrap: wrap;
+    }
+
+    .modal__footer .btn {
+        flex: 1 1 auto;
+    }
+}
+
+
+/* Sticky-шапка «Задач» компенсирует верхний padding контейнера прокрутки —
+   на каждом брейкпоинте компенсация повторяет свой размер отступа. */
+@media (max-width: 1024px) {
+    .sticky-head {
+        top: -12px;
+        padding-top: 12px;
+    }
+}
+
+@media (max-width: 640px) {
+    .sticky-head {
+        top: -10px;
+        padding-top: 10px;
+    }
+}
+
+@media (max-width: 420px) {
+    .sticky-head {
+        top: -8px;
+        padding-top: 8px;
+    }
+}

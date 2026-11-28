@@ -83,6 +83,12 @@ public sealed class AuditService : IAuditService
             q = q.Where(x => x.Action == query.Action);
         }
 
+        if (query.Actions is { Count: > 0 })
+        {
+            var allowed = query.Actions.ToList();
+            q = q.Where(x => allowed.Contains(x.Action));
+        }
+
         if (!string.IsNullOrWhiteSpace(query.UserName))
         {
             var like = $"%{query.UserName}%";
